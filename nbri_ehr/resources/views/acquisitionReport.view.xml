@@ -1,0 +1,6 @@
+<view xmlns="http://labkey.org/data/xml/view" title="Acquisition Report">
+    <dependencies>
+        <dependency path="ehr.context" />
+        <dependency path="vis/vis"/>
+    </dependencies>
+</view>

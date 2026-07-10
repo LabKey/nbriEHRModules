@@ -1,0 +1,16 @@
+value	title	description
+1	Submit Protocol Request	Submit Protocol Request
+2	Question Answered	Question Answered
+3	Pre-Submission	Pre-Submission
+4	Designated Reviewer Approval	Set Final Vote
+5	Return for Modification	Return for Modification
+6	Assign Review Tier	Assign Review Tier
+7	Submit Opinion	Render a Vote
+8	Receive Animal Shipments	Receive Animal Shipments
+9	Transfer Animals	Transfer Animals
+10	Record Training Results	Record Training Results
+11	Submit Animal Order Request	Submit Animal Order Request
+12	Approve/Not Approve Animal Order Request	Approve/Not Approve Animal Order Request
+13	Global Protocol Deletion
+14	Global Account Deletion
+15	Unreceive Animal Shipment.	Unreceive Animal Shipment

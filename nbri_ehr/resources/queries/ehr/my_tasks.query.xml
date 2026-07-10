@@ -1,0 +1,65 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="my_tasks" tableDbType="TABLE">
+                <tableTitle>My Tasks</tableTitle>
+                <javaCustomizer class="org.labkey.ehr.table.DefaultEHRCustomizer" />
+                <insertUrl />
+                <updateUrl />
+                <titleColumn>RowId</titleColumn>
+                <columns>
+                    <column columnName="rowid">
+                        <columnTitle>Task Id</columnTitle>
+                        <isAutoInc>true</isAutoInc>
+                        <nullable>true</nullable>
+                    </column>
+                    <column columnName="formtype">
+                        <columnTitle>Task Type</columnTitle>
+                    </column>
+                    <column columnName="assignedto">
+                        <columnTitle>Assigned To</columnTitle>
+                        <nullable>true</nullable>
+                        <fk>
+                            <fkDbSchema>core</fkDbSchema>
+                            <fkTable>PrincipalsWithoutAdmin</fkTable>
+                            <fkColumnName>userid</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="duedate">
+                        <columnTitle>Due Date</columnTitle>
+                        <nullable>true</nullable>
+                        <formatString>DateTime</formatString>
+                    </column>
+                    <column columnName="createdby">
+                        <columnTitle>Created By</columnTitle>
+                    </column>
+                    <column columnName="created">
+                        <columnTitle>Created</columnTitle>
+                    </column>
+                    <column columnName="modifiedby">
+                        <columnTitle>Modified By</columnTitle>
+                    </column>
+                    <column columnName="modified">
+                        <columnTitle>Modified</columnTitle>
+                    </column>
+                </columns>
+                <buttonBarOptions includeStandardButtons="false">
+                    <includeScript>ehr.context</includeScript>
+                    <includeScript>/ehr/studyButtons.js</includeScript>
+                    <item text="Grid Views">
+                        <originalText>Grid Views</originalText>
+                    </item>
+                    <item text="Charts">
+                        <originalText>Charts</originalText>
+                    </item>
+                    <item text="Export">
+                        <originalText>Export</originalText>
+                    </item>
+                    <item text="Print">
+                        <originalText>Print</originalText>
+                    </item>
+                </buttonBarOptions>
+            </table>
+        </tables>
+    </metadata>
+</query>

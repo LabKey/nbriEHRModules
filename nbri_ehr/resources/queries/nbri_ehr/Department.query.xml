@@ -1,0 +1,25 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="Department" tableDbType="TABLE">
+                <tableTitle>Department</tableTitle>
+                <columns>
+
+                    <column columnName="ParentDepartment">
+                        <columnTitle>Parent Department</columnTitle>
+                        <fk>
+                            <fkDbSchema>nbri_ehr</fkDbSchema>
+                            <fkTable>Department</fkTable>
+                            <fkColumnName>DepartmentId</fkColumnName>
+                            <fkDisplayColumnName>Name</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="Staff">
+                        <columnTitle>Staff</columnTitle>
+                        <conceptURI>http://www.labkey.org/types#userId</conceptURI>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

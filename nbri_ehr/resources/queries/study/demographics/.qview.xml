@@ -1,0 +1,23 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
+    <sorts>
+        <sort column="date" descending="true"/>
+    </sorts>
+    <columns>
+        <column name="Id"/>
+        <column name="Id/curLocation/cage/room/floor/building"/>
+        <column name="Id/curLocation/cage"/>
+        <column name="gender"/>
+        <column name="birth"/>
+        <column name="death"/>
+        <column name="species"/>
+        <column name="dam"/>
+        <column name="sire"/>
+        <column name="source"/>
+        <column name="disposition"/>
+        <column name="termination"/>
+        <column name="implantNumber"/>
+        <column name="vendorNumber"/>
+        <column name="activeStatus"/>
+        <column name="calculated_status"/>
+    </columns>
+</customView>

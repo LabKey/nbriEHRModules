@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<etl xmlns="http://labkey.org/etl/xml">
+    <name>Protocol and Assignment</name>
+    <description>Protocol and assignment data</description>
+    <transforms>
+        <transform id="step1" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to protocol target</description>
+            <source schemaName="dbo" queryName="q_protocol"/>
+            <destination schemaName="ehr" queryName="protocol"
+                         bulkLoad="true" targetOption="truncate">
+                <alternateKeys>
+                    <column name="protocol"/>
+                </alternateKeys>
+                <columnTransforms>
+                    <column source="investigatorId" target="InvestigatorId" transformClass="org.labkey.nbri_ehr.columnTransform.NBRIUserCreateTransform"/>
+                    <column source="authorId" target="AuthorId" transformClass="org.labkey.nbri_ehr.columnTransform.NBRIUserCreateTransform"/>
+                    <column source="ownerId" target="OwnerId" transformClass="org.labkey.nbri_ehr.columnTransform.NBRIUserCreateTransform"/>
+                </columnTransforms>
+            </destination>
+        </transform>
+        <transform id="step2" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to protocol amendments target</description>
+            <source schemaName="dbo" queryName="q_protocol_amendments"/>
+            <destination schemaName="ehr" queryName="protocol_amendments"
+                         bulkLoad="true" batchSize="5000" targetOption="truncate">
+                <alternateKeys>
+                    <column name="protocol"/>
+                </alternateKeys>
+                <columnTransforms>
+                    <column source="amendmentDate" target="date"/>
+                    <column source="protocolId" target="rowid"/>
+                </columnTransforms>
+            </destination>
+        </transform>
+        <transform id="step3" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to assignment target</description>
+            <source schemaName="dbo" queryName="q_protocolAssignment"/>
+            <destination schemaName="study" queryName="protocolAssignment"
+                         bulkLoad="true" batchSize="5000" targetOption="truncate">
+                <columnTransforms>
+                    <column source="transferDate" target="date"/>
+                    <column source="performedby" target="performedby" transformClass="org.labkey.nbri_ehr.columnTransform.NBRIUserCreateTransform"/>
+                </columnTransforms>
+            </destination>
+        </transform>
+    </transforms>
+    <schedule>
+        <cron expression="0 0 20 * * ?" /> <!--Run at 8PM every day-->
+    </schedule>
+</etl>

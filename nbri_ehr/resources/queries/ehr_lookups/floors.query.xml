@@ -1,0 +1,28 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="floors" tableDbType="TABLE" useColumnOrder="true">
+                <tableTitle>Floors</tableTitle>
+                <javaCustomizer class="org.labkey.ehr.table.DefaultEHRCustomizer" />
+                <columns>
+                    <column columnName="name" />
+                    <column columnName="building">
+                        <columnTitle>Building</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>buildings</fkTable>
+                            <fkColumnName>name</fkColumnName>
+                            <fkDisplayColumnName>description</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="floor">
+                        <isHidden>true</isHidden>
+                        <shownInInsertView>false</shownInInsertView>
+                        <shownInUpdateView>false</shownInUpdateView>
+                        <shownInDetailsView>false</shownInDetailsView>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

@@ -1,0 +1,3 @@
+<view xmlns="http://labkey.org/data/xml/view" template="print" title="Necropsy Report" frame="none">
+    <requiresLogin/>
+</view>

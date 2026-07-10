@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<etl xmlns="http://labkey.org/etl/xml">
+    <name>Observations</name>
+    <description>Observations data</description>
+    <transforms>
+        <transform id="step1" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to observations target</description>
+            <source schemaName="dbo" queryName="q_observations"/>
+            <destination schemaName="study" queryName="clinical_observations"
+                         bulkLoad="true" batchSize="5000" targetOption="merge">
+                <alternateKeys>
+                    <column name="objectid"/>
+                </alternateKeys>
+                <columnTransforms>
+                    <column source="obsDate" target="date"/>
+                    <column source="performedby" target="performedby" transformClass="org.labkey.nbri_ehr.columnTransform.NBRIUserCreateTransform"/>
+                </columnTransforms>
+            </destination>
+        </transform>
+        <transform id="step2" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to alopecia target</description>
+            <source schemaName="dbo" queryName="q_alopecia"/>
+            <destination schemaName="study" queryName="clinical_observations"
+                         bulkLoad="true" batchSize="5000" targetOption="merge">
+                <alternateKeys>
+                    <column name="objectid"/>
+                </alternateKeys>
+                <columnTransforms>
+                    <column source="administrationDate" target="date"/>
+                    <column source="performedby" target="performedby" transformClass="org.labkey.nbri_ehr.columnTransform.NBRIUserCreateTransform"/>
+                </columnTransforms>
+            </destination>
+        </transform>
+    </transforms>
+
+    <incrementalFilter className="ModifiedSinceFilterStrategy" timestampColumnName="modified" >
+        <deletedRowsSource schemaName="dbo" queryName="q_observations_delete" timestampColumnName="modified"
+                           deletedSourceKeyColumnName="objectid" targetKeyColumnName="objectid"/>
+    </incrementalFilter>
+
+    <schedule>
+        <cron expression="0 0 20 * * ?" /> <!--Run at 8PM every day-->
+    </schedule>
+</etl>

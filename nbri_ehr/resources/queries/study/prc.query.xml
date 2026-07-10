@@ -1,0 +1,73 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="prc" tableDbType="TABLE" useColumnOrder="true">
+                <columns>
+                    <column columnName="Id" />
+                    <column columnName="date" />
+                    <column columnName="category">
+                        <columnTitle>Category</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>data_category</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName useRawValue="true"/>
+                        </fk>
+                    </column>
+                    <column columnName="procedure">
+                        <columnTitle>Procedure</columnTitle>
+                        <nullable>false</nullable>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>procedures</fkTable>
+                            <fkColumnName>rowid</fkColumnName>
+                            <fkDisplayColumnName>name</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="orderid">
+                        <columnTitle>Order Id</columnTitle>
+                        <fk>
+                            <fkDbSchema>study</fkDbSchema>
+                            <fkTable>prc_order</fkTable>
+                            <fkColumnName>objectid</fkColumnName>
+                        </fk>
+                    </column>
+                </columns>
+                <buttonBarOptions position="both" includeStandardButtons="false">
+                    <includeScript>ehr.context</includeScript>
+                    <includeScript>/ehr/studyButtons.js</includeScript>
+                    <onRender>EHR.DatasetButtons.moreActionsHandler</onRender>
+                    <item text="Grid Views">
+                        <originalText>Grid Views</originalText>
+                    </item>
+                    <item text="Charts">
+                        <originalText>Charts</originalText>
+                    </item>
+                    <item text="Export">
+                        <originalText>Export</originalText>
+                    </item>
+                    <item text="Print">
+                        <originalText>Print</originalText>
+                    </item>
+                    <item text="More Actions" insertPosition="end" >
+                        <item text="Jump To History">
+                            <onClick>
+                                EHR.DatasetButtons.historyHandler(dataRegion, dataRegionName);
+                            </onClick>
+                        </item>
+                        <item text="Return Distinct Values">
+                            <onClick>
+                                EHR.window.GetDistinctWindow.getDistinctHandler(dataRegionName);
+                            </onClick>
+                        </item>
+                        <item text="Show Record History">
+                            <onClick>
+                                EHR.DatasetButtons.showAuditHistoryHandler(dataRegionName);
+                            </onClick>
+                        </item>
+                    </item>
+                </buttonBarOptions>
+            </table>
+        </tables>
+    </metadata>
+</query>

@@ -1,0 +1,217 @@
+<style>
+    #nbri_ehr-acquisition-report {
+        font-family: Arial, sans-serif;
+        max-width: 400px;
+        padding: 20px;
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    #nbri_ehr-acquisition-report .form-group {
+        margin-bottom: 15px;
+    }
+
+    #nbri_ehr-acquisition-report label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #333;
+    }
+
+    #nbri_ehr-acquisition-report select,
+    #nbri_ehr-acquisition-report input[type="date"] {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    #nbri_ehr-acquisition-report select:focus,
+    #nbri_ehr-acquisition-report input[type="date"]:focus {
+        outline: none;
+        border-color: #5897fb;
+        box-shadow: 0 0 3px rgba(88, 151, 251, 0.5);
+    }
+
+    #acquisitionReportBySpeciesPlot,
+    #acquisitionReportBySpeciesResults,
+    #acquisitionReportResults {
+        margin-top: 20px;
+    }
+</style>
+
+<form id="nbri_ehr-acquisition-report">
+    <div class="form-group">
+        <label for="activeProjectsDropdown">Active Projects:</label>
+        <select id="activeProjectsDropdown" disabled>
+            <option value="">Loading...</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="startDate">Start Date:</label>
+        <input type="date" id="startDate" name="startDate">
+    </div>
+
+    <div class="form-group">
+        <label for="endDate">End Date:</label>
+        <input type="date" id="endDate" name="endDate">
+    </div>
+
+    <button type="submit">Submit</button>
+</form>
+
+<div id="acquisitionReportBySpeciesPlot"></div>
+<div id="acquisitionReportBySpeciesResults"></div>
+<div id="acquisitionReportResults"></div>
+
+<script type="text/javascript" nonce="<%=scriptNonce%>">
+
+    const dropdown = document.getElementById('activeProjectsDropdown');
+
+    document.getElementById("nbri_ehr-acquisition-report").addEventListener("submit", handleSubmit);
+
+    function handleSubmit(event) {
+        event.preventDefault(); // Prevents form submission
+
+        const project = document.getElementById("activeProjectsDropdown").value;
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
+
+        // Clear previous results
+        document.getElementById("acquisitionReportBySpeciesPlot").innerHTML = "";
+        document.getElementById("acquisitionReportBySpeciesResults").innerHTML = "";
+        document.getElementById("acquisitionReportResults").innerHTML = "";
+
+        // Validate required fields
+        const missingFields = [];
+        if (!project) missingFields.push("Project");
+        if (!startDate) missingFields.push("Start Date");
+        if (!endDate) missingFields.push("End Date");
+
+        if (missingFields.length > 0) {
+            document.getElementById("acquisitionReportResults").innerHTML =
+                '<div style="color: red; padding: 10px;">Please enter the following required fields: ' + missingFields.join(", ") + '</div>';
+            return;
+        }
+
+        // Build filters array
+        const filters = [];
+
+        if (startDate) {
+            filters.push(LABKEY.Filter.create('Center_Arrival', startDate, LABKEY.Filter.Types.DATE_GREATER_THAN_OR_EQUAL));
+        }
+
+        if (endDate) {
+            filters.push(LABKEY.Filter.create('Center_Arrival', endDate, LABKEY.Filter.Types.DATE_LESS_THAN_OR_EQUAL));
+        }
+
+        if (project) {
+            filters.push(LABKEY.Filter.create('project', project, LABKEY.Filter.Types.EQUAL));
+        }
+
+        // Create BarPlot for AcquisitionReportBySpecies
+        LABKEY.Query.selectRows({
+            schemaName: 'study',
+            queryName: 'AcquisitionReportBySpecies',
+            parameters: {
+                StartDate: startDate,
+                EndDate: endDate,
+                Project: project
+            },
+            success: function(results) {
+                if (results.rows.length) {
+                    const plot = new LABKEY.vis.BarPlot({
+                        renderTo: 'acquisitionReportBySpeciesPlot',
+                        rendererType: 'd3',
+                        width: 800,
+                        height: 300,
+                        labels: {
+                            main: { value: 'Acquisitions by Species' },
+                            yLeft: { value: 'Total' }
+                        },
+                        aes: {
+                            x: 'speciesName',
+                            y: 'Total'
+                        },
+                        scales: {
+                            x: { scaleType: 'discrete' },
+                            yLeft: { scaleType: 'continuous' }
+                        },
+                        options: {
+                            color: '#5897fb',
+                            showValues: true
+                        },
+                        data: results.rows
+                    });
+                    plot.render();
+                } else {
+                    document.getElementById("acquisitionReportBySpeciesPlot").innerHTML = "No data available for the selected parameters.";
+                }
+            },
+            failure: function(error) {
+                console.error('Failed to load bar plot data:', error);
+            }
+        });
+
+        // Create QueryWebPart for AcquisitionReportBySpecies with parameters
+        new LABKEY.QueryWebPart({
+            renderTo: 'acquisitionReportBySpeciesResults',
+            schemaName: 'study',
+            queryName: 'AcquisitionReportBySpecies',
+            title: 'Acquisition Report By Species',
+            columns: 'species,project,Total',
+            parameters: {
+                StartDate: startDate,
+                EndDate: endDate,
+                Project: project
+            }
+        });
+
+        // Create QueryWebPart for AcquisitionReport
+        new LABKEY.QueryWebPart({
+            renderTo: 'acquisitionReportResults',
+            schemaName: 'study',
+            queryName: 'AcquisitionReport',
+            title: 'All Acquisitions',
+            filterArray: filters
+        });
+    }
+
+    // Use selectRows API to get active projects from study.activeProjects
+    LABKEY.Query.selectRows({
+        schemaName: 'study',
+        queryName: 'activeProjectsFromHousing',
+        success: function(data) {
+            dropdown.innerHTML = '';
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.text = 'Select a project...';
+            dropdown.appendChild(defaultOption);
+
+            if (data && data.rows) {
+                data.rows.forEach(function(row) {
+                    let value = row.project || row.projectId || row.id;
+                    let text = row.name || row.displayName || row.project;
+
+                    // Do not add null or undefined values to the options
+                    if (value != null && text != null) {
+                        let option = document.createElement('option');
+                        option.value = value;
+                        option.text = text;
+                        dropdown.appendChild(option);
+                    }
+                });
+            }
+            dropdown.disabled = false;
+        },
+        failure: function(error) {
+            console.error('Failed to load active projects:', error);
+            dropdown.innerHTML = '<option value="">Failed to load projects</option>';
+        }
+    });
+
+</script>

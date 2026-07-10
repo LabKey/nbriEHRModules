@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<etl xmlns="http://labkey.org/etl/xml">
+    <name>EHR Records</name>
+    <description>Housing, cases, notes, departures and deaths</description>
+    <transforms>
+        <transform id="step 1" type="TaskrefTransformStep">
+            <taskref ref="org.labkey.di.steps.QueueJobTask">
+                <settings>
+                    <setting name="transformId" value="{NBRI_EHR}/housing"/>
+                </settings>
+            </taskref>
+        </transform>
+        <transform id="step 2" type="TaskrefTransformStep">
+            <taskref ref="org.labkey.di.steps.QueueJobTask">
+                <settings>
+                    <setting name="transformId" value="{NBRI_EHR}/cases"/>
+                </settings>
+            </taskref>
+        </transform>
+        <transform id="step 3" type="TaskrefTransformStep">
+            <taskref ref="org.labkey.di.steps.QueueJobTask">
+                <settings>
+                    <setting name="transformId" value="{NBRI_EHR}/notes"/>
+                </settings>
+            </taskref>
+        </transform>
+        <transform id="step 4" type="TaskrefTransformStep">
+            <taskref ref="org.labkey.di.steps.QueueJobTask">
+                <settings>
+                    <setting name="transformId" value="{NBRI_EHR}/departure"/>
+                </settings>
+            </taskref>
+        </transform>
+        <transform id="step 5" type="TaskrefTransformStep">
+            <taskref ref="org.labkey.di.steps.QueueJobTask">
+                <settings>
+                    <setting name="transformId" value="{NBRI_EHR}/deaths"/>
+                </settings>
+            </taskref>
+        </transform>
+    </transforms>
+    <schedule>
+        <cron expression="0 0 20 * * ?" /> <!--Run at 8PM every day-->
+    </schedule>
+</etl>

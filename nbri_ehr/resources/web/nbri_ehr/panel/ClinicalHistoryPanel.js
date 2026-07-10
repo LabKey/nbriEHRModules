@@ -1,0 +1,149 @@
+/*
+ * Copyright (c) 2026 LabKey Corporation
+ *
+ * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+ */
+
+/**
+ * @cfg subjectId
+ * @cfg minDate
+ * @cfg maxDate
+ * @cfg maxGridHeight
+ * @cfg autoLoadRecords
+ * @cfg hideExportBtn
+ * @cfg sortMode
+ * @cfg checkedItems
+ * @cfg showMaxDate
+ * @cfg redacted
+ * @cfg printMode
+ */
+Ext4.define('NBRI_EHR.panel.ClinicalHistoryPanel', {
+    extend: 'EHR.panel.ClinicalHistoryPanel',
+    alias: 'widget.nbri_ehr-clinicalhistorypanel',
+
+    showMaxDate: false,
+
+    getGridConfig: function(){
+        return {
+            xtype: 'grid',
+            border: this.printMode ? false : true,
+            minHeight: 100,
+            minWidth: this.width - 50,
+            cls: 'ldk-grid',
+            maxHeight: this.maxGridHeight,
+            height: this.gridHeight,
+            hideHeaders: true,
+            deferEmptyText: true,
+            viewConfig : {
+                emptyText: this.minDate ? 'No records found since: ' + Ext4.util.Format.date(this.minDate, LABKEY.extDefaultDateFormat): 'There are no records to display',
+                deferEmptyText: true,
+                enableTextSelection: true,
+                border: false,
+                stripeRows : true
+            },
+            columns: this.getColumnConfig(),
+            features: [this.getGroupingFeature()],
+            store: this.getStoreConfig(),
+            itemId: 'gridPanel',
+            width: this.width,
+            subjectId: this.subjectId,
+            caseId: this.caseId,
+            minDate: this.minDate,
+            maxDate: this.maxDate,
+            tbar: this.hideGridButtons ? null : {
+                border: true,
+                items: [{
+                    xtype: 'datefield',
+                    fieldLabel: 'Min Date',
+                    itemId: 'minDate',
+                    labelWidth: 80,
+                    width: 200,
+                    value: this.minDate
+                },{
+                    xtype: 'datefield',
+                    fieldLabel: 'Max Date',
+                    itemId: 'maxDate',
+                    labelWidth: 80,
+                    width: 200,
+                    hidden: this.showMaxDate,
+                    value: this.maxDate
+                },{
+                    xtype: 'button',
+                    text: 'Reload',
+                    handler: function(btn){
+                        var panel = btn.up('ehr-clinicalhistorypanel');
+                        panel.doReload();
+                    }
+                },{
+                    text: 'Show/Hide Types',
+                    scope: this,
+                    handler: function(btn){
+                        this.showFilterPanel();
+                    }
+                },{
+                    text: 'Collapse All',
+                    hidden: this.printMode,
+                    collapsed: false,
+                    handler: function(btn){
+                        var grid = btn.up('grid');
+                        var feature = grid.getView().getFeature('historyGrouping');
+
+                        if (btn.collapsed){
+                            feature.expandAll();
+                            btn.setText('Collapse All');
+                        }
+                        else {
+                            feature.collapseAll();
+                            btn.setText('Expand All')
+                        }
+
+                        btn.collapsed = !btn.collapsed;
+                    }
+                },{
+                    hidden: this.printMode,
+                    text: (this.sortMode == 'type' ? 'Group By Date' : 'Group By Type'),
+                    sortMode: this.sortMode == 'type' ? 'date' : 'type',
+                    scope: this,
+                    handler: function(btn){
+                        //toggle the button
+                        if (btn.sortMode == 'type'){
+                            btn.setText('Group By Date');
+                            btn.sortMode = 'date';
+                            this.changeMode('type');
+                        }
+                        else {
+                            btn.setText('Group By Type');
+                            btn.sortMode = 'type';
+                            this.changeMode('date');
+                        }
+                    }
+                },{
+                    text: 'Print Version',
+                    hidden: this.hideExportBtn || this.printMode,
+                    scope: this,
+                    handler: function(btn){
+                        var params = {
+                            hideGridButtons: true
+                        };
+                        if (this.subjectId)
+                            params.subjectId = [this.subjectId];
+                        if (this.caseId)
+                            params.caseId = this.caseId;
+                        if (this.minDate)
+                            params.minDate = Ext4.util.Format.date(this.minDate, LABKEY.extDefaultDateFormat);
+                        if (this.maxDate)
+                            params.maxDate = Ext4.util.Format.date(this.maxDate, LABKEY.extDefaultDateFormat);
+                        if (this.sortMode)
+                            params.sortMode = this.sortMode;
+                        if (this.checkedItems && this.checkedItems.length)
+                            params.checkedItems = this.checkedItems.join(';');
+
+                        var url = LABKEY.ActionURL.buildURL('nbri_ehr', 'clinicalHistoryExport', null, params);
+                        window.open(url, '_blank');
+                    }
+                }]
+            }
+        };
+    }
+});
+

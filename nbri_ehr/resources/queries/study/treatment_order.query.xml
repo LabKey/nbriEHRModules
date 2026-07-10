@@ -1,0 +1,170 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="treatment_order" tableDbType="TABLE" useColumnOrder="true">
+                <tableUrl>/EHR/treatmentDetails.view?key=${lsid}</tableUrl>
+                <insertUrl />
+                <importUrl />
+                <updateUrl />
+                <deleteUrl />
+                <columns>
+                    <column columnName="Id">
+                    </column>
+                    <column columnName="date">
+                        <columnTitle>Begin Date</columnTitle>
+                    </column>
+                    <column columnName="enddate">
+                        <columnTitle>End Date</columnTitle>
+                        <isHidden>false</isHidden>
+                    </column>
+                    <column columnName="project">
+                        <fk>
+                            <fkDbSchema>ehr</fkDbSchema>
+                            <fkTable>project</fkTable>
+                            <fkColumnName>project</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="category">
+                        <columnTitle>Category</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>data_category</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName useRawValue="true"/>
+                        </fk>
+                        <description>Depending on what is selected, the treatment will appear on a different schedule (ie. Clinical, Surgical, etc)</description>
+                    </column>
+                    <column columnName="code">
+                        <nullable>false</nullable>
+                        <columnTitle>Treatment</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>snomed</fkTable>
+                            <fkColumnName>code</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="frequency">
+                        <columnTitle>Frequency</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>treatment_frequency</fkTable>
+                            <fkColumnName>meaning</fkColumnName>
+                            <filters>
+                                <filterGroup>
+                                    <filter column="active" operator="eq" value="true"/> <!-- filter applied only during insert and update, will not be used during grid view -->
+                                </filterGroup>
+                            </filters>
+                        </fk>
+                    </column>
+                    <column columnName="route">
+                        <columnTitle>Route</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>routes</fkTable>
+                            <fkColumnName>route</fkColumnName>
+                            <fkDisplayColumnName useRawValue="true"/>
+                        </fk>
+                        <displayWidth>40</displayWidth>
+                    </column>
+                    <column columnName="volume">
+                        <columnTitle>Volume</columnTitle>
+                    </column>
+                    <column columnName="vol_units">
+                        <columnTitle>Volume Units</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>volume_units</fkTable>
+                            <fkColumnName>unit</fkColumnName>
+                            <fkDisplayColumnName useRawValue="true"/>
+                        </fk>
+                    </column>
+                    <column columnName="amount">
+                        <columnTitle>Amount</columnTitle>
+                    </column>
+                    <column columnName="amount_units">
+                        <columnTitle>Amount Units</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>amount_units</fkTable>
+                            <fkColumnName>unit</fkColumnName>
+                            <fkDisplayColumnName useRawValue="true"/>
+                        </fk>
+                    </column>
+                    <column columnName="concentration">
+                        <columnTitle>Drug Conc</columnTitle>
+                    </column>
+                    <column columnName="conc_units">
+                        <columnTitle>Conc Units</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>conc_units</fkTable>
+                            <fkColumnName>unit</fkColumnName>
+                            <fkDisplayColumnName useRawValue="true"/>
+                        </fk>
+                    </column>
+                    <column columnName="dosage">
+                        <columnTitle>Dosage</columnTitle>
+                    </column>
+                    <column columnName="dosage_units">
+                        <columnTitle>Dosage Units</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>dosage_units</fkTable>
+                            <fkColumnName>unit</fkColumnName>
+                            <fkDisplayColumnName useRawValue="true"/>
+                        </fk>
+                    </column>
+                    <column columnName="performedby">
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="orderedby">
+                        <isHidden>false</isHidden>
+                    </column>
+                    <column columnName="parentid">
+                        <columnTitle>Parent ID</columnTitle>
+                    </column>
+                </columns>
+                <buttonBarOptions position="both" includeStandardButtons="false">
+                    <includeScript>ehr.context</includeScript>
+                    <includeScript>/ehr/studyButtons.js</includeScript>
+                    <includeScript>/nbri_ehr/window/MarkTreatmentCompletedWindow.js</includeScript>
+                    <onRender>EHR.DatasetButtons.moreActionsHandler</onRender>
+                    <item text="Grid Views">
+                        <originalText>Grid Views</originalText>
+                    </item>
+                    <item text="Charts">
+                        <originalText>Charts</originalText>
+                    </item>
+                    <item text="Export">
+                        <originalText>Export</originalText>
+                    </item>
+                    <item text="Print">
+                        <originalText>Print</originalText>
+                    </item>
+                    <item text="More Actions" insertPosition="end" >
+                        <item text="Jump To History">
+                            <onClick>
+                                EHR.DatasetButtons.historyHandler(dataRegion, dataRegionName);
+                            </onClick>
+                        </item>
+                        <item text="Return Distinct Values">
+                            <onClick>
+                                EHR.window.GetDistinctWindow.getDistinctHandler(dataRegionName);
+                            </onClick>
+                        </item>
+                        <item text="Show Record History">
+                            <onClick>
+                                EHR.DatasetButtons.showAuditHistoryHandler(dataRegionName);
+                            </onClick>
+                        </item>
+                        <item text="Set End Date">
+                            <onClick>
+                                NBRI_EHR.window.MarkTreatmentCompletedWindow.buttonHandler(dataRegionName, 'study', 'treatment_order', 'datefield', 'lsid');
+                            </onClick>
+                        </item>
+                    </item>
+                </buttonBarOptions>
+            </table>
+        </tables>
+    </metadata>
+</query>

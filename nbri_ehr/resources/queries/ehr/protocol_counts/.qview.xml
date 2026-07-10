@@ -1,0 +1,9 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="protocol"/>
+        <column name="species"/>
+        <column name="allowed"/>
+        <column name="euthanasia"/>
+        <column name="description"/>
+    </columns>
+</customView>

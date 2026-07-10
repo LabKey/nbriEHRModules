@@ -1,0 +1,9 @@
+<libraries xmlns="http://labkey.org/clientLibrary/xml/">
+    <library compileInProductionMode="false">
+        <script path="nbri_ehr/model/sources/NBRIDefault.js"/>
+        <script path="nbri_ehr/utils.js"/>
+        <script path="nbri_ehr/nbri.css"/>
+        <script path="nbri_ehr/window/NBRIClinicalHistoryWindow.js"/>
+        <script path="nbri_ehr/window/NBRICaseHistoryWindow.js"/>
+    </library>
+</libraries>

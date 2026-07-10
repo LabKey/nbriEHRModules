@@ -1,0 +1,43 @@
+<div id="nbri_ehr-enter-data"></div>
+
+<script type="text/javascript" nonce="<%=scriptNonce%>">
+
+    Ext4.onReady(function(){
+        Ext4.create('EHR.panel.EnterDataPanel', {
+            renderTo: 'nbri_ehr-enter-data',
+
+
+            getItems: function(){
+                return [{
+                    title: 'Enter New Data',
+                    itemId: 'enterNew',
+                    items: [
+                        this.getEnterNewPanel()
+                    ]
+                },{
+                    title: 'My Tasks',
+                    itemId: 'myTasks',
+                    items: [{
+                        xtype: 'ldk-querycmp',
+                        queryConfig:  {
+                            schemaName: 'ehr',
+                            queryName: 'my_tasks',
+                            viewName: 'Active Tasks'
+                        }
+                    }]
+                },{
+                    title: 'All Tasks',
+                    itemId: 'allTasks',
+                    items: [{
+                        xtype: 'ldk-querycmp',
+                        queryConfig:  {
+                            schemaName: 'ehr',
+                            queryName: 'tasks',
+                            viewName: 'Active Tasks'
+                        }
+                    }]
+                }]
+            }
+        });
+    });
+</script>

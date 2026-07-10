@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<etl xmlns="http://labkey.org/etl/xml">
+    <name>Reference Procedure List</name>
+    <description>Reference Procedure data</description>
+    <transforms>
+        <transform id="step1" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to procedure target</description>
+            <source schemaName="dbo" queryName="q_procedures"/>
+            <destination schemaName="ehr_lookups" queryName="procedures"
+                         bulkLoad="true" targetOption="truncate" >
+                <columnTransforms>
+                    <column source="procedureId" target="rowId"/>
+                </columnTransforms>
+            </destination>
+        </transform>
+    </transforms>
+
+    <schedule>
+        <cron expression="0 0 20 * * ?" /> <!--Run at 8PM every day-->
+    </schedule>
+</etl>

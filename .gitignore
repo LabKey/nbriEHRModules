@@ -1,6 +1,10 @@
 .gradle
 build/
 
+# Log Files
+nbri_ehr/resources/referenceStudy/etlLogs/
+nbri_ehr/resources/referenceStudy/*.log
+
 # Ignore Gradle GUI config
 gradle-app.setting
 

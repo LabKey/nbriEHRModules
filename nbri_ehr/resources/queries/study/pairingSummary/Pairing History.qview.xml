@@ -1,0 +1,25 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
+    <sorts>
+        <sort column="date" descending="true"/>
+    </sorts>
+    <columns>
+        <column name="Id"/>
+        <column name="Id/Demographics/species"/>
+        <column name="Id/curLocation/cage/room/floor/building"/>
+        <column name="Id/curLocation/cage"/>
+        <column name="otherIds"/>
+        <column name="date"/>
+        <column name="enddate"/>
+        <column name="pairid"/>
+        <column name="reason"/>
+        <column name="goal"/>
+        <column name="endState"/>
+        <column name="observation"/>
+        <column name="formationType"/>
+        <column name="remark"/>
+        <column name="separationReason"/>
+        <column name="separationRemark"/>
+        <column name="performedby"/>
+    </columns>
+</customView>
+

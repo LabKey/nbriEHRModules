@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<datasets metaDataFile="datasets_metadata.xml" xmlns="http://labkey.org/study/xml">
+    <datasets>
+        <dataset name="alias" id="1038" category="Colony Management" type="Standard"/>
+        <dataset name="arrival" id="1001" category="Colony Management" type="Standard"/>
+        <dataset name="assignment" id="1002" category="Colony Management" type="Standard"/>
+        <dataset name="blood" id="1005" category="Clinical" type="Standard"/>
+        <dataset name="biopsy" id="1004" category="Clinical" type="Standard"/>
+        <dataset name="birth" id="1007" category="Colony Management" demographicData="true" type="Standard"/>
+        <dataset name="breeder" id="1008" category="Colony Management" type="Standard"/>
+        <dataset name="clinical_observations" id="1039" category="Clinical" type="Standard"/>
+        <dataset name="clinremarks" id="1009" category="Clinical" type="Standard"/>
+        <dataset name="cases" id="1023" category="Clinical" type="Standard"/>
+        <dataset name="chemistryResults" id="1024" category="ClinPath" type="Standard"/>
+        <dataset name="deaths" id="1011" category="Pathology" demographicData="true" type="Standard"/>
+        <dataset name="demographics" id="1012" category="Colony Management" demographicData="true" type="Standard"/>
+        <dataset name="departure" id="1013" category="Colony Management" type="Standard"/>
+        <dataset name="drug" id="1017" category="Clinical" type="Standard"/>
+        <dataset name="exemptions" id="1016" category="Colony Management" type="Standard"/>
+        <dataset name="flags" id="1020" category="Colony Management" type="Standard"/>
+        <dataset name="foster" id="1010" category="Colony Management" type="Standard"/>
+        <dataset name="histopathology" id="1037" category="Pathology" type="Standard"/>
+        <dataset name="historicalOther" id="1036" category="Colony Management" type="Standard"/>
+        <dataset name="housing" id="1018" category="Colony Management" type="Standard"/>
+        <dataset name="inbreeding" id="1021" category="Colony Management" type="Standard"/>
+        <dataset name="necropsy" id="1019" category="Pathology" type="Standard"/>
+        <dataset name="nhpTraining" id="1040" category="Behavior" type="Standard"/>
+        <dataset name="observation_order" id="1049" category="Clinical" type="Standard"/>
+        <dataset name="notes" id="1027" category="Colony Management" type="Standard"/>
+        <dataset name="pairings" id="1028" category="Behavior" type="Standard"/>
+        <dataset name="physicalExam" id="1029" category="Clinical" type="Standard"/>
+        <dataset name="problem" id="1030" category="Clinical" type="Standard"/>
+        <dataset name="prc" id="1034" category="Clinical" type="Standard"/>
+        <dataset name="prc_order" id="1041" category="Clinical" type="Standard"/>
+        <dataset name="protocolAssignment" id="1031" category="Colony Management" type="Standard"/>
+        <dataset name="serology" id="1032" category="ClinPath" type="Standard"/>
+        <dataset name="pregnancy" id="1035" category="Reproductive Management" type="Standard"/>
+        <dataset name="treatment_order" id="1014" category="Clinical" type="Standard"/>
+        <dataset name="vitals" id="1033" category="Clinical" type="Standard"/>
+        <dataset name="weight" id="1015" category="Clinical" type="Standard"/>
+        <dataset name="grossPathology" id="1022" category="Pathology" type="Standard"/>
+        <dataset name="tissueDisposition" id="1026" category="Pathology" type="Standard"/>
+    </datasets>
+</datasets>

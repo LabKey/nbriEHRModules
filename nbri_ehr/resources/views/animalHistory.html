@@ -1,0 +1,107 @@
+<script type="text/javascript" nonce="<%=scriptNonce%>">
+
+    Ext4.onReady(function (){
+        var webpart = <%=webpartContext%>;
+        var ctx = EHR.Utils.getEHRContext(webpart.wrapperDivId, ['DefaultAnimalHistoryReport']);
+        if(!ctx)
+            return;
+
+        Ext4.create('EHR.panel.AnimalHistoryPanel', {
+            defaultReport: ctx.DefaultAnimalHistoryReport,
+            defaultTab: 'General',
+            showFilterOptionsTitle: true,
+            showReportsOption:true,
+            caseInsensitiveSubjects: true,
+            reportQCStates: ['Completed', 'Review Required', 'Abnormal'],
+            filterTypes: [{
+                xtype: 'ldk-singlesubjectfiltertype',
+                inputValue: LDK.panel.SingleSubjectFilterType.filterName,
+                label: 'Single Animal',
+                aliasTable: {
+                    schemaName: 'study',
+                    queryName: 'aliases',
+                    idColumn: 'Id',
+                    aliasColumn: 'alias'
+                }
+            },{
+                xtype: 'ehr-multianimalfiltertype',
+                inputValue: EHR.panel.MultiAnimalFilterType.filterName,
+                label: EHR.panel.MultiAnimalFilterType.label,
+                searchOptions: {
+                    room: false,
+                    cage: false,
+                    project: false,
+                    protocol: true
+                },
+                aliasTable: {
+                    schemaName: 'study',
+                    queryName: 'aliases',
+                    idColumn: 'Id',
+                    aliasColumn: 'alias'
+                },
+                multiSearchText: "IDs:<br><i>(Separated by commas, semicolons or line breaks)</i>"
+            },{
+                xtype: 'ehr-locationfiltertype',
+                inputValue: EHR.panel.LocationFilterType.filterName,
+                label: EHR.panel.LocationFilterType.label,
+                getItems: function() {
+                    var toAdd = [], searchItems = [];
+                    var ctx = this.filterContext;
+
+                    toAdd.push({
+                        width: 200,
+                        html: 'Search By Location:<br>'
+                                + '<div style="width: 175px;"></div>'
+                    });
+
+                    searchItems.push({
+                        xtype: 'ehr-simplecombo',
+                        itemId: 'cageField',
+                        fieldLabel: 'Cage',
+                        name: 'cageField',
+                        value: ctx.cage,
+                        schemaName: 'ehr_lookups',
+                        queryName: 'cage',
+                        displayField: 'cage',
+                        valueField: 'location'
+
+                    })
+
+                    toAdd.push({
+                        xtype: 'panel',
+                        defaults: {
+                            border: false,
+                            width: 200,
+                            labelWidth: 90,
+                            labelAlign: 'top'
+                        },
+                        keys: [{
+                            key: Ext4.EventObject.ENTER,
+                            handler: this.tabbedReportPanel.onSubmit,
+                            scope: this.tabbedReportPanel
+                        }],
+                        items: searchItems
+                    });
+
+                    return toAdd;
+                },
+                isValid: function(){
+                    if(!this.down('#cageField').getValue()){
+                        return false;
+                    }
+
+                    return true;
+                },
+                getTitle: function(){
+                    return 'Cage: ' + this.down('#cageField').getDisplayValue();
+                },
+            },{
+                xtype: 'ldk-nofiltersfiltertype',
+                inputValue: LDK.panel.NoFiltersFilterType.filterName,
+                label: LDK.panel.NoFiltersFilterType.label
+            }],
+            renderTo: webpart.wrapperDivId
+        });
+    });
+
+</script>

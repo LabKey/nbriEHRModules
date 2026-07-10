@@ -1,0 +1,8 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
+   <filters>
+       <filter column="qcstate/PublicData" operator="eq" value="false"/>
+   </filters>
+   <sorts>
+       <sort column="modified" descending="true"/>
+   </sorts>
+</customView>

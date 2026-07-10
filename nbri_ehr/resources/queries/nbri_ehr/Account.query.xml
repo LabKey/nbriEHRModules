@@ -1,0 +1,48 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="Account" tableDbType="TABLE">
+                <tableTitle>Account</tableTitle>
+                <javaCustomizer class="org.labkey.nbri_ehr.table.NBRI_EHRCustomizer" />
+                <columns>
+                    <column columnName="Department">
+                        <columnTitle>Department</columnTitle>
+                        <fk>
+                            <fkDbSchema>nbri_ehr</fkDbSchema>
+                            <fkTable>Department</fkTable>
+                            <fkColumnName>DepartmentId</fkColumnName>
+                            <fkDisplayColumnName>Name</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="CostType">
+                        <columnTitle>Cost Type</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>cost_type</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="ExpenseClass">
+                        <columnTitle>Expense Class</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>expense_class</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>description</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="ProjectCode">
+                        <columnTitle>Project</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr</fkDbSchema>
+                            <fkTable>project</fkTable>
+                            <fkColumnName>project</fkColumnName>
+                            <fkDisplayColumnName>displayName</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

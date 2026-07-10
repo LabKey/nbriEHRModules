@@ -1,0 +1,30 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="protocol_counts" tableDbType="TABLE">
+                <tableTitle>NHPs Allowed Per Protocol</tableTitle>
+                <javaCustomizer class="org.labkey.nbri_ehr.table.NBRI_EHRCustomizer" />
+                <columns>
+                    <column columnName="species">
+                        <columnTitle>Species</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>species_codes</fkTable>
+                            <fkColumnName>code</fkColumnName>
+                            <fkDisplayColumnName>scientific_name</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="euthanasia">
+                        <columnTitle>Euthanasia</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>euthanasia_type</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

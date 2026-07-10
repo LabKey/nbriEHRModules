@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<etl xmlns="http://labkey.org/etl/xml">
+    <name>Protocol Counts</name>
+    <description>Protocol Counts data</description>
+    <transforms>
+        <transform id="step1" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to protocol counts target</description>
+            <source schemaName="dbo" queryName="q_protocol_counts"/>
+            <destination schemaName="ehr" queryName="protocol_counts"
+                         bulkLoad="true" batchSize="5000" targetOption="truncate" />
+        </transform>
+    </transforms>
+
+    <schedule>
+        <cron expression="0 0 20 * * ?" /> <!--Run at 8PM every day-->
+    </schedule>
+</etl>

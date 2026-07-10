@@ -1,0 +1,18 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
+   <columns>
+       <column name="rowid"/>
+       <column name="updateTitle" />
+        <column name="assignedto" />
+       <column name="modifiedby"/>
+       <column name="modified"/>
+        <column name="createdby"/>
+        <column name="created"/>
+       <column name="qcstate"/>
+   </columns>
+   <filters>
+       <filter column="qcstate/PublicData" operator="eq" value="false"/>
+   </filters>
+   <sorts>
+       <sort column="modified" descending="true"/>
+   </sorts>
+</customView>

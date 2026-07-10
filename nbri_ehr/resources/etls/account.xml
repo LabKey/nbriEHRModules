@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<etl xmlns="http://labkey.org/etl/xml">
+    <name>Account</name>
+    <description>Account data</description>
+    <transforms>
+        <transform id="step1" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to account target</description>
+            <source schemaName="dbo" queryName="q_account"/>
+            <destination schemaName="nbri_ehr" queryName="Account"
+                         bulkLoad="true" targetOption="truncate" />
+        </transform>
+    </transforms>
+
+    <schedule>
+        <cron expression="0 0 20 * * ?" /> <!--Run at 8PM every day-->
+    </schedule>
+</etl>

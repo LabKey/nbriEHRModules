@@ -1,0 +1,18 @@
+Frequency	Hour of Day	Time Description
+SID	800	AM
+Monthly	800	AM
+Weekly	800	AM
+Alternating Days	800	AM
+TID	800	AM
+TID	1200	PM
+TID	1600	PM
+QID	800	AM
+QID	1100	AM
+QID	1400	PM
+QID	1700	PM
+BID	800	AM
+BID	1600	PM
+q7 days	800	AM
+q14 days	800	AM
+Every 3 months	800	AM
+M-F (SID)	800	AM

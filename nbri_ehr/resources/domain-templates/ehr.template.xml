@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xmlns="http://labkey.org/data/xml/domainTemplate"
+           xmlns:dat="http://labkey.org/data/xml"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <template xsi:type="EHRTemplateType">
+        <table tableName="protocol" tableDbType="TABLE">
+            <dat:columns>
+                <dat:column columnName="departmentId">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="authorId">
+                    <dat:rangeURI>int</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="prefix">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="suffix">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="shortDescription">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="expirationDate">
+                    <dat:rangeURI>dateTime</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="renewalDate">
+                    <dat:rangeURI>dateTime</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="nextReviewDate">
+                    <dat:rangeURI>dateTime</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="inactiveDate">
+                    <dat:rangeURI>dateTime</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="requestedEffectiveDate">
+                    <dat:rangeURI>dateTime</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="submissionDate">
+                    <dat:rangeURI>dateTime</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="reviewCompletionDate">
+                    <dat:rangeURI>dateTime</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="effectiveDate">
+                    <dat:rangeURI>dateTime</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="emergencyPhoneNumber">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="currentState">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="ownerId">
+                    <dat:rangeURI>int</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="userReferenceNumber">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="isUnrestrictedView">
+                    <dat:rangeURI>boolean</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="isAudit">
+                    <dat:rangeURI>boolean</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="isAuditModified">
+                    <dat:rangeURI>boolean</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="protocolTypeId">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="parentProtocolId">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="questionnaireId">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="amendmentReason">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="protocolCategoryId">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="objective">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="rationale">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="isTissueHarvest">
+                    <dat:rangeURI>boolean</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="isOrderTracking">
+                    <dat:rangeURI>boolean</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="isLongTerm">
+                    <dat:rangeURI>boolean</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="isInVivo">
+                    <dat:rangeURI>boolean</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="isStock">
+                    <dat:rangeURI>boolean</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="isHonorReset">
+                    <dat:rangeURI>boolean</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="area">
+                    <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+            </dat:columns>
+        </table>
+    </template>
+
+    <template xsi:type="EHRTemplateType">
+        <table tableName="protocol_counts" tableDbType="TABLE">
+            <dat:columns>
+                <dat:column columnName="Euthanasia">
+                    <dat:rangeURI>int</dat:rangeURI>
+                </dat:column>
+            </dat:columns>
+        </table>
+    </template>
+
+</templates>

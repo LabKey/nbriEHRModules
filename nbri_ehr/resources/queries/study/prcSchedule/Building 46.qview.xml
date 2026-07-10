@@ -1,0 +1,22 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
+    <columns>
+        <column name="procedureRecord"/>
+        <column name="Id"/>
+        <column name="Id/Demographics/species"/>
+        <column name="Id/curLocation/room/floor/building"/>
+        <column name="Id/curLocation/cage"/>
+        <column name="date"/>
+        <column name="procedure"/>
+        <column name="windowStart"/>
+        <column name="windowEnd"/>
+        <column name="remark"/>
+        <column name="status"/>
+    </columns>
+    <sorts>
+        <sort column="windowStart"/>
+        <sort column="Id/curLocation/cage"/>
+    </sorts>
+    <filters>
+        <filter column="Id/curLocation/room/floor/building/Description" operator="eq" value="Building 46"/>
+    </filters>
+</customView>

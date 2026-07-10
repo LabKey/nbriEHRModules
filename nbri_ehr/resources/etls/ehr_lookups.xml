@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<etl xmlns="http://labkey.org/etl/xml">
+    <name>EHR Lookups</name>
+    <description>EHR Lookups data</description>
+    <transforms>
+        <transform id="step2" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to lookups target</description>
+            <source schemaName="dbo" queryName="q_lookups"/>
+            <destination schemaName="ehr_lookups" queryName="lookups"
+                         bulkLoad="true" batchSize="5000" targetOption="merge">
+                <alternateKeys>
+                    <column name="objectid"/>
+                </alternateKeys>
+            </destination>
+        </transform>
+        <transform id="step4" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to species code target</description>
+            <source schemaName="dbo" queryName="q_species_codes"/>
+            <destination schemaName="ehr_lookups" queryName="species_codes"
+                         bulkLoad="true" batchSize="5000" targetOption="merge">
+                <alternateKeys>
+                    <column name="code"/>
+                </alternateKeys>
+            </destination>
+        </transform>
+        <transform id="step5" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to species target</description>
+            <source schemaName="dbo" queryName="q_species"/>
+            <destination schemaName="ehr_lookups" queryName="species"
+                         bulkLoad="true" targetOption="truncate">
+            </destination>
+        </transform>
+        <transform id="step6" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to flag categories target</description>
+            <source schemaName="dbo" queryName="q_flag_categories"/>
+            <destination schemaName="ehr_lookups" queryName="flag_categories"
+                         bulkLoad="true" batchSize="5000" targetOption="truncate">
+            </destination>
+        </transform>
+        <transform id="step7" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to flag values target</description>
+            <source schemaName="dbo" queryName="q_flag_values"/>
+            <destination schemaName="ehr_lookups" queryName="flag_values"
+                         bulkLoad="true" batchSize="5000" targetOption="truncate">
+            </destination>
+        </transform>
+    </transforms>
+</etl>

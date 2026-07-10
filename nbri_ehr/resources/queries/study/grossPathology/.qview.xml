@@ -1,0 +1,12 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
+    <sorts>
+        <sort column="date" descending="true"/>
+    </sorts>
+    <columns>
+        <column name="Id"/>
+        <column name="Id/Demographics/species"/>
+        <column name="date"/>
+        <column name="systemExamined"/>
+        <column name="appearance"/>
+    </columns>
+</customView>

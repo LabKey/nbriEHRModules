@@ -1,0 +1,17 @@
+<module xmlns="http://labkey.org/moduleProperties/xml/">
+    <properties>
+        <propertyDescriptor name="NBRIOrchardFileLocation">
+            <canSetPerContainer>false</canSetPerContainer>
+            <description>This is the path to the orchard file location</description>
+            <editPermissions>
+                <permission>ADMIN</permission>
+            </editPermissions>
+        </propertyDescriptor>
+    </properties>
+    <requiredModuleContext>
+        <module name="LDK"/>
+    </requiredModuleContext>
+    <clientDependencies>
+        <dependency path="ehr/ehr_api"/>
+    </clientDependencies>
+</module>

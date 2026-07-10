@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<etl xmlns="http://labkey.org/etl/xml">
+    <name>Departure</name>
+    <description>Departure data</description>
+    <transforms>
+        <transform id="step1" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to departure target</description>
+            <source schemaName="dbo" queryName="q_departure"/>
+            <destination schemaName="study" queryName="departure"
+                         bulkLoad="true" batchSize="5000" targetOption="merge">
+                <alternateKeys>
+                    <column name="objectid"/>
+                </alternateKeys>
+                <columnTransforms>
+                    <column source="eventDate" target="date"/>
+                    <column source="performedby" target="performedby" transformClass="org.labkey.nbri_ehr.columnTransform.NBRIUserCreateTransform"/>
+                </columnTransforms>
+            </destination>
+        </transform>
+    </transforms>
+
+    <incrementalFilter className="ModifiedSinceFilterStrategy" timestampColumnName="modified" >
+        <deletedRowsSource schemaName="dbo" queryName="q_departure_delete" timestampColumnName="modified"
+                           deletedSourceKeyColumnName="objectid" targetKeyColumnName="objectid"/>
+    </incrementalFilter>
+</etl>

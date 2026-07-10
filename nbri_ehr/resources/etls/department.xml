@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<etl xmlns="http://labkey.org/etl/xml">
+    <name>Department</name>
+    <description>Department data</description>
+    <transforms>
+        <transform id="step1" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to department target</description>
+            <source schemaName="dbo" queryName="q_department"/>
+            <destination schemaName="nbri_ehr" queryName="Department"
+                         bulkLoad="true" targetOption="truncate">
+                <columnTransforms>
+                    <column source="Staff" target="Staff" transformClass="org.labkey.nbri_ehr.columnTransform.NBRIUserCreateTransform"/>
+                </columnTransforms>
+            </destination>
+        </transform>
+    </transforms>
+
+    <schedule>
+        <cron expression="0 0 20 * * ?" /> <!--Run at 8PM every day-->
+    </schedule>
+</etl>

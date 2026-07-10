@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<etl xmlns="http://labkey.org/etl/xml">
+    <name>Protocol Supplement</name>
+    <description>Protocol Supplement data</description>
+    <transforms>
+        <transform id="step1" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to protocol esig target</description>
+            <source schemaName="dbo" queryName="q_protocol_esig"/>
+            <destination schemaName="nbri_ehr" queryName="ProtocolEsig"
+                         bulkLoad="true" batchSize="5000" targetOption="truncate">
+                <columnTransforms>
+                    <column source="UserProfile" target="UserProfile" transformClass="org.labkey.nbri_ehr.columnTransform.NBRIUserCreateTransform"/>
+                </columnTransforms>
+            </destination>
+        </transform>
+        <transform id="step2" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to protocol stress target</description>
+            <source schemaName="dbo" queryName="q_protocol_stress"/>
+            <destination schemaName="nbri_ehr" queryName="ProtocolStress"
+                         bulkLoad="true" batchSize="5000" targetOption="truncate">
+            </destination>
+        </transform>
+        <transform id="step3" type="org.labkey.di.pipeline.TransformTask">
+            <description>Copy to protocol procedures target</description>
+            <source schemaName="dbo" queryName="q_protocol_procedures"/>
+            <destination schemaName="nbri_ehr" queryName="ProtocolProcedures"
+                         bulkLoad="true" batchSize="5000" targetOption="truncate">
+            </destination>
+        </transform>
+    </transforms>
+
+    <schedule>
+        <cron expression="0 0 20 * * ?" /> <!--Run at 8PM every day-->
+    </schedule>
+</etl>
