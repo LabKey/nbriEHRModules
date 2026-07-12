@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2026 LabKey Corporation
+ * Copyright (c) 2026 LabKey Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,14 +24,14 @@ public class NBRI_EHRSchema
     private static final NBRI_EHRSchema _instance = new NBRI_EHRSchema();
     public static final String NAME = "nbri_ehr";
 
-    public static NBRI_EHRSchema get_instance()
+    public static NBRI_EHRSchema getInstance()
     {
         return _instance;
     }
 
     private NBRI_EHRSchema()
     {
-        // singleton accessed via org.labkey.nbric_ehr.NBRI_EHRSchema.getInstance()
+        // singleton accessed via org.labkey.nbri_ehr.NBRI_EHRSchema.getInstance()
     }
 
     public DbSchema getSchema()

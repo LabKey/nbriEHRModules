@@ -1,6 +1,6 @@
 <folderType xmlns="http://labkey.org/data/xml/folderType">
     <name>NBRI EHR</name>
-    <description>Folder type used for New Iberia Research Center's EHR</description>
+    <description>Folder type used for the National Biomedical Research Institute's EHR</description>
 
     <requiredWebParts>
     </requiredWebParts>

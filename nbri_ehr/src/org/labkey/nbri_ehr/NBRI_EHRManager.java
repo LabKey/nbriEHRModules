@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 LabKey Corporation
+ * Copyright (c) 2026 LabKey Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,10 +26,4 @@ public class NBRI_EHRManager
     public static final List<String> DAILY_CLINICAL_OBS = List.of("Activity", "Appetite", "BCS", "Hydration", "Stool", "Verified Id?");
     public static final String SIB_OBS_TITLE = "SIB Observations";
     public static final List<String> SIB_OBS = List.of("Environmental Change", "Self Biting Observed", "Other Stereotopy", "New Injury Observed", "Special Enrichment", "Wound Status", "Wound Severity");
-
-    private static final NBRIOrchardFileGenerator _orchardFileGenerator = new NBRIOrchardFileGenerator();
-    public static NBRIOrchardFileGenerator getOrchardFileGenerator()
-    {
-        return _orchardFileGenerator;
-    }
 }

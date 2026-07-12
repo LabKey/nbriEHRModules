@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 LabKey Corporation
+ * Copyright (c) 2026 LabKey Corporation
  *
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -594,18 +594,3 @@ CREATE TABLE nbri_ehr.CageCardHistory
     CONSTRAINT FK_CAGECARDHISTORY_Container FOREIGN KEY (Container) REFERENCES core.Containers (EntityId)
 );
 CREATE INDEX IX_Nbri_Ehr_Cage_Card_History_Container ON nbri_ehr.CageCardHistory (Container);
-
-CREATE TABLE nbri_ehr.CasesTemp
-(
-    Id                  TEXT,
-    date                TIMESTAMP,
-    enddate             TIMESTAMP,
-    objectid            TEXT,
-    category            TEXT,
-    openDiagnosis       TEXT,
-    closeDiagnosis      TEXT,
-    openRemark          TEXT,
-    closeRemark         TEXT,
-    attachmentFile      TEXT,
-    performedby         USERID
-);

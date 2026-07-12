@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2026 LabKey Corporation
+ * Copyright (c) 2026 LabKey Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -131,7 +131,6 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         ehrService.registerDemographicsProvider(new ProtocolAssignmentDemographicsProvider(this));
         ehrService.registerDemographicsProvider(new HousingDemographicsProvider(this));
         ehrService.registerDemographicsProvider(new CagematesDemographicsProvider(this));
-        ehrService.registerDemographicsProvider(new CagematesDemographicsProvider(this));
         ehrService.registerDemographicsProvider(new ActiveCasesDemographicsProvider(this));
         ehrService.registerDemographicsProvider(new ActiveTreatmentsDemographicsProvider(this));
         ehrService.registerDemographicsProvider(new SourceDemographicsProvider(this));
@@ -247,7 +246,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
             @Override
             public @NotNull QuerySchema createSchema(DefaultSchema schema, Module module)
             {
-                return new NBRI_EHRUserSchema(NBRI_EHRSchema.NAME, null, schema.getUser(), schema.getContainer(), NBRI_EHRSchema.get_instance().getSchema());
+                return new NBRI_EHRUserSchema(NBRI_EHRSchema.NAME, null, schema.getUser(), schema.getContainer(), NBRI_EHRSchema.getInstance().getSchema());
             }
         });
     }

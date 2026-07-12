@@ -568,21 +568,5 @@
             <column columnName="ModifiedBy"/>
         </columns>
     </table>
-    <table tableName="CasesTemp" tableDbType="TABLE">
-        <tableTitle>Cases Staging For ETL</tableTitle>
-        <columns>
-            <column columnName="Id"/>
-            <column columnName="date"/>
-            <column columnName="enddate"/>
-            <column columnName="objectid"/>
-            <column columnName="category"/>
-            <column columnName="openDiagnosis"/>
-            <column columnName="closeDiagnosis"/>
-            <column columnName="openRemark"/>
-            <column columnName="closeRemark"/>
-            <column columnName="attachmentFile"/>
-            <column columnName="performedby"/>
-        </columns>
-    </table>
 
 </tables>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 LabKey Corporation
+ * Copyright (c) 2026 LabKey Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -68,11 +68,6 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -94,7 +89,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 {
     private static final String PROJECT_NAME = "NBRI";
     private static final String PROJECT_TYPE = "NBRI EHR";
-    private static final File orchardFileLocation = TestFileUtils.getTestTempDir();
     private static final String NBRI_BASIC_SUBMITTER = "ac_bs@nbritest.com";
     private static final String NBRI_BASIC_SUBMITTER_NAME = "ac bs";
     private static final String NBRI_BASIC_SUBMITTER_VET_TECH = "vet_tech_bs@nbritest.com";
@@ -209,11 +203,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     @LogMethod
     protected void populateInitialData() throws Exception
     {
-        FileUtils.deleteQuietly(orchardFileLocation);
-        FileUtils.forceMkdir(orchardFileLocation);
         List<ModuleProperty> props = List.of(
-                new ModuleProperty("EHR", "/" + getProjectName(), "EHRCustomModule", "NBRI_EHR"),
-                new ModuleProperty("NBRI_EHR", "/", "NBRIOrchardFileLocation", orchardFileLocation.getAbsolutePath())
+                new ModuleProperty("EHR", "/" + getProjectName(), "EHRCustomModule", "NBRI_EHR")
         );
         SaveModulePropertiesCommand command = new SaveModulePropertiesCommand(props);
         command.execute(createDefaultConnection(), "/");
@@ -608,9 +599,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         verifyRowCreated("study", "protocolAssignment", arrivedAnimal, 1);
         verifyRowCreated("study", "demographics", arrivedAnimal, 1);
         verifyRowCreated("study", "housing", arrivedAnimal, 1);
-
-        log("Verifying Orchard file is created");
-        verifyOrchardFileGenerated(arrivedAnimal);
     }
 
     @Test
@@ -646,9 +634,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         verifyRowCreated("study", "protocolAssignment", bornAnimal, 1);
         verifyRowCreated("study", "housing", bornAnimal, 1);
         verifyRowCreated("study", "demographics", bornAnimal, 1);
-
-        log("Verifying Orchard file is created");
-        verifyOrchardFileGenerated(bornAnimal);
     }
 
     @Test
@@ -1536,50 +1521,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         DataRegionTable table = viewQueryData(schema, query);
         table.setFilter("Id", "Equals", animalId);
         Assert.assertEquals("Record not created in " + schema + "." + query, rowCount, table.getDataRowCount());
-    }
-
-    private void verifyOrchardFileGenerated(String animalId)
-    {
-        String prefix = "orchardFile";
-        final String[] largestTimestamp = {"0"};
-
-        try
-        {
-            // Use Files.walkFileTree to traverse the directory
-            Files.walkFileTree(orchardFileLocation.toPath(), new SimpleFileVisitor<>()
-            {
-                @Override
-                public @NotNull FileVisitResult visitFile(@NotNull Path file, @NotNull BasicFileAttributes attrs)
-                {
-                    // Check if the file name starts with "orchardFile"
-                    if (file.getFileName().toString().startsWith(prefix))
-                    {
-                        String fileName = file.getFileName().toString();
-                        String timestamp = fileName.substring(prefix.length(), fileName.indexOf(".txt"));
-                        if (timestamp.compareTo(largestTimestamp[0]) > 0)
-                        {
-                            largestTimestamp[0] = timestamp;
-                        }
-
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-        }
-        catch (IOException e)
-        {
-            log("Error while traversing the directory: " + e.getMessage());
-        }
-
-        if (largestTimestamp[0].equals("0"))
-        {
-            Assert.fail("Orchard file is not created");
-        }
-
-        File orchardFile = new File(orchardFileLocation + "/orchardFile" + largestTimestamp[0] + ".txt");
-        waitFor(orchardFile::exists, WAIT_FOR_PAGE);
-        Assert.assertTrue("Edited animal is not present in the orchard file",
-                TestFileUtils.getFileContents(orchardFile).contains(animalId));
     }
 
     private void submitForm(String buttonText, String windowTitle)

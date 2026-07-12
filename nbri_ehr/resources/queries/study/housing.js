@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2026 LabKey Corporation
+ * Copyright (c) 2026 LabKey Corporation
  *
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -143,22 +143,6 @@ function onComplete(event, errors, helper){
             }
             if (idsToClose.length){
                 helper.getJavaHelper().closeHousingRecords(idsToClose);
-            }
-
-            // When closing previous records, we don't need to update the orchard file. Use the same flag as demographics providers.
-            var skipAnnounceChangedParticipants = false;
-            var extraContext = helper.getProperty('extraContext');
-            if (extraContext) {
-                skipAnnounceChangedParticipants = extraContext.skipAnnounceChangedParticipants;
-            }
-
-            if (updateRows && updateRows.length > 0 &&
-                    updateRows[0].row.taskid &&
-                    updateRows[0].row.QCStateLabel &&
-                    EHR.Server.Security.getQCStateByLabel(updateRows[0].row.QCStateLabel).PublicData &&
-                    !skipAnnounceChangedParticipants
-            ) {
-                triggerHelper.generateOrchardFile(updateRows[0].row.taskid);
             }
         }
     }

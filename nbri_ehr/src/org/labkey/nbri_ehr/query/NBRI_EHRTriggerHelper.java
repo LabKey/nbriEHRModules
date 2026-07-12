@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 LabKey Corporation
+ * Copyright (c) 2026 LabKey Corporation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,7 +53,6 @@ import org.labkey.api.study.StudyService;
 import org.labkey.api.util.GUID;
 import org.labkey.api.util.JobRunner;
 import org.labkey.api.util.PageFlowUtil;
-import org.labkey.nbri_ehr.NBRIOrchardFileGenerator;
 import org.labkey.nbri_ehr.NBRI_EHRManager;
 import org.labkey.nbri_ehr.dataentry.form.NBRIClinicalObservationsFormType;
 import org.labkey.nbri_ehr.notification.NBRIClinicalMoveNotification;
@@ -499,12 +498,6 @@ public class NBRI_EHRTriggerHelper
         }
     }
 
-    public void generateOrchardFile(final String taskid)
-    {
-        NBRIOrchardFileGenerator orchardFileGenerator = NBRI_EHRManager.getOrchardFileGenerator();
-        orchardFileGenerator.generateOrchardFile(_container, _user, taskid);
-    }
-
     private void appendAnimalDetails(StringBuilder html, String id, final Container container)
     {
         String url = AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + "/ehr" + container.getPath() + "/participantView.view?participantId=" + id;
@@ -693,11 +686,9 @@ public class NBRI_EHRTriggerHelper
         return ts.getRowCount();
     }
 
-    public boolean canCloseCase(String category)
+    public boolean canCloseCase()
     {
-        if (_container.hasPermission(_user, EHRVeterinarianPermission.class))
-            return true;
-        return false;
+        return _container.hasPermission(_user, EHRVeterinarianPermission.class);
     }
 
     public void closeDailyClinicalObs(String caseid, String enddate)
@@ -1003,11 +994,11 @@ public class NBRI_EHRTriggerHelper
         TableInfo ti = getTableInfo("study", "prc_order");
         SimpleFilter filter = new SimpleFilter(FieldKey.fromString("objectid"), orderid);
         TableSelector ts = new TableSelector(ti, PageFlowUtil.set("qcstate"), filter, null);
-        Integer qcstate = ts.getArrayList(Integer.class).getFirst();
-        if (EHRService.get().getQCStates(_container).get("Completed").getRowId() == qcstate)
-            return true;
+        List<Integer> qcstates = ts.getArrayList(Integer.class);
+        if (qcstates.isEmpty() || qcstates.getFirst() == null)
+            return false;
 
-        return false;
+        return EHRService.get().getQCStates(_container).get("Completed").getRowId() == qcstates.getFirst();
     }
 
     public void markProcedureOrderComplete(List<String> orderids)

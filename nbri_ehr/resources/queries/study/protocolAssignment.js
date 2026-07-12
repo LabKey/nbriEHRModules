@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2026 LabKey Corporation
+ * Copyright (c) 2026 LabKey Corporation
  *
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -11,8 +11,6 @@ var prevDate;
 var missing = [];
 
 var count = 0;
-
-var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 
 function getLastAssignment(id){
     var batchLastDate;
@@ -125,29 +123,6 @@ function getProtocolIdByName(protocolName) {
         pName = protocolData[protocols[i]] ;
         if (pName && protocolName.trim().toLowerCase().indexOf(pName.toString().toLowerCase()) === 0) {
             return protocols[i];
-        }
-    }
-}
-
-function onComplete(event, errors, helper){
-
-    if (!helper.isValidateOnly() && !helper.isETL()) {
-        var updateRows = helper.getRows();
-
-        // When closing previous records, we don't need to update the orchard file. Use the same flag as demographics providers.
-        var skipAnnounceChangedParticipants = false;
-        var extraContext = helper.getProperty('extraContext');
-        if (extraContext) {
-            skipAnnounceChangedParticipants = extraContext.skipAnnounceChangedParticipants;
-        }
-
-        if (updateRows && updateRows.length > 0 &&
-                updateRows[0].row.taskid &&
-                updateRows[0].row.QCStateLabel &&
-                EHR.Server.Security.getQCStateByLabel(updateRows[0].row.QCStateLabel).PublicData &&
-                !skipAnnounceChangedParticipants
-        ) {
-            triggerHelper.generateOrchardFile(updateRows[0].row.taskid);
         }
     }
 }

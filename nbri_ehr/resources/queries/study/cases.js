@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2026 LabKey Corporation
+ * Copyright (c) 2026 LabKey Corporation
  *
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
@@ -22,7 +22,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 error = true;
             }
 
-            if(!triggerHelper.canCloseCase(row.category)) {
+            if(!triggerHelper.canCloseCase()) {
                 EHR.Server.Utils.addError(errors, 'enddate', 'Veterinarian permission required to close a case.', 'ERROR');
                 error = true;
             }
