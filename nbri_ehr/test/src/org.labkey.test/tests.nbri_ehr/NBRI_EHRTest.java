@@ -95,6 +95,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String NBRI_FULL_SUBMITTER_VET_TECH = "vet_tech_fs@nbritest.com";
     private static final String NBRI_FULL_SUBMITTER_VET = "vet_fs@nbritest.com";
     private static final String NBRI_VET_NAME = "vet fs";
+    // Assign the vet-tech role by its class-based name rather than its "EHR Veterinarian Technician" display
+    // name: NIRC's role shares that display name, so a display-name lookup can resolve to the wrong module's
+    // role, leaving the user without NBRIEHRVetTechPermission (hiding "Submit Necropsy for Review", etc.).
+    private static final String NBRI_VET_TECH_ROLE = "NBRIEHRVetTechRole";
 
     private static final String deadAnimalId = "D5454";
     private static final String departedAnimalId = "H6767";
@@ -730,8 +734,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         waitForText(animalId);
         waitForTextToDisappear("Id is required");
-        _helper.setDataEntryField("s", "Closing the case");
-        waitForTextToDisappear("Subjective: WARN: Must enter at least one comment");
+        setCaseSubjective("Closing the case");
         waitAndClick(Ext4Helper.Locators.ext4Button("Edit"));
         _helper.getExt4FieldForFormSection("Clinical Case", "Close Date").setValue(LocalDateTime.now().format(_dateFormat));
         _helper.setDataEntryField("closeRemark", "Case closed.");
@@ -1017,10 +1020,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         createUser(NBRI_BASIC_SUBMITTER, "EHR Basic Submitters", null);
 
         //create a vet tech user with 'EHR Basic Submitters' group (ex. this user can 'Submit Necropsy for Review' in Death/Necropsy)
-        createUser(NBRI_BASIC_SUBMITTER_VET_TECH, "EHR Basic Submitters", "EHR Veterinarian Technician");
+        createUser(NBRI_BASIC_SUBMITTER_VET_TECH, "EHR Basic Submitters", NBRI_VET_TECH_ROLE);
 
         //create a vet tech user with 'EHR Full Updaters' group (ex. this user can 'Submit for Review' and 'Submit Final' in cases)
-        createUser(NBRI_FULL_SUBMITTER_VET_TECH, "EHR Full Updaters", "EHR Veterinarian Technician");
+        createUser(NBRI_FULL_SUBMITTER_VET_TECH, "EHR Full Updaters", NBRI_VET_TECH_ROLE);
 
         //create a vet user with 'EHR Full Updaters' group (ex. this user can 'Submit Final' in Death/Necropsy)
         createUser(NBRI_FULL_SUBMITTER_VET, "EHR Full Updaters", "EHR Veterinarian");
@@ -1262,16 +1265,16 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         orderGrid.setGridCell(1, "frequency", "QID");
         orderGrid.clickDownArrowOnGrid(1, "route");
         orderGrid.setGridCell(1, "route", "IVAG");
+        // Set Ordered By directly in the grid rather than through the bulk-edit combo. That combo's async
+        // user-store typeahead trips an Ext4 "onTypeAhead ... findRecord of null" client error that can
+        // intermittently leave Ordered By unset, which fails validation and blocks the form submit.
+        orderGrid.setGridCell(1, "orderedby", NBRI_VET_NAME);
         orderGrid.completeEdit();
 
-        Locator.XPathLocator bulkEditWindow = _helper.openBulkEdit(orderGrid);
-        _helper.toggleBulkEditExactField("Ordered By");
-        _ext4Helper.selectComboBoxItem(Ext4Helper.Locators.formItemWithLabelContaining("Ordered By:"), NBRI_VET_NAME);
-        waitAndClick(bulkEditWindow.append(Ext4Helper.Locators.ext4Button("Submit")));
-
-        Window<?> msgWindow = new Window.WindowFinder(this.getDriver()).withTitle("Set Values").waitFor();
-        msgWindow.clickButton("Yes", 0);
-
+        // Entering the Weights/Medications sections above can rebuild the Clinical Case section and drop the
+        // Problem Area combo value; re-assert it before submitting so a "Problem Area is required" error
+        // doesn't block the submit.
+        setFormSectionFieldUntilWarningClears("Clinical Case", "Problem Area", "Circulatory abnormality", "Problem Area is required");
         submitForm("Submit Final", "Finalize Form");
 
         log("Completing today's Medication Schedule");
@@ -1297,17 +1300,18 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         //Go to 'Active Clinical Cases'
         clickAndWait(Locator.linkWithText("Active Clinical Cases"));
 
-        //Click on 'Case Update' link
+        //Click on 'Case Update' link. Filter to this animal first: other tests (e.g. task grouping) leave
+        //their own cases active in this folder, so select by animal rather than assuming row 0 is our case.
         AnimalHistoryPage<?> historyPage = new AnimalHistoryPage<>(getDriver());
         DataRegionTable activeClinicalCases = historyPage.getActiveReportDataRegion();
+        activeClinicalCases.setFilter("Id", "Equals", animalId);
         activeClinicalCases.link(0, "caseCheck").click();
         switchToWindow(2);
 
         //Fill out Close Date
         waitForText(animalId);
         waitForTextToDisappear("Id is required");
-        _helper.setDataEntryField("s", "Closing the case");
-        waitForTextToDisappear("Subjective: WARN: Must enter at least one comment");
+        setCaseSubjective("Closing the case");
 
         waitForElement(Ext4Helper.Locators.ext4Button("Edit"));
         Ext4Helper.Locators.ext4Button("Edit").findElement(getDriver()).click();
@@ -1327,10 +1331,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         goToEHRFolder();
         waitAndClickAndWait(Locator.linkWithText("Active Clinical Cases"));
 
-        //Verify that the case is no longer present/is closed
+        //Verify that this animal's case is no longer present/is closed (other tests may leave cases active)
         historyPage = new AnimalHistoryPage<>(getDriver());
         activeClinicalCases = historyPage.getActiveReportDataRegion();
-        Assert.assertEquals("No active cases", 0, activeClinicalCases.getDataRowCount());
+        activeClinicalCases.setFilter("Id", "Equals", animalId);
+        Assert.assertEquals("Clinical case for " + animalId + " should be closed", 0, activeClinicalCases.getDataRowCount());
         stopImpersonating();
     }
 
@@ -1408,6 +1413,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         treatmentOrder.setGridCell(1, "frequency", "QID");
         treatmentOrder.setGridCell(1, "route", "IV");
         treatmentOrder.setGridCell(1, "orderedby", NBRI_VET_NAME);
+        // Re-assert the Behavior Assessment remark right before submitting: entering the orders above can
+        // rebuild the section and drop the value typed earlier, which would leave the validation banner up.
+        setDataEntryFieldUntilWarningClears("remark", "Behavioral case remarks", "Remark: WARN: Must enter at least one comment");
         submitForm("Submit Final", "Finalize");
 
         log("Adding behavioral case 31 days old for " + animalId2);
@@ -1430,6 +1438,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         observationOrder.setGridCellJS(1, "date", LocalDateTime.now().minusDays(31).format(_dateFormat));
         observationOrder.setGridCell(1, "category", "Abnormal Behaviors");
         observationOrder.setGridCell(1, "frequency", "SID");
+        // Re-assert the Behavior Assessment remark right before submitting (see note on the first case above).
+        setDataEntryFieldUntilWarningClears("remark", "Behavioral case remarks ", "Remark: WARN: Must enter at least one comment");
         submitForm("Submit Final", "Finalize");
 
         log("Verify reports and schedule");
@@ -1521,6 +1531,42 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         DataRegionTable table = viewQueryData(schema, query);
         table.setFilter("Id", "Equals", animalId);
         Assert.assertEquals("Record not created in " + schema + "." + query, rowCount, table.getDataRowCount());
+    }
+
+    // Sets a data-entry field and waits for the given form warning to clear, re-entering the value if it
+    // didn't take. EHR form sections can still be (re)building shortly after a form/window opens, and a value
+    // typed too early is silently discarded; re-entering until the warning disappears makes the entry robust.
+    private void setDataEntryFieldUntilWarningClears(String fieldName, String value, String warning)
+    {
+        _helper.setDataEntryField(fieldName, value);
+        waitFor(() -> {
+            if (!isTextPresent(warning))
+                return true;
+            _helper.setDataEntryField(fieldName, value);
+            return false;
+        }, "\"" + warning + "\" did not clear after setting " + fieldName, WAIT_FOR_JAVASCRIPT);
+    }
+
+    // Enters the Subjective ("s") comment on a case-close form and waits for its "must enter at least one
+    // comment" warning to clear (see setDataEntryFieldUntilWarningClears for why re-entry is needed).
+    private void setCaseSubjective(String value)
+    {
+        setDataEntryFieldUntilWarningClears("s", value, "Subjective: WARN: Must enter at least one comment");
+    }
+
+    // Like setDataEntryFieldUntilWarningClears, but for an Ext4 form-section field (e.g. a combo) addressed by
+    // its section title and field label. Combos are especially prone to losing their value when a section is
+    // rebuilt, so re-select until the warning/error clears.
+    private void setFormSectionFieldUntilWarningClears(String section, String label, String value, String warning)
+    {
+        waitFor(() -> {
+            if (!isTextPresent(warning))
+                return true;
+            Ext4FieldRef field = _helper.getExt4FieldForFormSection(section, label);
+            if (field != null)
+                field.setValue(value);
+            return false;
+        }, "\"" + warning + "\" did not clear after re-setting " + label, WAIT_FOR_JAVASCRIPT);
     }
 
     private void submitForm(String buttonText, String windowTitle)

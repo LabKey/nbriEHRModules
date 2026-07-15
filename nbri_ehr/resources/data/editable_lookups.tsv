@@ -89,7 +89,7 @@ ehr_lookups	observation_areas	Clinical	Observation Areas	Clinical observation ar
 ehr_lookups	obstetric_observations	Clinical	Obstetric Observations	Obstetric Observations Fixed Values.
 ehr_lookups	ocular_observations	Clinical	Ocular Observations	Ocular Observations Fixed Values.
 ehr_lookups	ocular_problem	Clinical	Ocular Problem	Clinical observation fixed values.
-ehr_lookups	pairing_formation_types	Pairing Formation Type	value	
+ehr_lookups	pairing_formation_types	Behavior	Pairing Formation Type	Pairing formation values.
 ehr_lookups	pairing_goal	Behavior	Pairing Goal	Used in pairing dataset.
 ehr_lookups	pairing_reason	Behavior	Introduction Reason	Used in pairing dataset.
 ehr_lookups	pairing_observation	Behavior	Interaction Summary	Used in pairing dataset.
