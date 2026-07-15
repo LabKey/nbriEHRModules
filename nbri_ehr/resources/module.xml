@@ -1,0 +1,8 @@
+<module xmlns="http://labkey.org/moduleProperties/xml/">
+    <requiredModuleContext>
+        <module name="LDK"/>
+    </requiredModuleContext>
+    <clientDependencies>
+        <dependency path="ehr/ehr_api"/>
+    </clientDependencies>
+</module>

@@ -1,0 +1,118 @@
+setname	label	keyfield	titleColumn
+abdominal_obs_types	Abdominal Observation Types	value
+abnormal_behavior_types	Abnormal Behavior Types	value
+acquisition_type	Acquisition Type	value
+activity	Activity	value
+alias_category	Alias Category	value	title
+alopecia_type	Alopecia Type	value
+alopecia_score	Alopecia Type	value
+alopecia_regrowth	Alopecia Regrowth	value
+app_score	Appetite Score	value
+arrival_type	Arrival Type	value
+arthritis_types	Arthritis Types	value
+att_score	Attitude Score	value
+bandage_observations	Bandage/splint Observations	value
+bcs_score	BCS Store	value	title
+behavior_abnormality	Behavior Abnormality	value
+behavior_mgmt_codes	Behavior Management Codes	value
+behavior_types	Behavior Types	value
+blood_draw_reason	Blood Draw Reason	value
+blood_sample_type	Blood Sample Types	value
+cage_type	Cage Type	value	title
+capillary_refill_time	Capillary Refill Time	value
+card_format	Card Format	value	title
+census_activity_status	Census Activity Status	value	title
+clinremarks_category	Clinremarks Category	value	title
+congenital_abnormalities	Congenital Abnormalities	value	title
+cost_center	Cost Center	value	title
+cost_type	Cost Type	value	title
+country	Country	value	title
+country_category	Country Category	value	title
+daily_enrich_codes	Daily Enrichment Codes	value
+data_category	Data Category Field Values	value
+death_reason	Death Reason	value
+delivery_state	Delivery State	value	title
+dental_obs	Dental Observations	value
+derm_obs	Dermatologic Observations	value
+digit_amputation	Digit Amputation	value	title
+ear_types	Ear Types	value	title
+esig_events	ESig Events	value	title
+euthanasia_type	Euthanasia Type	value	title
+exam_findings	Exam Findings	value
+exemption_category	Exemption Category	value	title
+expense_class	Expense Class	value	description
+fecal_score	Fecal Score	value	description
+fecal_smear_score	Fecal Smear Scores	value
+feed_assess_types	Feed Assessment Types	value
+gastro_types	Gastrointestinal Types	value
+general_obs	General Observations	value
+genital_types	Genital Types	value
+genitourinary_obs	Genitourinary Observations	value
+hernia_types	Hernia Types	value
+housing_reason	Housing Reason	value
+hyd_score	Hyd Score	value
+id_history_type	Id History Type	value	title
+incision_score	Incision Status	value
+indoor_outdoor	Indoor/Outdoor	value
+keyword	Keyword	value	title
+lameness	Lameness	value	title
+mass_type	Mass Type	value	title
+mens_score	Menses	value
+mucous_membranes	Mucous Membranes	value
+musculoskeletal_observations	Musculoskeletal Observations	value
+necropsy_disposition_codes	Tissue Disposition Codes	value	title
+necropsy_organ_appearance	Appearance	value	title
+necropsy_organ_systems	Organ Systems	value	title
+necropsy_physical_condition	Physical Condition	value	title
+necropsy_specimen_condition	Specimen Condition	value	title
+necropsy_tissue	Tissues	value	title
+neurologic_observations	Neurologic Observations	value
+nhp_training_reason	NHP Training Reason	value
+nhp_training_result	NHP Training Result	value
+nhp_training_type	NHP Training Type	value
+normal_abnormal_only	Normal/Abnormal Type	value
+numeric_unit	Numeric Units	value	title
+obstetric_observations	Obstetric Observations	value
+ocular_observations	Ocular Observations	value
+observation_areas	Observation Areas	value
+ocular_problem	Ocular Problem	value
+pairing_goal	Pairing Goal	value
+pairing_formation_types	Pairing Formation Type	value
+pairing_reason	Introduction Reason	value
+pairing_observation	Interaction Summary	value
+pairing_separation_reason	Pairing Status Change Reason	value	value
+preferences	Preferences	value
+pregnancy_result	Pregnancy Results	value
+procedure_category	Category of procedures	value
+problem_list_category	Problem List Category	value
+problem_list_subcategory	Problem List Sub-Category	value
+protocol_category	Protocol Category	value	title
+protocol_state	Protocol State	value	title
+protocol_type	Protocol Type	value	title
+qualifier	Qualifier	value	title
+questionnaire	Questionnaire	value	title
+rectal_prolapse	Rectal Prolapse	value
+regulatory_stress_levels	Regulatory Stress Levels	value	title
+req_order_state	Req Order State	value	title
+req_order_type	Req Order Type	value	title
+respiratory_observations	Respiratory Observations	value	title
+sib_score	SIB Score	value
+skin_problem	Skin Problem	value
+stool_score	Stool Score	value
+stool_types	Stool Types	value
+tb_obs_score	TB Obs Score	value
+temperament	Temperament	value	title
+testicular_volume	Testicular Volume	value	title
+trauma_size	Trauma Size	value
+turgor_score	Turgor Score	value
+termination_reason_codes	Termination Reason Codes Codes	value	title
+vendor_approval_code	Vendor Approval Code	value	title
+vaginal_uterine_prolapse	Vaginal Uterine Prolapse	value
+vendor_production_location	Vendor Production Location	value	title
+weight_ranges	Weight Ranges	value
+wound_score	Wound Score	value
+wound_severity	Wound Severity	value
+wound_status_behavior	Wound Status Behavior	value
+wound_status_clinical	Wound Status Clinical	value
+yes_no_order	Yes/No Values in Order	value
+yes_no_only	Yes/No Forced Selection	value

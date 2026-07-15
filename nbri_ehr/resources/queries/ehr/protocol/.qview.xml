@@ -1,0 +1,41 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="protocol"/>
+        <column name="title"/>
+        <column name="shortDescription"/>
+        <column name="description"/>
+        <column name="prefix"/>
+        <column name="suffix"/>
+        <column name="investigatorId"/>
+        <column name="authorId"/>
+        <column name="ownerId"/>
+        <column name="approve"/>
+        <column name="endDate"/>
+        <column name="renewalDate"/>
+        <column name="nextReviewDate"/>
+        <column name="inactiveDate"/>
+        <column name="requestedEffectiveDate"/>
+        <column name="submissionDate"/>
+        <column name="reviewCompletionDate"/>
+        <column name="effectiveDate"/>
+        <column name="currentState"/>
+        <column name="protocolTypeId"/>
+        <column name="protocolCategory"/>
+        <column name="parentProtocolId"/>
+        <column name="departmentId"/>
+        <column name="emergencyPhoneNumber"/>
+        <column name="userReferenceNumber"/>
+        <column name="questionnaire"/>
+        <column name="amendmentReason"/>
+        <column name="objective"/>
+        <column name="rationale"/>
+        <column name="isTissueHarvest"/>
+        <column name="isOrderTracking"/>
+        <column name="isLongTerm"/>
+        <column name="isInVivo"/>
+        <column name="isStock"/>
+        <column name="isHonorReset"/>
+        <column name="displayName"/>
+        <column name="isActive"/>
+    </columns>
+</customView>

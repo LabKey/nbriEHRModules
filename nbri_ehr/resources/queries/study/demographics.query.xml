@@ -1,0 +1,112 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="demographics" tableDbType="TABLE">
+                <columns>
+                    <column columnName="date">
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="gender">
+                        <columnTitle>Sex</columnTitle>
+                    </column>
+                    <column columnName="species">
+                        <columnTitle>Species</columnTitle>
+                    </column>
+                    <column columnName="birth">
+                        <formatString>Date</formatString>
+                        <columnTitle>Birth</columnTitle>
+                        <url>/query/executeQuery.view?
+                            schemaName=study&amp;
+                            query.queryName=Birth&amp;
+                            query.Id~eq=${Id}
+                        </url>
+                    </column>
+                    <column columnName="death">
+                        <formatString>Date</formatString>
+                        <columnTitle>Death</columnTitle>
+                        <url>/query/executeQuery.view?
+                            schemaName=study&amp;
+                            query.queryName=Deaths&amp;
+                            query.Id~eq=${Id}
+                        </url>
+                    </column>
+                    <column columnName="dam">
+                        <columnTitle>Dam</columnTitle>
+                        <fk>
+                            <fkDbSchema>study</fkDbSchema>
+                            <fkTable>animal</fkTable>
+                            <fkColumnName>id</fkColumnName>
+                        </fk>
+                        <url>/ehr/participantView.view?participantId=${dam}</url>
+                    </column>
+                    <column columnName="sire">
+                        <columnTitle>Sire</columnTitle>
+                        <fk>
+                            <fkDbSchema>study</fkDbSchema>
+                            <fkTable>animal</fkTable>
+                            <fkColumnName>id</fkColumnName>
+                        </fk>
+                        <url>/ehr/participantView.view?participantId=${sire}</url>
+                    </column>
+                    <column columnName="disposition">
+                        <columnTitle>Disposition</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>disposition_codes</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="termination">
+                        <columnTitle>Termination</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>termination_reason_codes</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="weanedDate">
+                        <columnTitle>Date Weaned</columnTitle>
+                        <formatString>Date</formatString>
+                    </column>
+                    <column columnName="implantNumber">
+                        <columnTitle>Implant Number</columnTitle>
+                    </column>
+                    <column columnName="vendorNumber">
+                        <columnTitle>Vendor Number</columnTitle>
+                    </column>
+                    <column columnName="activeStatus">
+                        <columnTitle>Active Status</columnTitle>
+                    </column>
+                    <column columnName="calculated_status">
+                        <columnTitle>Animal Status</columnTitle>
+                    </column>
+                    <column columnName="lotId">
+                        <columnTitle>Lot</columnTitle>
+                        <fk>
+                            <fkDbSchema>nbri_ehr</fkDbSchema>
+                            <fkTable>Lot</fkTable>
+                            <fkColumnName>LotId</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="geographic_origin">
+                        <columnTitle>Origin</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>geographic_origins</fkTable>
+                            <fkColumnName>meaning</fkColumnName>
+                            <fkDisplayColumnName>meaning</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="source">
+                        <columnTitle>Source</columnTitle>
+                    </column>
+                    <column columnName="cites">
+                        <columnTitle>CITES</columnTitle>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

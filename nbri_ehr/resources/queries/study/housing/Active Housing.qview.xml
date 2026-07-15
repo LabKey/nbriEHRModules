@@ -1,0 +1,24 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
+    <columns>
+        <column name="Id"/>
+        <column name="Id/Demographics/species"/>
+        <column name="date"/>
+        <column name="enddate"/>
+        <column name="cage"/>
+        <column name="duration">
+            <properties>
+                <property name="columnTitle" value="Days In This Location"/>
+            </properties>
+        </column>
+        <column name="reason" />
+        <column name="remark" />
+        <column name="qcstate"/>
+    </columns>
+    <filters>
+        <filter column="isActive" operator="eq" value="true"/>
+    </filters>
+    <sorts>
+        <sort column="room"/>
+        <sort column="cage"/>
+    </sorts>
+</customView>

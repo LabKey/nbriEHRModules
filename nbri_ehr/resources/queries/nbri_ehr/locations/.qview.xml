@@ -1,0 +1,6 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="Name"/>
+        <column name="locationType"/>
+    </columns>
+</customView>

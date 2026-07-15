@@ -1,0 +1,29 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="cage" tableDbType="TABLE" useColumnOrder="true">
+                <tableTitle>Cages</tableTitle>
+                <columns>
+                    <column columnName="cage">
+                        <url>/nbri_ehr/cageDetails.view?room=${room}&amp;cage=${location}&amp;</url>
+                    </column>
+                    <column columnName="room">
+                        <columnTitle>Room</columnTitle>
+                    </column>
+                    <column columnName="location">
+                        <isHidden>true</isHidden>
+                        <shownInDetailsView>false</shownInDetailsView>
+                    </column>
+                    <column columnName="indoor_outdoor">
+                        <columnTitle>Indoor/Outdoor</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>indoor_outdoor</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

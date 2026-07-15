@@ -1,0 +1,14 @@
+value	description
+Behavioral	Behavioral issue or concern. Examples include SIB and fecal smearing.
+Trauma	Case opened for some type of trauma.
+GI abnormality	Abnormalities associated with the digestive system.
+Neurologic abnormality	Abnormalities associated with the neurologic system.
+Dermatologic abnormality	Abnormalities associated with the dermal system.
+Genitourinary abnormality	Abnormalities associated with the genitourinary system.
+Circulatory abnormality	Abnormalities associated with the circulatory system.
+Ocular abnormality	Abnormalities associated with the ocular system.
+Respiratory abnormality	Abnormalities associated with the respiratory system.
+Oral abnormality	Abnormalities associated with the oral cavity.
+Musculoskeletal abnormality	Abnormalities associated with the musculoskeletal system.
+General abnormality	Abnormalities that do not fit into any other category.
+Study-related surgery	Case opened for a surgery or activity supporting a research project.

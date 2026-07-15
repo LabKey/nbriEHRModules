@@ -1,0 +1,7 @@
+
+input.form-panel-input-disabled,
+textarea.form-panel-input-disabled,
+label.form-panel-input-disabled {
+    color: gray;
+    opacity: 1 !important;
+}

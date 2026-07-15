@@ -1,0 +1,128 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="Staff" tableDbType="TABLE">
+                <tableTitle>Staff</tableTitle>
+                <columns>
+                    <column columnName="firstname">
+                        <columnTitle>First Name</columnTitle>
+                    </column>
+                    <column columnName="lastname">
+                        <columnTitle>Last Name</columnTitle>
+                    </column>
+                    <column columnName="middlename">
+                        <columnTitle>Middle Name</columnTitle>
+                    </column>
+                    <column columnName="displayname">
+                        <columnTitle>Display Name</columnTitle>
+                    </column>
+                    <column columnName="hiredate">
+                        <columnTitle>Hire Date</columnTitle>
+                    </column>
+                    <column columnName="lastemploydate">
+                        <columnTitle>Last Employ Date</columnTitle>
+                    </column>
+                    <column columnName="officephone">
+                        <columnTitle>Office Phone</columnTitle>
+                    </column>
+                    <column columnName="officephoneext">
+                        <columnTitle>Office Phone Ext</columnTitle>
+                    </column>
+                    <column columnName="officefax">
+                        <columnTitle>Office Fax</columnTitle>
+                    </column>
+                    <column columnName="homephone">
+                        <columnTitle>Home Phone</columnTitle>
+                    </column>
+                    <column columnName="beeperphone">
+                        <columnTitle>Beeper Phone</columnTitle>
+                    </column>
+                    <column columnName="cellphone">
+                        <columnTitle>Cell Phone</columnTitle>
+                    </column>
+                    <column columnName="emergencycontact">
+                        <columnTitle>Emergency Contact</columnTitle>
+                    </column>
+                    <column columnName="emergencyphone">
+                        <columnTitle>Emergency Phone</columnTitle>
+                    </column>
+                    <column columnName="homeaddress1">
+                        <columnTitle>Home Address 1</columnTitle>
+                    </column>
+                    <column columnName="homeaddress2">
+                        <columnTitle>Home Address2</columnTitle>
+                    </column>
+                    <column columnName="homecity">
+                        <columnTitle>Home City</columnTitle>
+                    </column>
+                    <column columnName="homestate">
+                        <columnTitle>Home State</columnTitle>
+                    </column>
+                    <column columnName="homezip">
+                        <columnTitle>Home Zip</columnTitle>
+                    </column>
+                    <column columnName="homezipext">
+                        <columnTitle>Home Zip Ext</columnTitle>
+                    </column>
+                    <column columnName="homecountry">
+                        <columnTitle>Home Country</columnTitle>
+                    </column>
+                    <column columnName="officeaddress1">
+                        <columnTitle>Office Address 1</columnTitle>
+                    </column>
+                    <column columnName="officeaddress2">
+                        <columnTitle>Office Address 2</columnTitle>
+                    </column>
+                    <column columnName="officecity">
+                        <columnTitle>Office City</columnTitle>
+                    </column>
+                    <column columnName="officestate">
+                        <columnTitle>Office State</columnTitle>
+                    </column>
+                    <column columnName="officezip">
+                        <columnTitle>Office Zip</columnTitle>
+                    </column>
+                    <column columnName="officezipext">
+                        <columnTitle>Office Zip Ext</columnTitle>
+                    </column>
+                    <column columnName="officecountry">
+                        <columnTitle>Office Country</columnTitle>
+                    </column>
+                    <column columnName="birthdate">
+                        <columnTitle>Birth Date</columnTitle>
+                    </column>
+                    <column columnName="hsname">
+                        <columnTitle>High School Name</columnTitle>
+                    </column>
+                    <column columnName="collegegraddate">
+                        <columnTitle>College Grad Date</columnTitle>
+                    </column>
+                    <column columnName="collegedegree">
+                        <columnTitle>College Degree</columnTitle>
+                    </column>
+                    <column columnName="collegemajor">
+                        <columnTitle>College Major</columnTitle>
+                    </column>
+                    <column columnName="collegename">
+                        <columnTitle>College Name</columnTitle>
+                    </column>
+                    <column columnName="supervisor">
+                        <columnTitle>Supervisor</columnTitle>
+                        <fk>
+                            <fkDbSchema>nbri_ehr</fkDbSchema>
+                            <fkTable>staff</fkTable>
+                            <fkColumnName>staffId</fkColumnName>
+                            <fkDisplayColumnName>displayName</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="positionname">
+                        <columnTitle>Position Name</columnTitle>
+                    </column>
+                    <column columnName="positiondesc">
+                        <columnTitle>Position Description</columnTitle>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

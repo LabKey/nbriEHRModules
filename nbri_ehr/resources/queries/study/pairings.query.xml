@@ -1,0 +1,90 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="pairings" tableDbType="TABLE" useColumnOrder="true">
+                <javaCustomizer class="org.labkey.nbri_ehr.table.NBRI_EHRCustomizer" />
+                <columns>
+                    <column columnName="Id" />
+                    <column columnName="date"/>
+                    <column columnName="enddate">
+                        <isHidden>false</isHidden>
+                    </column>
+                    <column columnName="pairId">
+                        <columnTitle>Pair Id</columnTitle>
+                    </column>
+                    <column columnName="cage">
+                        <columnTitle>Location</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>cage</fkTable>
+                            <fkColumnName>location</fkColumnName>
+                            <fkDisplayColumnName>cage</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="reason">
+                        <columnTitle>Introduction Reason</columnTitle>
+                        <displayWidth>150</displayWidth>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>pairing_reason</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="goal">
+                        <columnTitle>Goal</columnTitle>
+                        <displayWidth>100</displayWidth>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>pairing_goal</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="formationType">
+                        <columnTitle>Formation Type</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>pairing_formation_types</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="remark">
+                        <columnTitle>Remark on Formation</columnTitle>
+                        <displayWidth>200</displayWidth>
+                    </column>
+                    <column columnName="observation">
+                        <columnTitle>Interaction Summary</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>pairing_observation</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="endState">
+                        <columnTitle>End State</columnTitle>
+                        <displayWidth>100</displayWidth>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>pairing_goal</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="separationReason">
+                        <columnTitle>Separation Reason</columnTitle>
+                        <displayWidth>100</displayWidth>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>pairing_separation_reason</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+
+                    <column columnName="separationRemark">
+                        <columnTitle>Remark on Separation</columnTitle>
+                        <displayWidth>200</displayWidth>
+                    </column>
+
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

@@ -1,0 +1,7 @@
+value	sort_order
+0 Unresponsive	1
+0-1 Extremely Lethargic	2
+1 Lethargic	3
+1-2 Slightly Lethargic	4
+2 Normal	5
+Sedated	6

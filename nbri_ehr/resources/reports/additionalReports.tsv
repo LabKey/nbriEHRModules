@@ -1,0 +1,52 @@
+reportname	category	reporttype	reporttitle	visible	containerpath	schemaname	queryname	viewname	report	datefieldname	todayonly	queryhaslocation	sort_order	QCStateLabelFieldName	description
+MHC	Genetics	query	MHC	TRUE		study	MHC				FALSE	FALSE		qcstate/publicdata	This report shows MHC type
+assignment	Colony Management	query	Protocol Assignment	TRUE		study	protocolAssignment				FALSE	FALSE		qcstate/publicdata	This report shows protocol assignments
+grossPathology	Pathology	query	Gross Pathology	TRUE		study	grossPathology				FALSE	FALSE		qcstate/publicdata	This is for histopathology reports
+tissueDisposition	Pathology	query	Tissue Disposition	TRUE		study	tissueDisposition				FALSE	FALSE		qcstate/publicdata	This is for histopathology reports
+histopathology	Pathology	query	Histopathology	TRUE		study	histopathology				FALSE	FALSE		qcstate/publicdata	This is for histopathology reports
+clinical_observations	Clinical	query	Clinical Observations	TRUE		study	clinical_observationsSummary	Clinical		date	FALSE	FALSE		qcstate/publicdata	This report displays clinical observations for the selected animal
+foster	Reproductive Management	query	Fostering	TRUE		study	foster				FALSE	FALSE		qcstate/publicdata	This is for animal fostering data
+projects	Colony Management	query	Project Assignment	TRUE		study	assignment				FALSE	FALSE		qcstate/publicdata	This is for project assignments
+chemistry	Clinical	query	Chemistry	TRUE		study	chemistryResults				FALSE	FALSE		qcstate/publicdata	This is for chemistry results
+alias	Colony Management	query	Aliases	true		study	demographicsAliases				false	false		qcstate/publicdata	This report shows the animal aliases
+notes	Colony Management	query	Notes	true		study	notes				false	false		qcstate/publicdata	This report shows the animal notes
+activeClinTreatmentOrders	Clinical	query	Active Clinical Medication Orders	true		study	treatment_order	Clinical Active Treatment Orders		date	false	false		qcstate/publicdata	This report contains the treatment orders entered for each animal
+activeBehaviorTreatmentOrders	Behavior	query	Active Behavior Medication Orders	true		study	treatment_order	Behavior Active Treatment Orders		date	false	false		qcstate/publicdata	This report contains the treatment orders entered for each animal
+allTreatments	Clinical	query	All Treatment Orders	true		study	treatment_order				false	false		qcstate/publicdata	This report shows all treatment orders
+behTreatments	Behavior	query	All Behavior Medication Orders	true		study	treatment_order	behavior			false	false		qcstate/publicdata	This report shows all behavior treatment orders
+behDrug	Behavior	query	Behavior Drug Administration	true		study	drug	Behavior			false	false		qcstate/publicdata	This report shows all behavior drug administrations
+FileRepository	General	js	File Repository	true		study	FileRepository				false	false		qcstate/publicdata	File Repository for uploading and viewing animal related files
+observationSchedule	Daily Reports	js	Today's Observation Schedule	true		study	observationSchedule			date	false	false		qcstate/publicdata	This report contains a list of today's treatments to be administered
+activeClinicalObservationOrders	Clinical	query	Active Clinical Observation Orders	true		study	observation_order	Active Clinical Orders		date	false	false		qcstate/publicdata	This report contains a list of today's treatments to be administered
+activeBehaviorObservationOrders	Behavior	query	Active Behavior Observation Orders	true		study	observation_order	Active Behavior Orders		date	false	false		qcstate/publicdata	This report contains a list of today's treatments to be administered
+observationOrders	Clinical	query	Observation Orders	true		study	observation_order			date	false	false		qcstate/publicdata	This report contains a list of today's treatments to be administered
+alopecia	Behavior	query	Alopecia Scores	TRUE		study	clinical_observations	Alopecia Scores		date	FALSE	FALSE		qcstate/publicdata	This report contains the alopecia scores for the animal
+behaviorCases	Behavior	query	Active Behavior Cases	true		study	activeBehaviorCases			date	false	false		qcstate/publicdata	This displays active behavioral cases
+allBehaviorCases	Behavior	query	Behavior Cases	true		study	behaviorCases			date	false	false		qcstate/publicdata	This displays all behavioral cases
+bloodSchedule															
+cases	Clinical	query	Active Clinical Cases	true		study	activeClinicalCases			date	false	false		qcstate/publicdata	This displays active clinical cases
+clinCases	Clinical	query	All Clinical Cases	true		study	clinicalCases			date	false	false		qcstate/publicdata	This report contains one record for each clinical case
+prcOrders	Clinical	query	Procedure Orders	true		study	prc_order_report			date	false	false		qcstate/publicdata	This report contains one record for each procedure order
+prcOverdue	Daily Reports	query	Overdue Procedures	true		study	prcOverdue			date	false	false		qcstate/publicdata	This report contains one record for each overdue procedure
+clinMedicationSchedule	Daily Reports	js	Today's Medication Schedule	true		study	clinMedicationSchedule			date	false	false		qcstate/publicdata	This report contains a list of today's treatments to be administered
+prcSchedule	Daily Reports	query	Today's Procedure Schedule	true		study	prcSchedule			date	false	false		qcstate/publicdata	This report contains a list of today's procedures to be administered
+dietSchedule
+drug															
+incompleteTreatments	Daily Reports	js	Incomplete Treatments	true		study	incompleteTreatments			date	false	false		qcstate/publicdata	This report contains a list of incomplete treatments for the previous 30 days
+incompleteObservations	Daily Reports	js	Incomplete Observations	true		study	incompleteObservations			date	false	false		qcstate/publicdata	This report contains a list of incomplete observations for the previous 30 days
+pairingsBehavior
+pairingHousingSummary
+pairingSummary	Behavior	query	Pairing Summary	TRUE		study	pairingSummary			date	FALSE	FALSE		qcstate/publicdata	This report displays animal pairings
+activePairing	Behavior	query	Active Pairing	TRUE		study	pairingSummary	Active Pairing		date	FALSE	FALSE		qcstate/publicdata	This report displays animal pairings
+pairingHistory
+nhpTraining	Behavior	query	Animal Training	TRUE		study	nhpTraining			date	FALSE	FALSE		qcstate/publicdata	This report displays animal training data
+roommateHistoryBehavior
+surgicalCases															
+surgMedicationSchedule															
+surgMedicationScheduleDaily
+pairings
+behaviorRemarks	Behavior	query	Behavior Remarks	true		study	BehaviorClinRemarks			date	false	false		qcstate/publicdata	This report contains the behavior remarks entered about each animal
+clinObsBehavior	Behavior	query	Observations	true		study	behaviorObservations			date	false	false		qcstate/publicdata	This report contains one record for each encounter with each animal, including surergies, exams, procedures, etc.
+clinremarks	Clinical	query	Clinical Remarks	true		study	ClinicalClinRemarks			date	false	false		qcstate/publicdata	This report contains the clinical remarks entered about each animal
+physicalExam	Clinical	query	Exam History	True		study	physicalExam			date	false	false		qcstate/publicdata	This report displays physical exam data for the selected animal
+historicalOther	General	query	Historical	True		study	historicalOther			date	false	false		qcstate/publicdata	This report displays historical events from legacy systems

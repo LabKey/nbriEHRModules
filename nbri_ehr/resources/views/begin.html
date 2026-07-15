@@ -1,0 +1,251 @@
+<script type="text/javascript" nonce="<%=scriptNonce%>">
+
+    Ext4.onReady(createNavMenu);
+
+    function createNavMenu(){
+        let webpart = <%=webpartContext%>;
+        let ctx = EHR.Utils.getEHRContext(webpart.wrapperDivId);
+        let currentUserGroups = [];
+
+        Ext4.onReady(() => {
+
+            if (!ctx)
+                return;
+
+            const getCurrentUserGroups = () => {
+                return new Promise((resolve, reject) => {
+                    const success = groups => {
+                        resolve(groups)
+                    }
+                    const failure = error => {
+                        reject(error)
+                    }
+                    LABKEY.Security.getGroupsForCurrentUser({
+                        success,
+                        failure
+                    })
+                })
+            }
+
+            const hasMyTasks = () => {
+                return new Promise((resolve, reject) => {
+                    const success = data => {
+                        resolve(data.rows.length);
+                    }
+                    const failure = error => {
+                        reject(error);
+                    }
+
+                    LABKEY.Query.selectRows({
+                        schemaName: 'ehr',
+                        queryName: 'my_tasks',
+                        columns: 'taskid',
+                        filterArray: [
+                            LABKEY.Filter.create('taskid', null, LABKEY.Filter.Types.NOT_BLANK),
+                            LABKEY.Filter.create('qcstate/Label', 'Review Required', LABKEY.Filter.Types.EQUAL)
+                        ],
+                        success,
+                        failure
+                    });
+                })
+            }
+
+            hasMyTasks().then(result => {
+                this.myNumOfTasks = result;
+                getCurrentUserGroups().then(({ groups }) => {
+                    currentUserGroups = groups;
+                    renderPage();
+                }).catch(error => {
+                    console.log(error)
+                })
+            }).catch(error => {
+                console.log(error);
+            });
+
+            this.myTasksRenderer = (item) => {
+
+                return {
+                    layout: 'hbox',
+                    bodyStyle: 'background-color: transparent;',
+                    items: [{
+                        xtype: 'ldk-linkbutton',
+                        style: item.style ? item.style : LDK.panel.NavPanel.ITEM_STYLE_DEFAULT + ';margin-left: 2px;',
+                        text: item.name,
+                        href: item.url ? item.url : item.urlConfig ? LABKEY.ActionURL.buildURL(item.urlConfig.controller, item.urlConfig.action, null, item.urlConfig.params) : null,
+                        tooltip: item.tooltip,
+                        showBrackets: false
+                    }]
+                }
+            }
+        });
+        const renderPage = () => {
+            let issueHTML = '';
+
+            if (ctx['EHRIssuesContainer']) {
+                issueHTML = '<div style="max-width:920px">Below are the sections of the Electronic Health Record.  If there are additional reports you would like, please submit a request <a href="' + LABKEY.ActionURL.buildURL('issues', 'list', ctx['EHRIssuesContainer']) + '" target="_blank">here</a>.<br><br></div>'
+            }
+
+            Ext4.get(webpart.wrapperDivId).update(
+                    issueHTML +
+                    '<table>' +
+                    '<tr style="vertical-align:top">' +
+                    '    <td style="width:300px">' +
+                    '        <div id="ehrMenu1_' + webpart.wrapperDivId + '"></div>' +
+                    '    </td>' +
+                    '    <td style="width:300px;vertical-align:top">' +
+                    '        <div id="ehrMenu2_' + webpart.wrapperDivId + '"></div>' +
+                    '    </td>' +
+                    '    <td style="width:300px">' +
+                    '        <div id="ehrMenu3_' + webpart.wrapperDivId + '"></div>' +
+                    '    </td>' +
+                    '</tr>' +
+                    '</table>'
+            );
+
+            Ext4.create('LDK.panel.NavPanel', {
+                width: 270,
+                renderTo: 'ehrMenu1_' + webpart.wrapperDivId,
+                sections: [{
+                    header: 'By Animal',
+                    itemDefaults: {
+                        linkCls: 'none',
+                        style: 'font-weight: bold;'
+                    },
+                    items: [
+                        { name: 'Animal History', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view?' },
+                        { name: 'Animal Search', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalSearch.view?' }
+                    ]
+                }, {
+                    header: 'By Dataset',
+                    itemDefaults: {
+                        linkCls: 'none',
+                        style: 'font-weight: bold;'
+                    },
+                    items: [
+                        { name: 'Browse All Datasets', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/nbri_ehr-datasets.view?' },
+                        { name: 'Housing Queries', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-housingQueries.view?' },
+                        { name: 'Protocol and Project Queries', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-projectQueries.view?' }
+                    ]
+                }, {
+                        header: 'Entire Colony',
+                        itemDefaults: {
+                            linkCls: 'none',
+                            style: 'font-weight: bold;'
+                        },
+                        items: [
+                            { name: 'Population Summary', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-populationOverview.view?'},
+                            { name: 'Colony Population By Age', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/query-executeQuery.view?schemaName=study&query.queryName=colonyPopulationByAge'},
+                            { name: 'Colony Overview', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-colonyOverview.view?' },
+                            { name: 'Room Utilization', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/query-executeQuery.view?schemaName=ehr_lookups&query.queryName=roomUtilization' },
+                            { name: 'More Reports', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-moreReports.view?' },
+                        ]
+                    }]
+            });
+
+            Ext4.create('LDK.panel.NavPanel', {
+                width: 270,
+                renderTo: 'ehrMenu2_' + webpart.wrapperDivId,
+                sections: [
+                    {
+                        header: 'Cases',
+                        itemDefaults: {
+                            linkCls: 'none',
+                            style: 'font-weight: bold;'
+                        },
+                        items: [
+                            {name: 'Active Clinical Cases', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view#inputType:none&showReport:1&activeReport:cases'},
+                            {name: 'Active Behavior Cases', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view#inputType:none&showReport:1&activeReport:behaviorCases'},
+                          ]
+                    },
+                    {
+                        header: 'Medications and Treatments',
+                        itemDefaults: {
+                            linkCls: 'none',
+                            style: 'font-weight: bold;'
+                        },
+                        items: [
+                            {name: 'Today\'s Medication/Treatment Schedule', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view#inputType:none&showReport:1&activeReport:clinMedicationSchedule'},
+                            {name: 'Incomplete Past Treatments', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view#inputType:none&showReport:1&activeReport:incompleteTreatments'},
+                            {name: 'Active Clinical Medication Orders', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view#inputType:none&showReport:1&activeReport:activeClinTreatmentOrders'},
+                            {name: 'Active Behavior Medication Orders', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view#inputType:none&showReport:1&activeReport:activeBehaviorTreatmentOrders'},
+                        ]
+                    },
+                    {
+                        header: 'Observations',
+                        itemDefaults: {
+                            linkCls: 'none',
+                            style: 'font-weight: bold;'
+                        },
+                        items: [
+                            {name: 'Today\'s Observation Schedule', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view#inputType:none&showReport:1&activeReport:observationSchedule'},
+                            {name: 'Incomplete Past Observations', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view#inputType:none&showReport:1&activeReport:incompleteObservations'},
+                            {name: 'Active Clinical Observation Orders', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view#inputType:none&showReport:1&activeReport:activeClinicalObservationOrders'},
+                            {name: 'Active Behavior Observation Orders', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view#inputType:none&showReport:1&activeReport:activeBehaviorObservationOrders'},
+                        ]
+                    },
+                    {
+                        header: 'Procedures',
+                        itemDefaults: {
+                            linkCls: 'none',
+                            style: 'font-weight: bold;'
+                        },
+                        items: [
+                            {name: 'Today\'s Procedure Schedule', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view#inputType:none&showReport:1&activeReport:prcSchedule'},
+                            {name: 'Overdue Procedure Orders', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view#inputType:none&showReport:1&activeReport:prcOverdue'},
+                            {name: 'All Procedure Orders', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-animalHistory.view#inputType:none&showReport:1&activeReport:prcOrders'},
+                        ]
+                    },
+                ]
+            });
+
+            let menuCfg3 = {
+                width: 330,
+                renderTo: 'ehrMenu3_' + webpart.wrapperDivId,
+                sections: [
+                    {
+                        header: 'Pathology',
+                        itemDefaults: {
+                            linkCls: 'none',
+                            style: 'font-weight: bold;'
+                        },
+                        items: [
+                            {
+                                name: 'Necropsy Requests',
+                                url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/query-executeQuery.view?schemaName=nbri_ehr&query.queryName=necropsyTasks'
+                            },
+                        ]
+                    },
+                    {
+                    header: 'Data Entry',
+                    renderer: this.myTasksRenderer,
+                    itemDefaults: {
+                        linkCls: 'none',
+                        style: 'font-weight: bold;'
+                    },
+                    items: [
+                        { name: 'Enter Data', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-enterData.view' },
+                        { name: 'My Review Tasks (' + this.myNumOfTasks + ')' , url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/query-executeQuery.view?schemaName=ehr&query.queryName=my_tasks&query.viewName=Review Required', style: this.myNumOfTasks > 0 ? 'background-color: #FBEC5D; margin: 2px; padding: 2px;' : undefined}
+                    ]
+                }
+                ]
+            };
+
+            if (LABKEY.Security.currentUser.isAdmin) {
+                menuCfg3.sections.push({
+                    header: 'Admin',
+                    itemDefaults: {
+                        linkCls: 'none',
+                        style: 'font-weight: bold;'
+                    },
+                    items: [
+                        { name: 'EHR Admin Page', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-ehrAdmin.view' },
+                        { name: 'Manage Lookup Tables', url: '<%=contextPath%>' + ctx['EHRStudyContainer'] + '/ehr-ehrLookups.view' },
+                    ]
+                });
+            }
+
+            Ext4.create('LDK.panel.NavPanel', menuCfg3);
+
+        }
+    }
+</script>

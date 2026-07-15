@@ -1,0 +1,34 @@
+value	title	sort_order
+N/A	N/A	1
+Whole Body	Whole Body	2
+Thorax	Thorax	4
+EENT	EENT	5
+Integ	Integ	6
+MS	MS	7
+Oral	Oral	8
+PLN	PLN	9
+U/G	U/G	10
+Incision: Main	Incision: Main	12
+Incision: Scope	Incision: Scope	13
+Incision: L-Port	Incision: L-Port	14
+Incision: R-Port	Incision: R-Port	15
+Incision: All	Incision: All	16
+Right Eyelid	Right Eyelid	17
+Left Eyelid	Left Eyelid	18
+Left Hand	Left Hand	19
+Right Hand	Right Hand	20
+Left Foot	Left Foot	21
+Right Foot	Right Foot	22
+Head & Neck	Head & Neck	23
+Right Forelimb	Right Forelimb	24
+Left Forelimb	Left Forelimb	25
+Chest	Chest	26
+Abdomen	Abdomen	27
+Upper Back	Upper Back	28
+Lower Back	Lower Back	29
+Right Upper Leg	Right Upper Leg	30
+Left Upper Leg	Left Upper Leg	31
+Right Lower Leg & Foot	Right Lower Leg & Foot	32
+Left Lower Leg & Foot	Left Lower Leg & Foot	33
+Tail	Tail	34
+Other	Other	35

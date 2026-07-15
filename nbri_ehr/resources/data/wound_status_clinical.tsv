@@ -1,0 +1,11 @@
+value	sort_order
+Healing well	1
+Mostly healed	2
+Completely healed	3
+Cannot visualize	4
+Dehiscence (wound opened)	5
+Necrotic tissue present	6
+Bone exposure on digit(s)	7
+Abscess	8
+Purulent exudate present	9
+Other	10

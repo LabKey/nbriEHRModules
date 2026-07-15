@@ -1,0 +1,17 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="observation_types" tableDbType="TABLE">
+                <tableTitle>Observation Types</tableTitle>
+                <columns>
+                    <column columnName="value">
+                        <isKeyField>false</isKeyField>
+                    </column>
+                    <column columnName="rowid">
+                        <isKeyField>true</isKeyField>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>
