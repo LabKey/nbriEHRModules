@@ -1,0 +1,26 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
+    <columns>
+        <column name="procedureRecord"/>
+        <column name="Id"/>
+        <column name="Id/Demographics/species"/>
+        <column name="Id/curLocation/cage/room/floor/building"/>
+        <column name="Id/curLocation/cage"/>
+        <column name="date"/>
+        <column name="procedure"/>
+        <column name="orderedby"/>
+        <column name="windowStart"/>
+        <column name="windowEnd"/>
+        <column name="daysOverdue"/>
+        <column name="remark"/>
+        <column name="status"/>
+    </columns>
+    <filters>
+        <filter column="Id/Demographics/calculated_status" operator="eq" value="Alive"/>
+    </filters>
+    <sorts>
+        <sort column="daysOverdue" descending="true"/>
+        <sort column="status" descending="false"/>
+        <sort column="Id/curLocation/room"/>
+        <sort column="Id/curLocation/cage"/>
+    </sorts>
+</customView>

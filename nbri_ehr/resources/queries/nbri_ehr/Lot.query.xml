@@ -1,0 +1,20 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="Lot" tableDbType="TABLE">
+                <tableTitle>Animal Lot</tableTitle>
+                <columns>
+                    <column columnName="AnimalShipment">
+                        <columnTitle>Animal Shipment</columnTitle>
+                        <fk>
+                            <fkDbSchema>nbri_ehr</fkDbSchema>
+                            <fkTable>AnimalShipment</fkTable>
+                            <fkColumnName>AnimalShipmentId</fkColumnName>
+                            <fkDisplayColumnName>AnimalShipmentId</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

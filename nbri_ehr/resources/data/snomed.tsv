@@ -1,0 +1,357 @@
+Code	Meaning
+NBRI-001	Acepromazine
+NBRI-002	Acetaminophen
+NBRI-003	Adequan
+NBRI-004	Albendazole
+NBRI-005	Albon suspension
+NBRI-006	Albuterol
+NBRI-007	Alfaxalone
+NBRI-008	Alfentanil
+NBRI-009	Alprazolam
+NBRI-010	Aluminum Hydroxide
+NBRI-011	Amikacin Sulfate
+NBRI-012	Aminophylline
+NBRI-013	Amiodarone
+NBRI-014	Amitriptyline
+NBRI-015	Amoxicillin
+NBRI-016	Amoxicillin / Clavulanic Acid
+NBRI-017	Amoxi-Mast
+NBRI-018	Ampicillin
+NBRI-019	Ampicillin/Sulbactam
+NBRI-020	Artemether
+NBRI-021	Aspirin
+NBRI-022	Atenolol Suspension
+NBRI-023	Atipamezole HCl
+NBRI-024	Atracurium
+NBRI-025	Atropine Sulfate
+NBRI-026	Azathioprine
+NBRI-027	Azithromycin
+NBRI-028	Barium Sulfate
+NBRI-029	Belatacept
+NBRI-030	Benzoyl Peroxide Shampoo
+NBRI-031	Betamethasone Dipropionate
+NBRI-032	Bethanechol
+NBRI-033	Bio-Sponge
+NBRI-034	Biozide Gel
+NBRI-035	Bismuth Subsalicylate
+NBRI-036	Budesonide
+NBRI-037	Bupivacaine HCl
+NBRI-038	Bupivacaine HCl And Epinephrine
+NBRI-039	Bupivacaine SR (Nocita)
+NBRI-040	Buprenorphine
+NBRI-041	Buprenorphine SR
+NBRI-042	Busulfan
+NBRI-043	Butorphanol Tartrate
+NBRI-044	Calcium citrate powder
+NBRI-045	Calcium gluconate 23%
+NBRI-046	Carprofen, injectable
+NBRI-047	Carprofen, oral
+NBRI-048	Carvedilol
+NBRI-049	Cd3-Immunotoxin
+NBRI-050	Cefazolin
+NBRI-051	Cefdinir
+NBRI-052	Cefovecin (Convenia)
+NBRI-053	Cefpodoxime
+NBRI-054	Ceftiofur crystalline free acid (CFFA)
+NBRI-055	Ceftriaxone
+NBRI-056	Cefuroxime
+NBRI-057	Cephalexin
+NBRI-058	Chloramphenicol
+NBRI-059	Chlorhexidine spray (Duoxo®)
+NBRI-060	Chloroquine
+NBRI-061	Chlorpromazine
+NBRI-062	Chlorthalidone
+NBRI-063	Cimetidine
+NBRI-064	Ciprofloxacin
+NBRI-065	Cisapride
+NBRI-066	Clay
+NBRI-067	Clindamycin
+NBRI-068	Clobetasol Propionate
+NBRI-069	Clomipramine
+NBRI-070	Clopidogrel
+NBRI-071	Cloprostenol
+NBRI-072	Colchicine
+NBRI-073	Collodial Oatmeal
+NBRI-074	Cyanocobalamin (Vitamin B12)
+NBRI-075	Cyclomydril
+NBRI-076	Cyclophosphamide
+NBRI-077	Cyclosporine
+NBRI-078	Cyproheptadine
+NBRI-079	DA2PP Vaccine (Distemper, Adenovirus Type 2, Parvovirus, Parainfluenza)
+NBRI-080	Definity
+NBRI-081	Denv Vaccine
+NBRI-082	Derma Caps
+NBRI-083	Deslorelin
+NBRI-084	Dexamethasone
+NBRI-085	Dexamethasone SP
+NBRI-086	Dexmedetomidine HCl
+NBRI-087	Dextromethorphan
+NBRI-088	Dextrose
+NBRI-089	Diazepam
+NBRI-090	Diclofenac Sodium Ophthalmic Solution
+NBRI-091	Diet, Ensure Liquid Nutrition
+NBRI-092	Diet, Ensure Soaked Biscuits
+NBRI-093	Diet, Juice Soaked Biscuits
+NBRI-094	Diet, Misc, Nos
+NBRI-095	Diet, Water Soaked Biscuits
+NBRI-096	Digoxin
+NBRI-097	Dimethicone Barrier Cream
+NBRI-098	Dinoprost (PGF2 alpha)
+NBRI-099	Diphenhydramine, injectable
+NBRI-100	Diphenhydramine, oral
+NBRI-101	Diphenoxylate
+NBRI-102	Dobutamine
+NBRI-103	Docusate Sodium
+NBRI-104	Dopamine
+NBRI-105	Doxapram
+NBRI-106	Doxipen
+NBRI-107	Doxycycline
+NBRI-108	Draxxin
+NBRI-109	Dronabinol
+NBRI-110	Drug, Nos
+NBRI-111	Ear cleaning solution
+NBRI-112	Enalapril
+NBRI-113	Enrofloxacin, injectable
+NBRI-114	Enrofloxacin, oral
+NBRI-115	Enulose
+NBRI-116	Epinephrine [1:1000, 1 mg/mL]
+NBRI-117	Epoetin
+NBRI-118	Epsom salt bag
+NBRI-119	Erythromycin
+NBRI-120	Essential 6 Spot On
+NBRI-121	Famotidine, injectable
+NBRI-122	Famotidine, oral
+NBRI-123	Fenbendazole
+NBRI-124	Fentanyl
+NBRI-125	Fenugreek
+NBRI-126	Finasteride
+NBRI-127	Florfenicol
+NBRI-128	Fluconazole
+NBRI-129	Flumazenil
+NBRI-130	Flunixin meglumine
+NBRI-131	Fluoxetine
+NBRI-132	Flurbiprofen
+NBRI-133	Fosphenytoin
+NBRI-134	FSH
+NBRI-135	Furosemide
+NBRI-136	FVRCP vaccine (Feline Viral Rhinotracheitis, Calicivirus, Panleukopenia)
+NBRI-137	Gabapentin
+NBRI-138	Gentamicin
+NBRI-139	Gentamicin/ betamethasone spray
+NBRI-140	Glipizide
+NBRI-141	Glucosamine/Chondroitin Ds
+NBRI-142	Glucosamine/Chondroitin/Msm
+NBRI-143	Glycopyrrolate
+NBRI-144	Golytely
+NBRI-145	Granulex
+NBRI-146	Griseofulvin
+NBRI-147	Guanfacine
+NBRI-148	Haloperidol decanoate (depot)
+NBRI-149	Haloperidol lactate
+NBRI-150	Heparin Sodium
+NBRI-151	Hetastarch
+NBRI-152	Human Chorionic Gonadotropin
+NBRI-153	Humilac
+NBRI-154	Hydrocortisone cream
+NBRI-155	Hydrogel
+NBRI-156	Hydromorphone
+NBRI-157	Hydromorphone Injectable Hcl
+NBRI-158	Hypertonic Saline
+NBRI-159	Ibuprofen
+NBRI-160	Indocyanine Green
+NBRI-161	Influenza Vaccine
+NBRI-162	Insulin
+NBRI-163	Insulin (rapid, short, and intermediate acting)
+NBRI-164	Insulin, Degludec
+NBRI-165	Insulin, Glargine
+NBRI-166	Iodoquinolol
+NBRI-167	Iohexol (Omnipaque)
+NBRI-168	Iron Dextran
+NBRI-169	Isoflurane
+NBRI-170	Isoniazid
+NBRI-171	Isoproterenol
+NBRI-172	Isovue-300
+NBRI-173	Isovue-370. T
+NBRI-174	Itraconazole
+NBRI-175	Ivermectin 1% Injectable
+NBRI-176	Kaolin & Pectin
+NBRI-177	Karo syrup
+NBRI-178	Ketaloric Trimethamine Ophthalmic Solution
+NBRI-179	Ketamine Injectable
+NBRI-180	Ketoconazole
+NBRI-181	Ketoprofen Injectable
+NBRI-182	Ketorolac
+NBRI-183	Lactated ringers solution
+NBRI-184	Leuprolide
+NBRI-185	Levetiracetam
+NBRI-186	Lidocaine + epinephrine
+NBRI-187	Lidocaine Hydrochloride
+NBRI-188	Loperamide Hydrochloride
+NBRI-189	Loratadine
+NBRI-190	Lorazepam
+NBRI-191	L-Tryptophan
+NBRI-192	L-Lysine
+NBRI-193	Magnesium hydroxide
+NBRI-194	Mannitol
+NBRI-195	Maropitant Citrate
+NBRI-196	Mct Oil
+NBRI-197	Measles, Mumps, Rubella Vaccine (MMR)
+NBRI-198	Mebendazole
+NBRI-199	Medetomidine Hcl
+NBRI-200	Medihoney
+NBRI-201	Medroxyprogesterone acetate (Depo-Provera)
+NBRI-202	Mefloquine
+NBRI-203	Megestrol Acetate
+NBRI-204	Melengestrol Acetate
+NBRI-205	Meloxicam, injectable
+NBRI-206	Meloxicam, oral
+NBRI-207	Meloxicam, sustained release
+NBRI-208	Menotropins
+NBRI-209	Mesalamine
+NBRI-210	Metamucil Powder
+NBRI-211	Metformin
+NBRI-212	Methotrexate
+NBRI-213	Methylene Blue
+NBRI-214	Methylprednisolone acetate (Depo-Medrol)
+NBRI-215	Methylprednisolone sodium succinate (Solu-medrol)
+NBRI-216	Metoclopramide
+NBRI-217	Metronidazole, injectable
+NBRI-218	Metronidazole, oral
+NBRI-219	Miconahex + Triz
+NBRI-220	Midazolam
+NBRI-221	Mifepristone
+NBRI-222	Minocycline HCl
+NBRI-223	Mirtazapine
+NBRI-224	Misoprostol
+NBRI-225	Morphine
+NBRI-226	Moxidectin
+NBRI-227	Moxifloxacin Opthalmic
+NBRI-228	Multivitamin Preparation, Nos
+NBRI-229	Mylanta
+NBRI-230	Nalbuphine
+NBRI-231	Naloxone
+NBRI-232	Naltrexone
+NBRI-233	Nembutal
+NBRI-234	Neo/Poly/Bac W/Dexamethasone
+NBRI-235	Neomycin Sulfate
+NBRI-236	Neomycin/Bacitracin/Polymyxin
+NBRI-237	Neostigmine
+NBRI-238	Nitazoxanide
+NBRI-239	Normasol
+NBRI-240	Nystatin
+NBRI-241	N-acetylcysteine
+NBRI-242	Olanzapine
+NBRI-243	Omeprazole
+NBRI-244	Ondansetron
+NBRI-245	Ophthalmic Eye Wash
+NBRI-246	Oral rehydration salts (oral electrolytes)
+NBRI-247	Oxacillin
+NBRI-248	Oxycodone Hydrochloride
+NBRI-249	Oxygen
+NBRI-250	Oxymorphone Hydrochloride
+NBRI-251	Oxytetracycline
+NBRI-252	Oxytocin
+NBRI-253	Packed red blood cells
+NBRI-254	Pancuronium
+NBRI-255	Pantoprazole (Protonix)
+NBRI-256	Paromomycin
+NBRI-257	Penicillin G Procaine
+NBRI-258	Pentobarbital (euthanasia solution)
+NBRI-259	Pentobarbitol Sodium
+NBRI-260	Phenazopyridine
+NBRI-261	Phenobarbital
+NBRI-262	Phenylephrine
+NBRI-263	Phenytoin
+NBRI-264	Phytonadione (Vitamin K1)
+NBRI-265	Pimobendan
+NBRI-266	Pioglitazone
+NBRI-267	Plasma
+NBRI-268	Platelet rich plasma (PRP)
+NBRI-269	Polymyxin B
+NBRI-270	Polymyxin B Sulfate and Bacitracin ophthalmic ointment
+NBRI-271	Potassium chloride 10%, injectable
+NBRI-272	Potassium Gluconate
+NBRI-273	Potassium, oral
+NBRI-274	Prang
+NBRI-275	Praziquantel
+NBRI-276	Prazosin
+NBRI-277	Prednisolone
+NBRI-278	Prednisolone Sodium Succinate
+NBRI-279	Prednisone
+NBRI-280	Primaquine
+NBRI-281	Probiotic, B. Infantis
+NBRI-282	Probiotic, Capsule
+NBRI-283	Probiotic, L. Reuteri
+NBRI-284	Probiotic, Paste
+NBRI-285	Probiotic, Visbiome
+NBRI-286	Prochlorperazine
+NBRI-287	Propofol
+NBRI-288	Propranolol
+NBRI-289	Psyllium Seed
+NBRI-290	Putrescine
+NBRI-291	Pyrantel pamoate
+NBRI-292	Quinine
+NBRI-293	Rabies Vaccine, Killed Virus, 1 year
+NBRI-294	Rabies Vaccine, Killed Virus, 3 year
+NBRI-295	Rabies Vaccine, Modified Live Virus
+NBRI-296	Ranitidine
+NBRI-297	Rapamycin
+NBRI-298	Robenacoxib (Onsior)
+NBRI-299	Rocuronium Bromide
+NBRI-300	Ropivacaine
+NBRI-301	S-adenosyl-L-methionine (SAMe) + milk thistle extract
+NBRI-302	Sevoflurane
+NBRI-303	Shampoo, Chlorhexidine
+NBRI-304	Shampoo, Epi-Soothe
+NBRI-305	Shampoo, medicated other
+NBRI-306	Silver sulfadiazine (SSD) Cream
+NBRI-307	Simethicone
+NBRI-308	Sodium Bicarbonate
+NBRI-309	Sodium Chloride
+NBRI-310	Spironolactone
+NBRI-311	Succinylcholine
+NBRI-312	Sucralfate
+NBRI-313	Sufentanil
+NBRI-314	Sulfadimethoxine
+NBRI-315	Sulfamethoxazole/Trimethoprim
+NBRI-316	Sulfasalazine
+NBRI-317	Tacrolimus
+NBRI-318	Terbutaline
+NBRI-319	Terbutaline Sulfate Injectable
+NBRI-320	Tetanus Toxoid Vaccine
+NBRI-321	Tetracaine ophthalmic solution
+NBRI-322	Tetracycline
+NBRI-323	Theophylline
+NBRI-324	Thiabendazole
+NBRI-325	Tiletamine/Zolazepam Injectable (Telazol)
+NBRI-326	Tinidazole
+NBRI-327	Tobramycin Opthalmic
+NBRI-328	Tramadol
+NBRI-329	Tranexamic acid (TEA)
+NBRI-330	Trazadone
+NBRI-331	Triamcinilone Acetate
+NBRI-332	Trimethoprim/Sulfa
+NBRI-333	Triple Antibiotic Ointment
+NBRI-334	Tryptophan
+NBRI-335	Tuberculin mammalian
+NBRI-336	Tulathromycin
+NBRI-337	Tylan Injectable
+NBRI-338	Tylosin
+NBRI-339	Ursodiol
+NBRI-340	Valbazen
+NBRI-341	Valganciclovir Hydrochloride
+NBRI-342	Vancomycin
+NBRI-343	Vanguard DM (Distemper-Measles vaccine)
+NBRI-344	Vecuronium
+NBRI-345	Venlafaxine
+NBRI-346	Vetericyn Plus Spray
+NBRI-347	Vitamin B Complex
+NBRI-348	Vitamin C
+NBRI-349	Vitamin D3
+NBRI-350	Vitamin K1
+NBRI-351	Water Soaked Chow
+NBRI-352	Whole blood
+NBRI-353	Xylazine Injectable
+NBRI-354	Yohimbine
+NBRI-355	Zenpep
+NBRI-35p	Post-Op Rounds

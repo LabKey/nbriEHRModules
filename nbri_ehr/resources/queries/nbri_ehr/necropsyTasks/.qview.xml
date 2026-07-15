@@ -1,0 +1,28 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="viewNecropsy"/>
+        <column name="enterNecropsyData"/>
+        <column name="animalId"/>
+        <column name="animalId/curLocation/cage">
+            <properties>
+                <property name="columnTitle" value="Location"/>
+            </properties>
+        </column>
+        <column name="animalId/activeProjectAssignments/project"/>
+        <column name="animalId/activeProtocolAssignments/protocolDisplayName">
+            <properties>
+                <property name="columnTitle" value="Protocol"/>
+            </properties>
+        </column>
+        <column name="assignedTo"/>
+        <column name="created"/>
+        <column name="createdBy"/>
+        <column name="modified"/>
+        <column name="modifiedBy"/>
+        <column name="status"/>
+    </columns>
+    <sorts>
+        <sort column="statusOrder" descending="false"/>
+        <sort column="modified" descending="false"/>
+    </sorts>
+</customView>

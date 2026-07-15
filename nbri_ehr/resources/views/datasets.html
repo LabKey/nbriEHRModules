@@ -1,0 +1,130 @@
+<script type="text/javascript" nonce="<%=scriptNonce%>">
+
+Ext4.onReady(function () {
+    const webpart = <%=webpartContext%>;
+    Ext4.get(webpart.wrapperDivId).update('Loading...');
+
+    const config = {displayField: 'Label', headerField: 'categoryId/label', target: webpart.wrapperDivId};
+
+    const nonFormUpdates = ["Treatment Cases", "Procedures", "Drug Administration", "Deaths"];
+
+    const hideUpdateRecords = [];
+
+    EHR.Security.init({
+        success: function(){
+            LABKEY.Query.selectRows({
+                schemaName: 'study',
+                queryName: 'DataSets',
+                columns: 'categoryId/label,label,ShowByDefault',
+                success: function(results){
+                    onSuccess(results)
+                },
+                scope: this,
+                failure: EHR.Utils.onError,
+                sort: config.headerField+','+config.displayField,
+                filterArray: config.filterArray
+            });
+        },
+        scope: this
+    });
+
+    function onSuccess(data){
+        var menuCfg = {
+            renderTo: config.target,
+            sections: new Array(),
+            sectionHeaderCls: 'class',
+            renderer: function(record){
+                var item = {
+                    schemaName: 'study',
+                    queryName: record.data.Label
+                }
+
+                var cfg = {
+                    layout: 'hbox',
+                    bodyStyle: 'background-color: transparent;',
+                    defaults: LDK.panel.NavPanel.ITEM_DEFAULTS,
+                    items: [
+                        this.getLabelItemCfg(item)
+                    ,
+                        this.getSearchItemCfg(item, {
+                            url: LABKEY.ActionURL.buildURL("query", "searchPanel", null, {schemaName: item.schemaName, queryName: item.queryName})
+                        })
+                    ,
+                        this.getBrowseItemCfg(item, {
+                            url: LABKEY.ActionURL.buildURL("query", "executeQuery", null, {schemaName: item.schemaName, 'query.queryName': item.queryName})
+                        })
+                    ]
+                }
+
+                let params = {
+                    schemaName: 'study',
+                    'query.queryName': item.queryName,
+                    'keyField': 'lsid'
+                }
+
+                if (nonFormUpdates.indexOf(item.queryName) !== -1)
+                    params.queryUpdateURL = true;
+
+                if(EHR.Security.hasPermission('Completed', 'update', {schemaName: 'study', queryName: item.queryName}) && hideUpdateRecords.indexOf(item.queryName) === -1){
+
+                    if(nonFormUpdates.indexOf(item.queryName) !== -1) {
+                        //adding an item here so that the 'Admin Update Records' link aligns with other links in the same "column"
+                        cfg.items.push({
+                            xtype: 'box',
+                            html: '<span><a class="labkey-text-link" style="cursor: pointer; visibility: hidden;">Update Records</a></span>'
+                        });
+                    }
+                    else {
+                     cfg.items.push({
+                        xtype: 'ldk-linkbutton',
+                        tooltip: item.searchTooltip || 'Click to update records',
+                        href: LABKEY.ActionURL.buildURL('ehr', 'updateQuery', null, params),
+                        text: 'Update Records'
+                    });
+                    }
+                }
+
+                params.queryUpdateURL = true;
+                params.showImport = false;
+                if(EHR.Security.hasPermission('Completed', 'admin', {schemaName: 'study', queryName: item.queryName})){
+                    cfg.items.push({
+                        xtype: 'ldk-linkbutton',
+                        tooltip: item.searchTooltip || 'Admin click to update records',
+                        href: LABKEY.ActionURL.buildURL('ldk', 'updateQuery', null, params),
+                        text: 'Admin Update Records'
+                    });
+                }
+
+                return cfg;
+            }
+        }
+
+        var sections = {};
+        var section;
+        for (var i=0;i<data.rows.length;i++){
+            var row = data.rows[i];
+            if(!row.ShowByDefault){
+                continue;
+            }
+
+            var sectionName = row[config.headerField] || '';
+            if (!sections[sectionName]){
+                section = {header: sectionName, items: []};
+                sections[sectionName] = section;
+
+                menuCfg.sections.push(section);
+            }
+            else
+                section = sections[sectionName];
+
+            section.items.push({name: row[config.displayField], data: row})
+
+        }
+
+        Ext4.get(webpart.wrapperDivId).update(null);
+        Ext4.create('LDK.panel.NavPanel', menuCfg);
+    }
+
+});
+
+</script>

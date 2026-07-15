@@ -1,0 +1,75 @@
+value	category
+Alopecia	Behavioral
+SIB	Behavioral
+Other behavioral	Behavioral
+Stereotypy	Behavioral
+Fecal smear	Behavioral
+Eye poking	Behavioral
+Urine drinking	Behavioral
+Copraphagy	Behavioral
+Skin laceration(s)	Trauma
+Muscle laceration(s)	Trauma
+Crushing wounds	Trauma
+Abrasions	Trauma
+Fracture(s)	Trauma
+Puncture wounds	Trauma
+Traumatic amputation(s)	Trauma
+SIB (self-injurious behavior)	Trauma
+Other trauma	Trauma
+Diarrhea	GI abnormality
+Undercondition	General abnormality
+Dehydration	General abnormality
+Bloody Stool	GI abnormality
+Anorexia	GI abnormality
+Rectal prolapse	GI abnormality
+Hepatomegaly	GI abnormality
+Other GI abnormality	GI abnormality
+Ataxia	Neurologic abnormality
+Paralysis/Paresis	Neurologic abnormality
+Head tilt	Neurologic abnormality
+Other neurologic abnormality	Neurologic abnormality
+Penile/preputial lesions	Dermatologic abnormality
+Dermatitis	Dermatologic abnormality
+Abscess	Dermatologic abnormality
+Incisional infection	Dermatologic abnormality
+Skin mass	Dermatologic abnormality
+Skin lesion(s)	Dermatologic abnormality
+Other dermatologic abnormality	Dermatologic abnormality
+Dystocia	Genitourinary abnormality
+Vaginal prolapse	Genitourinary abnormality
+Uterine enlargement	Genitourinary abnormality
+Endometriosis	Genitourinary abnormality
+Retained placenta	Genitourinary abnormality
+Hematuria (bloody urine)	Genitourinary abnormality
+Other genitourinary abnormality	Genitourinary abnormality
+AV fistula	Circulatory abnormality
+Heart murmur	Circulatory abnormality
+Other circulatory abnormality	Circulatory abnormality
+Conjunctivitis/ocular discharge	Ocular abnormality
+Blepharospasm	Ocular abnormality
+Corneal ulcer	Ocular abnormality
+Other ocular abnormality	Ocular abnormality
+Dyspnea/Labored breathing	Respiratory abnormality
+Purulent nasal discharge	Respiratory abnormality
+Epistaxis/bloody nasal discharge	Respiratory abnormality
+Other respiratory abnormality	Respiratory abnormality
+Tooth abscess	Oral abnormality
+Gingivitis/periodontal disease	Oral abnormality
+Foreign body in cheek pouch	Oral abnormality
+Oral mass	Oral abnormality
+Other oral abnormality	Oral abnormality
+Lameness	Musculoskeletal abnormality
+Other musculoskeletal abnormality	Musculoskeletal abnormality
+Weight loss	General abnormality
+Edema	General abnormality
+Abdominal mass	General abnormality
+Unresponsive/Down	General abnormality
+Lethargy	General abnormality
+Orphan/dam neglect	General abnormality
+Anemia	General abnormality
+Thrombocytopenia	General abnormality
+Other general abnormality	General abnormality
+Jejunal resection	Study-related surgery
+Liver biopsy	Study-related surgery
+Spleen biopsy	Study-related surgery
+Other study-related surgery	Study-related surgery

@@ -1,0 +1,9 @@
+value	sort_order
+Pregnant	1
+No pregnancy detected	2
+Mammary gland abscess/mastitis	3
+Agalactia/low milk production	4
+Dystocia/difficult labor	5
+Retained placenta	6
+No abnormality observed	7
+Other	8

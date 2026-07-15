@@ -1,0 +1,91 @@
+value	title	description
+1	Kg	Kilogram
+2	mmol	Millimole
+3	mm	Millimeter
+4	mL/min	Milliliters per minute
+5	mL	Milliliter
+6	mg/L	Milligrams per liter
+7	mg/g	Milligrams per gram
+8	mg/dL	Milligrams per deciliter
+9	mg/d	Milligrams per day
+10	mg/24 hrs	Milligrams per 24 hours
+11	mg	Milligram
+12	mPOL	Milli polarization unit
+13	mIU/hr	Milli international units per hour
+14	mIU	Milli international units
+15	LIV	Lyme index value
+16	L	Liter
+17	IU/mL	International units per milliliter
+18	IU/L	International units per liter
+19	IU/g	International units per gram
+20	IU	International unit
+21	ISR	Immune status ratio
+22	MPL	IgM phospholipid units
+23	GPL	IgG phospholipid units
+24	h	Hour
+25	g/dL	Grams per deciliter
+26	g/d	Grams per day
+27	g/24 hrs	Grams per 24 hours
+28	g/5 hrs	Grams per 5hours
+29	g	Gram
+30	fL	Femtoliter
+31	EIU	Enzyme immunoassay unit
+32	EU/mL	Ehrlich units per milliliter
+33	EU/24 hrs	Ehrlich units per 24 hours
+34	EU	Ehrlich unit
+35	ETU/mL	Endotoxin units per milliliter
+36	dL	Deciliter
+37	d	Day
+38	cpy/mL	Copies per milliliter
+39	CMM	Cubic milliliter
+40	cP	Centipoise unit
+41	CFU/mL	Colony forming units per milliliter
+42	AU/mL	Arbitrary units per milliliter
+43	U/mL	Units per milliliter
+44	U/L	Units per liter
+45	U/hr	Units per hour
+46	U/g	Units per gram
+47	U/day	Units per day
+48	U	Unit
+49	TV	Total volume
+50	TIV	Toxoplasma index value
+51	SD	Standard deviation
+52	s	Second
+53	RIV	Rubella index value
+54	pmol/g	Picomoles per gram
+55	pmol	Picomole
+56	pg/mL	Picograms per milliliter
+57	pg	Picogram
+58	%	Percent
+59	ppm	Parts per million
+60	nmol/mL	Nanomoles per milliliter
+61	nmol/L	Nanomoles per liter
+62	nmol/g	Nanomoles per gram
+63	nmol/dL	Nanomoles per deciliter
+64	nmol/d	Nanomoles per day
+65	nmol	Nanomole
+66	nM/mM	Nanomole per millimole
+67	ng/mL/hr	Nanograms per milliliter per hour
+68	ng/mL	Nanograms per milliliter
+69	ng/L	Nanograms per liter
+70	ng/dL	Nanograms per deciliter
+71	ng	Nanogram
+72	mol	Mole
+73	min	Minute
+74	mU/mL	Milliunits per milliliter
+75	mU/L	Milliunits per liter
+76	mU/g	Milliunits per gram
+77	mU	Milliunit
+78	mOsm/kg	Milliosmoles per kilogram
+79	mOsm	Milliosmole
+80	mmol/L	Millimoles per liter
+81	mmol/d	Millimoles per day
+82	mmHg	Millimeters of Mercury
+83	p/m	Pulses per minute
+84	b/m	Breaths per minute
+85	hb/m	Heartbeats per minute
+86	°F	Degree Fahrenheit
+87	breaths/min	Breaths per minute
+88	heartbeats/min	Heartbeats per minute
+89	pulses/min	Pulses per minute
+90	BCS	Body condition score

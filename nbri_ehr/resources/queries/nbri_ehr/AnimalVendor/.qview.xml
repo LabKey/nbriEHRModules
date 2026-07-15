@@ -1,0 +1,20 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="AnimalVendorId" />
+        <column name="VendorApprovalCode" />
+        <column name="VendorName" />
+        <column name="VendorProductionLocation" />
+        <column name="StreetAddress1" />
+        <column name="StreetAddress2" />
+        <column name="City" />
+        <column name="StateProv" />
+        <column name="Country" />
+        <column name="Zip" />
+        <column name="ZipExt" />
+        <column name="PhoneNumber" />
+        <column name="FaxNumber" />
+        <column name="Comments" />
+        <column name="InternalVendor" />
+
+    </columns>
+</customView>

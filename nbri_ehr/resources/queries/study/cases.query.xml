@@ -1,0 +1,71 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="cases" tableDbType="TABLE" useColumnOrder="true">
+                <tableUrl></tableUrl>
+                <insertUrl />
+                <importUrl />
+                <updateUrl />
+                <deleteUrl />
+                <columns>
+                    <column columnName="Id"/>
+                    <column columnName="date">
+                        <columnTitle>Open Date</columnTitle>
+                    </column>
+                    <column columnName="enddate">
+                        <columnTitle>Close Date</columnTitle>
+                        <isHidden>false</isHidden>
+                    </column>
+                    <column columnName="problemCategory">
+                        <columnTitle>Problem Area</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>problem_list_category</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="problemSubcategory">
+                        <columnTitle>Problem Subcategory</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>problem_list_subcategory</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="openRemark">
+                        <inputType>textarea</inputType>
+                        <inputRows>5</inputRows>
+                    </column>
+                    <column columnName="plan">
+                        <columnTitle>Case Plan</columnTitle>
+                        <inputType>textarea</inputType>
+                        <inputRows>5</inputRows>
+                    </column>
+                    <column columnName="closeRemark">
+                        <inputType>textarea</inputType>
+                        <inputRows>5</inputRows>
+                    </column>
+                    <column columnName="performedby">
+                        <columnTitle>Opened By</columnTitle>
+                    </column>
+                    <column columnName="category">
+                        <columnTitle>Category</columnTitle>
+                        <isUserEditable>true</isUserEditable>
+                        <nullable>false</nullable>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>data_category</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="remark">
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="caseCategory">
+                        <isUserEditable>false</isUserEditable>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

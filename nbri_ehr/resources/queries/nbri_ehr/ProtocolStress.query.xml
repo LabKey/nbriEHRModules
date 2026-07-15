@@ -1,0 +1,21 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="ProtocolStress" tableDbType="TABLE">
+                <tableTitle>Protocol Stress</tableTitle>
+                <javaCustomizer class="org.labkey.nbri_ehr.table.NBRI_EHRCustomizer" />
+                <columns>
+                    <column columnName="Stress">
+                        <columnTitle>Stress</columnTitle>
+                        <fk>
+                            <fkDbSchema>nbri_ehr</fkDbSchema>
+                            <fkTable>Stress</fkTable>
+                            <fkColumnName>StressId</fkColumnName>
+                            <fkDisplayColumnName>Name</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

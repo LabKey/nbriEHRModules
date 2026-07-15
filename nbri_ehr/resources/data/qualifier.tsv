@@ -1,0 +1,54 @@
+value	title	description
+1	Species	Species
+2	Sex	Sex
+3	Age	Age
+4	Naive	Naive
+5	No Exposure to MAB	No Exposure to MAB
+6	No Exposure to other	No Exposure to other
+7	No Exposure to 30ds	No Exposure to 30ds
+8	No Exposure to 60ds	No Exposure to 60ds
+9	No Exposure to 90ds	No Exposure to 90ds
+10	No exposure for other	No exposure for other
+11	Juvenile	Juvenile
+12	HCV negative	HCV negative
+13	HIV negative	HIV negative
+14	HBV negative	HBV negative
+15	Monoclonal negative	Monoclonal negative
+16	HCV	HCV
+17	Antigenemia positive	Antigenemia positive
+18	SPF	SPF
+19	Enteric pathogen negative	Enteric pathogen negative
+20	Accepts alert dosing	Accepts alert dosing
+21	Alert bleeding	Alert bleeding
+22	Chair trained	Chair trained
+23	Obesity	Obesity
+24	Diabetes	Diabetes
+25	Male	Male
+26	Female	Female
+27	Over 2 years old	Over 2 years old
+28	Oophorectomized	Oophorectomized
+29	Vasectomy	Vasectomy
+30	Castration	Castration
+31	Hysterectomy	Hysterectomy
+32	Canines blunted	Canines blunted
+33	Canines removed	Canines removed
+34	Limb amputation	Limb amputation
+35	Abdominal Surgery (in the past)	Abdominal Surgery (in the past)
+36	SIB (under current medication)	Self Injurious Behavior  (under current medication)
+37	Chronic enteritis	Chronic enteritis
+38	Intermittent recurrent enteritis	Intermittent recurrent enteritis
+39	No experimental usage for 30days	No experimental usage for 30days
+40	Splenectomized	Splenectomized
+41	Partial hepatic lobectomy	Partial hepatic lobectomy
+42	Chronic disease	Chronic disease (may be heart disease, anything other than enteritis or diabetes)
+43	Alert bleeding trained	Alert bleeding trained
+44	Non-pregnant	Non-pregnant
+45	Lactating	Lactating
+46	Behavioral stereotypy (other than SIB)	Behavioral stereotypy (other than SIB)
+47	1 - 2 years old	1 - 2 years old
+48	Less than 1 year old	Less than 1 year old
+49	Nursing infant	Nursing infant
+50	Pregnant	Pregnant
+51	No Exposure for 30ds	No Exposure for 30ds
+52	No Exposure for 60ds	No Exposure for 60ds
+53	No Exposure for 90ds	No Exposure for 90ds

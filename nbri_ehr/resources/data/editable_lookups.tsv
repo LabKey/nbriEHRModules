@@ -1,0 +1,140 @@
+sch	query	category	title	description
+ehr_lookups	abdominal_obs_types	Clinical	Abdominal Observation Types	Used in clinical observations.
+ehr_lookups	abnormal_behavior_types	Clinical	Abnormal Behavior Observation Types	Used in clinical observations.
+ehr_lookups	acquisition_type	Colony Management	Acquisition Type	Types of acquisition for Arrivals.
+ehr_lookups	activity	Behavior	Activity	Behavior observation fixed values.
+ehr_lookups	ageclass	Colony Management	Age Class	"Categories of age, such as infant or adult, by species. Used in various reports grouping animals by age class."
+ehr_lookups	alias_category	Colony Management	Alias Category	
+ehr_lookups	alopecia_score	Behavior	Alopecia Score	Behavior observation fixed values.
+ehr_lookups	alopecia_type	Behavior	Alopecia Type	Behavior observation fixed values.
+ehr_lookups	alopecia_regrowth	Behavior	Alopecia Regrowth	Behavior observation fixed values.
+ehr_lookups	amount_units	Clinical	Amount Units	"Used in drugs, treatments given and treatments ordered datasets."
+ehr_lookups	app_score	Behavior	Appetite Score	Behavior observation fixed values.
+ehr_lookups	arrival_type	Colony Management	Arrival Type	Types of arrivals.
+ehr_lookups	arthritis_types	Clinical	Arthritis Types	Clinical observation fixed values.
+ehr_lookups	att_score	Behavior	Attitude Score	Behavior observation fixed values.
+ehr_lookups	bandage_observations	Clinical	Bandage Observations	Clinical observation fixed values.
+ehr_lookups	bcs_score	Clinical	Body Condition Score	Clinical observation fixed values.
+ehr_lookups	behavior_abnormality	Clinical	Behavior Abnormality	Clinical observation fixed values.
+ehr_lookups	behavior_mgmt_codes	Behavior	Behavior Management Codes	Behavior observation fixed values.
+ehr_lookups	behavior_types	Behavior	Behavior Types	Behavior observation fixed values.
+ehr_lookups	blood_draw_reason	Clinical	Blood Draw Reason	Used in blood draw datasets.
+ehr_lookups	blood_draw_tube_type	Clinical	Blood Draw Tube Type	Used in blood draw datasets.
+ehr_lookups	blood_sample_type	Clinical	Blood Sample Types	Used in blood draw datasets.
+ehr_lookups	blood_tube_volumes	Clinical	Blood Tube Volumes	Used in blood draw datasets.
+ehr_lookups	cage_type	Colony Management	Cage Type	Used in cage details.
+ehr_lookups	calculated_status_codes	Colony Management	Calculated Status	Animal status values.
+ehr_lookups	capillary_refill_time	Clinical	Capillary Refill Times	Used clinical observations.
+ehr_lookups	card_format	Colony Management	Card Format	
+ehr_lookups	census_activity_status	Colony Management	Census Activity Status	
+ehr_lookups	clinremarks_category	Clinical	Clinical Remark Category	Clinical remarks category.
+ehr_lookups	conc_units	Clinical	Concentration Units	Used in drug and treatment datasets.
+ehr_lookups	congenital_abnormalities	Clinical	Congenital Abnormalities	Clinical observation fixed values.
+ehr_lookups	cost_center	Colony Management	Cost Center	
+ehr_lookups	cost_type	Colony Management	Cost Type	
+ehr_lookups	country	Colony Management	Country	
+ehr_lookups	country_category	Colony Management	Country Category	
+ehr_lookups	daily_enrich_codes	Behavior	Daily enrichment codes.	
+ehr_lookups	data_category	Clinical	Data Categories	Used in datasets.
+ehr_lookups	death_reason	Colony Management	Death Reason	
+ehr_lookups	delivery_state	Colony Management	Delivery State	
+ehr_lookups	dental_obs	Clinical	Dental Observation Types	Clinical observation values.
+ehr_lookups	derm_obs	Clinical	Dermatologic Observation Types	Clinical observation values.
+ehr_lookups	digit_amputation	Clinical	Digit Amputation	Clinical observation fixed values.
+ehr_lookups	divider_types	Colony Management	Divider Type	Used in cage details.
+ehr_lookups	dosage_units	Clinical	Dosage Units	Used in drug and treatment datasets.
+ehr_lookups	drug_defaults	Clinical	Formulary	Default values in drug and treatment datasets.
+ehr_lookups	ear_types	Clinical	Ear Types	Clinical observation fixed values.
+ehr_lookups	esig_events	Colony Management	Esig Events	
+ehr_lookups	euthanasia_type	Colony Management	Euthanasia Type	
+ehr_lookups	exam_findings	Clinical	Exam Findings	Physical exam values.
+ehr_lookups	exemption_category	Colony Management	Exemption Category	
+ehr_lookups	expense_class	Colony Management	Expense Class	
+ehr_lookups	fecal_score	Clinical	Fecal Score	Clinical observation fixed values.
+ehr_lookups	fecal_smear_score	Clinical	Fecal Smear Score	Clinical observation fixed values.
+ehr_lookups	feed_assess_types	Behavior	Fecal Assessment Types	Behavior observation fixed values.
+ehr_lookups	flag_categories	Colony Management	Flag Categories	Used to specify flag behavior.
+ehr_lookups	flag_values	Colony Management	Flag Values	Animal flag values.
+ehr_lookups	gastro_types	Clinical	Gastrointestinal Types	Clinical observation fixed values.
+ehr_lookups	gender_codes	Colony Management	Sex Codes	Used in demographics dataset.
+ehr_lookups	general_obs	Clinical	General Observation Types	Clinical observation types.
+ehr_lookups	genital_types	Colony Management	Genital Types	Clinical observation fixed values.
+ehr_lookups	genitourinary_obs	Clinical	Genitourinary Observation Types	Clinical observation fixed values.
+ehr_lookups	geographic_origins	Colony Management	Geographic Origins	Used in demographics dataset.
+ehr_lookups	hernia_types	Clinical	Hernia Types	Clinical observation fixed values.
+ehr_lookups	housing_reason	Housing	Housing Move Reason	Used in housing dataset for location transfers.
+ehr_lookups	hyd_score	Clinical	Hydration Score	Clinical observation fixed values.
+ehr_lookups	id_history_type	Colony Management	Id History Type	
+ehr_lookups	incision_score	Clinical	Incision Status	Clinical observation fixed values.
+ehr_lookups	indoor_outdoor	Colony Management	Indoor/Outdoor	Cage details
+ehr_lookups	keyword	Clinical	Keyword	Clinical observation fixed values.
+ehr_lookups	lameness	Clinical	Lameness	Clinical observation fixed values.
+ehr_lookups	mass_type	Clinical	Mass Type	Clinical observation fixed values.
+ehr_lookups	mens_score	Clinical	Menses Types	Clinical observation fixed values.
+ehr_lookups	mucous_membranes	Clinical	Mucous Membranes	Used in clinical observations.
+ehr_lookups	musculoskeletal_observations	Clinical	Musculoskeletal Observations	Used in clinical observations.
+ehr_lookups	necropsy_disposition_codes	Colony Management	Necropsy Disposition Codes	
+ehr_lookups	necropsy_organ_appearance	Colony Management	Necropsy Organ Appearance
+ehr_lookups	necropsy_organ_systems	Colony Management	Necropsy Organ Systems	
+ehr_lookups	necropsy_physical_condition	Colony Management	Necropsy Physical Condition	
+ehr_lookups	necropsy_specimen_condition	Colony Management	Necropsy Specimen Condition	
+ehr_lookups	necropsy_tissue	Colony Management	Necropsy Tissue	
+ehr_lookups	neurologic_observations	Clinical	Neurologic Observations	Used in clinical observations..
+ehr_lookups	nhp_training_reason	Behavior	NHP Training Reason	Behavior training reason values
+ehr_lookups	nhp_training_result	Behavior	NHP Training Result	Behavior training result values
+ehr_lookups	nhp_training_type	Behavior	NHP Training Type	Behavior training type values
+ehr_lookups	normal_abnormal_only	Clinical	Normal/Abnormal Values	Clinical observation values.
+ehr_lookups	numeric_unit	Colony Management	Numeric Unit	
+ehr_lookups	observation_areas	Clinical	Observation Areas	Clinical observation areas.
+ehr_lookups	obstetric_observations	Clinical	Obstetric Observations	Obstetric Observations Fixed Values.
+ehr_lookups	ocular_observations	Clinical	Ocular Observations	Ocular Observations Fixed Values.
+ehr_lookups	ocular_problem	Clinical	Ocular Problem	Clinical observation fixed values.
+ehr_lookups	pairing_formation_types	Behavior	Pairing Formation Type	Pairing formation values.
+ehr_lookups	pairing_goal	Behavior	Pairing Goal	Used in pairing dataset.
+ehr_lookups	pairing_reason	Behavior	Introduction Reason	Used in pairing dataset.
+ehr_lookups	pairing_observation	Behavior	Interaction Summary	Used in pairing dataset.
+ehr_lookups	pairing_separation_reason	Colony Management	Pairing Status Change Reason	Pairing Status Change Reason Fixed Values.
+ehr_lookups	preferences	Behavior	Preferences	Behavior observation fixed values.
+ehr_lookups	pregnancy_result	Colony Management	Pregancy Result	
+ehr_lookups	procedure_category	Clinical	Procedure Category	Used in procedures to group procedures.
+ehr_lookups	procedures	Clinical	Procedures	List of animal procedures.F
+ehr_lookups	problem_list_category	Clinical	Problem List Category	Used in problem list dataset. Set when opening a case.
+ehr_lookups	problem_list_subcategory	Clinical	Problem List Subcategory	Used in problem list to categorize problems.
+ehr_lookups	protocol_category	Colony Management	Protocol Category	
+ehr_lookups	protocol_state	Colony Management	Protocol State	
+ehr_lookups	protocol_type	Colony Management	Protocol Type	
+ehr_lookups	qualifier	Colony Management	Qualifier	
+ehr_lookups	questionnaire	Colony Management	Questionnaire	
+ehr_lookups	rectal_prolapse	Clinical	Rectal Prolapse	Used in clinical observations.
+ehr_lookups	regulatory_stress_levels	Colony Management	Regulatory Stress Levels	
+ehr_lookups	req_order_state	Colony Management	Request Order State	
+ehr_lookups	req_order_type	Colony Management	Request Order Type	
+ehr_lookups	respiratory_observations	Clinical	Respiratory Observations	Used in clinical observations.
+ehr_lookups	routes	Clinical	Treatment Routes	Used in drug and treatment datasets.
+ehr_lookups	sib_score	Behavior	SIB Score	Behavior observation fixed values.
+ehr_lookups	skin_problem	Clinical	Skin Problems	Clinical observation fixed values.
+ehr_lookups	source	Colony Management	Source	
+ehr_lookups	species	Colony Management	Species	
+ehr_lookups	snomed	Research	Treatments	List of animal treatments.
+ehr_lookups	species_codes	Colony Management	Species Codes	
+ehr_lookups	stool_score	Clinical	Stool Score	
+ehr_lookups	stool_types	Clinical	Stool Types	
+ehr_lookups	tb_obs_score	Clinical	TB Observation Scores	Clinical observation fixed values.
+ehr_lookups	temperament	Behavior	Temperament	Behavior observation fixed values.
+ehr_lookups	testicular_volume    	Clinical	Testicular Volume   	Testicular volume values.
+ehr_lookups	termination_reason_codes	Clinical	Termination Reason Codes	Clinical observation fixed values.
+ehr_lookups	trauma_size	Clinical	Trauma Size	Clinical observation fixed values.
+ehr_lookups	treatment_frequency	Clinical	Treatment Frequency	Used in treatment and drug datasets.
+ehr_lookups	treatment_frequency_times	Clinical	Treatment Frequency Times	"Used in treatment, drug and observation datasets."
+ehr_lookups	turgor_score	Clinical	Turgor Score	Clinical observation fixed values.
+ehr_lookups	vaginal_uterine_prolapse	Clinical	Vaginal Uterine Prolapse	Clinical observation fixed values.
+ehr_lookups	vendor_approval_code	Colony Management	Vendor Approval Code	
+ehr_lookups	vendor_production_location	Colony Management	Vendor Production Location	
+ehr_lookups	volume_units	Clinical	Volume Units	Used in drug and treatment datasets.
+ehr_lookups	weight_ranges	Clinical	Weight Ranges	Min/Max allowable weight per species. Used in various weight reports.
+ehr_lookups	wound_score	Clinical	Wound Score	Clinical observation fixed values.
+ehr_lookups	wound_severity	Clinical	Wound Severity	Clinical observation fixed values.
+ehr_lookups	wound_status_behavior	Behavior	Wound Status	Behavioral observation fixed values.
+ehr_lookups	wound_status_clinical	Clinical	Wound Status	Clinical observation fixed values.
+ehr_lookups	yes_no_order	Clinical	Yes/No Values in Order	Used for yes/no values in various datasets. Includes sort order.
+ehr_lookups	yes_no_only	Clinical	Yes/No Forced Selection	Must choose yes or no.

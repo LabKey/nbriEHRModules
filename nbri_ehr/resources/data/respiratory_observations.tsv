@@ -1,0 +1,9 @@
+value	sort_order
+Tachypnea (increased respiratory rate)	1
+Dyspnea (difficulty breathing)	2
+Epistaxis (bloody nasal discharge)	3
+Clear nasal discharge	4
+Purulent nasal discharge	5
+Wheezing or noisy breathing	6
+No respiratory abnormality observed	7
+Other respiratory abnormality	8

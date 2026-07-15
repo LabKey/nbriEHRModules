@@ -1,0 +1,40 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="tissueDisposition" tableDbType="TABLE">
+                <columns>
+                    <column columnName="necropsyTissue">
+                        <columnTitle>Tissue</columnTitle>
+                        <displayWidth>80</displayWidth>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>necropsy_tissue</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="necropsyDispositionCode">
+                        <columnTitle>Tissue Disposition Code</columnTitle>
+                        <displayWidth>180</displayWidth>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>necropsy_disposition_codes</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="performedby">
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="project">
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="description">
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="taskid">
+                        <isHidden>true</isHidden>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>
