@@ -131,6 +131,11 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
                 customizeTreatmentOrder(ti);
             }
 
+            if (matches(ti, "study", "treatmentSchedule"))
+            {
+                customizeTreatmentSchedule(ti);
+            }
+
             if (matches(ti, "study", "prc_order"))
             {
                 customizeProcedureOrder(ti);
@@ -1065,88 +1070,18 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         {
             WrappedColumn col = new WrappedColumn(ti.getColumn("objectid"), "treatmentRecord");
             col.setLabel("Record Treatment");
-            col.setDisplayColumnFactory(new DisplayColumnFactory() {
+            col.setDisplayColumnFactory(new TreatmentDisplayColumnFactory(false));
+            ti.addColumn(col);
+        }
+    }
 
-                @Override
-                public DisplayColumn createRenderer(final ColumnInfo colInfo)
-                {
-                    return new DataColumn(colInfo){
-
-                        @Override
-                        public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
-                        {
-                            String objectid = (String)getBoundColumn().getValue(ctx);
-                            Date date = (Date)ctx.get("date");
-                            String caseid = (String)ctx.get("caseid");
-                            String category = (String)ctx.get("category");
-                            ActionURL url = new ActionURL("ehr", "dataEntryForm", ti.getUserSchema().getContainer());
-                            if (!ti.getUserSchema().getContainer().hasPermission(ti.getUserSchema().getUser(), EHRClinicalEntryPermission.class))
-                                return;
-
-                            if (category.equals("Behavior"))
-                            {
-                                if (caseid != null)
-                                {
-                                    url.addParameter("formType", "Behavioral Rounds");
-                                    url.addParameter("caseid", caseid);
-                                }
-                                else
-                                {
-                                    url.addParameter("formType", "Bulk Behavior Entry");
-                                }
-                            }
-                            else
-                            {
-                                if (caseid != null)
-                                {
-                                    url.addParameter("formType", "Clinical Rounds");
-                                    url.addParameter("caseid", caseid);
-                                }
-                                else
-                                {
-                                    url.addParameter("formType", "medicationTreatment");
-                                }
-                            }
-
-                            url.addParameter("treatmentid", objectid);
-                            url.addParameter("scheduledDate", date.toString());
-
-                            String returnUrl = new ActionURL("ehr", "animalHistory", ti.getUserSchema().getContainer()) + "#inputType:none&showReport:0&activeReport:clinMedicationSchedule";
-                            url.addParameter("returnUrl", returnUrl);
-
-                            out.write(LinkBuilder.labkeyLink("Record Treatment", url).target("_blank"));
-                        }
-
-                        @Override
-                        public void addQueryFieldKeys(Set<FieldKey> keys)
-                        {
-                            super.addQueryFieldKeys(keys);
-                            keys.add(getBoundColumn().getFieldKey());
-                            keys.add(FieldKey.fromString("date"));
-                            keys.add(FieldKey.fromString("caseid"));
-                            keys.add(FieldKey.fromString("category"));
-                        }
-
-                        @Override
-                        public boolean isSortable()
-                        {
-                            return false;
-                        }
-
-                        @Override
-                        public boolean isFilterable()
-                        {
-                            return false;
-                        }
-
-                        @Override
-                        public boolean isEditable()
-                        {
-                            return false;
-                        }
-                    };
-                }
-            });
+    private void customizeTreatmentSchedule(AbstractTableInfo ti)
+    {
+        if (ti.getColumn("treatmentRecord") == null && ti.getColumn("objectid") != null)
+        {
+            WrappedColumn col = new WrappedColumn(ti.getColumn("objectid"), "treatmentRecord");
+            col.setLabel("Record Treatment");
+            col.setDisplayColumnFactory(new TreatmentDisplayColumnFactory(true));
             ti.addColumn(col);
         }
     }
