@@ -606,10 +606,16 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     }
 
     @Test
-    public void testBirthForm()
+    public void testBirthForm() throws IOException, CommandException
     {
         String bornAnimal = "80801";
+        String conceptId = "TESTCONCEPT1";
         LocalDateTime now = LocalDateTime.now();
+
+        log("Creating conception record");
+        InsertRowsCommand conception = new InsertRowsCommand("nbri_ehr", "Conception");
+        conception.addRow(Map.of("ConceptId", conceptId, "ConceptDate", now.minusDays(160), "Dam", "TEST4551032"));
+        conception.execute(getApiHelper().getConnection(), getContainerPath());
 
         gotoEnterData();
         waitAndClickAndWait(Locator.linkWithText("Birth"));
@@ -624,6 +630,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         births.setGridCell(1, "Id/demographics/gender", "female");
         births.setGridCell(1, "project", "795644");
         births.setGridCell(1, "birthProtocol", "protocol101");
+        births.setGridCell(1, "conceptId", conceptId);
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -633,11 +640,94 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Assert.assertEquals("Invalid Birth record", Arrays.asList("C3"), table.getRowDataAsText(0, "cage"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList("795644"), table.getRowDataAsText(0, "project"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList("protocol101"), table.getRowDataAsText(0, "birthProtocol"));
+        Assert.assertEquals("Invalid Birth record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
 
         verifyRowCreated("study", "assignment", bornAnimal, 1);
         verifyRowCreated("study", "protocolAssignment", bornAnimal, 1);
         verifyRowCreated("study", "housing", bornAnimal, 1);
         verifyRowCreated("study", "demographics", bornAnimal, 1);
+
+        log("Verifying conception outcome in ConceptionsByDam");
+        goToSchemaBrowser();
+        DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
+        report.setFilter("ConceptId", "Equals", conceptId);
+        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Live Birth"), report.getRowDataAsText(0, "conceptionOutcome"));
+    }
+
+    @Test
+    public void testPregnancyForm() throws IOException, CommandException
+    {
+        String animalId = "TEST4551032";
+        String conceptId = "TESTCONCEPT2";
+        LocalDateTime now = LocalDateTime.now();
+
+        log("Creating conception record");
+        InsertRowsCommand conception = new InsertRowsCommand("nbri_ehr", "Conception");
+        conception.addRow(Map.of("ConceptId", conceptId, "ConceptDate", now.minusDays(90), "Dam", animalId));
+        conception.execute(getApiHelper().getConnection(), getContainerPath());
+
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Pregnancy Outcomes"));
+        lockForm();
+
+        Ext4GridRef outcomes = _helper.getExt4GridForFormSection("Pregnancy Outcomes");
+        _helper.addRecordToGrid(outcomes);
+        outcomes.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        outcomes.setGridCell(1, "Id", animalId);
+        outcomes.setGridCell(1, "result", "Stillborn");
+        outcomes.setGridCell(1, "conceptId", conceptId);
+        submitForm("Submit Final", "Finalize");
+
+        goToSchemaBrowser();
+        DataRegionTable table = viewQueryData("study", "pregnancy");
+        table.setFilter("Id", "Equals", animalId);
+        Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(animalId), table.getRowDataAsText(0, "Id"));
+        Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList("Stillborn"), table.getRowDataAsText(0, "result"));
+        Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
+
+        log("Verifying conception outcome in ConceptionsByDam");
+        goToSchemaBrowser();
+        DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
+        report.setFilter("ConceptId", "Equals", conceptId);
+        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(animalId), report.getRowDataAsText(0, "Id"));
+        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Stillborn"), report.getRowDataAsText(0, "conceptionOutcome"));
+    }
+
+    @Test
+    public void testConceptionForm()
+    {
+        String damId = "TEST4551032";
+        String sireId = "44444";
+        String conceptId = "TESTCONCEPT3";
+        LocalDateTime now = LocalDateTime.now();
+
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Conception"));
+        lockForm();
+
+        Ext4GridRef conceptions = _helper.getExt4GridForFormSection("Conception");
+        _helper.addRecordToGrid(conceptions);
+        conceptions.setGridCell(1, "ConceptId", conceptId);
+        conceptions.setGridCellJS(1, "ConceptDate", now.minusDays(30).format(_dateFormat));
+        conceptions.setGridCellJS(1, "ConceptTermDate", now.plusDays(135).format(_dateFormat));
+        conceptions.setGridCell(1, "Dam", damId);
+        conceptions.setGridCell(1, "Sire", sireId);
+        conceptions.setGridCell(1, "Remark", "Conception entry test");
+        submitForm("Submit Final", "Finalize");
+
+        goToSchemaBrowser();
+        DataRegionTable table = viewQueryData("nbri_ehr", "Conception");
+        table.setFilter("ConceptId", "Equals", conceptId);
+        Assert.assertEquals("Invalid Conception record", Arrays.asList(damId), table.getRowDataAsText(0, "Dam"));
+        Assert.assertEquals("Invalid Conception record", Arrays.asList(sireId), table.getRowDataAsText(0, "Sire"));
+        Assert.assertEquals("Invalid Conception record", Arrays.asList("Conception entry test"), table.getRowDataAsText(0, "Remark"));
+
+        log("Verifying unmatched conception appears as Unknown in ConceptionsByDam");
+        goToSchemaBrowser();
+        DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
+        report.setFilter("ConceptId", "Equals", conceptId);
+        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(damId), report.getRowDataAsText(0, "Id"));
+        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Unknown"), report.getRowDataAsText(0, "conceptionOutcome"));
     }
 
     @Test

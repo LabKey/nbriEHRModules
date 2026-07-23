@@ -221,6 +221,9 @@
             <column columnName="birthProtocol">
                 <datatype>varchar</datatype>
             </column>
+            <column columnName="conceptId">
+                <datatype>varchar</datatype>
+            </column>
         </columns>
     </table>
     <table tableName="blood" tableDbType="TABLE">
@@ -1363,6 +1366,9 @@
                 <columnTitle>Attachment File</columnTitle>
                 <datatype>varchar</datatype>
                 <rangeURI>http://cpas.fhcrc.org/exp/xml#fileLink</rangeURI>
+            </column>
+            <column columnName="conceptId">
+                <datatype>varchar</datatype>
             </column>
         </columns>
     </table>

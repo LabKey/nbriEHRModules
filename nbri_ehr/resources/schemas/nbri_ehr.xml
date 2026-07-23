@@ -569,4 +569,29 @@
         </columns>
     </table>
 
+    <table tableName="Conception" tableDbType="TABLE">
+        <tableTitle>Conception</tableTitle>
+        <auditLogging>DETAILED</auditLogging>
+        <columns>
+            <column columnName="RowId"/>
+            <column columnName="ConceptId"/>
+            <column columnName="ConceptDate">
+                <formatString>Date</formatString>
+            </column>
+            <column columnName="ConceptTermDate">
+                <formatString>Date</formatString>
+            </column>
+            <column columnName="Remark"/>
+            <column columnName="Dam"/>
+            <column columnName="Sire"/>
+            <column columnName="TaskId"/>
+            <column columnName="QCState"/>
+            <column columnName="Container"/>
+            <column columnName="Created"/>
+            <column columnName="CreatedBy"/>
+            <column columnName="Modified"/>
+            <column columnName="ModifiedBy"/>
+        </columns>
+    </table>
+
 </tables>
