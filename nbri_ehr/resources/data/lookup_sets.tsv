@@ -16,6 +16,7 @@ bcs_score	BCS Store	value	title
 behavior_abnormality	Behavior Abnormality	value
 behavior_mgmt_codes	Behavior Management Codes	value
 behavior_types	Behavior Types	value
+birth_condition	Birth Condition	value	title
 blood_draw_reason	Blood Draw Reason	value
 blood_sample_type	Blood Sample Types	value
 cage_type	Cage Type	value	title
@@ -31,6 +32,7 @@ country_category	Country Category	value	title
 daily_enrich_codes	Daily Enrichment Codes	value
 data_category	Data Category Field Values	value
 death_reason	Death Reason	value
+delivery_mode	Delivery Mode	value	title
 delivery_state	Delivery State	value	title
 dental_obs	Dental Observations	value
 derm_obs	Dermatologic Observations	value
@@ -48,6 +50,7 @@ gastro_types	Gastrointestinal Types	value
 general_obs	General Observations	value
 genital_types	Genital Types	value
 genitourinary_obs	Genitourinary Observations	value
+breeding_type	Breeding Type	value	title
 hernia_types	Hernia Types	value
 housing_reason	Housing Reason	value
 hyd_score	Hyd Score	value

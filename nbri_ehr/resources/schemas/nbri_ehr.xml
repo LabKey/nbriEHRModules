@@ -584,6 +584,7 @@
             <column columnName="Remark"/>
             <column columnName="Dam"/>
             <column columnName="Sire"/>
+            <column columnName="BreedingType"/>
             <column columnName="TaskId"/>
             <column columnName="QCState"/>
             <column columnName="Container"/>

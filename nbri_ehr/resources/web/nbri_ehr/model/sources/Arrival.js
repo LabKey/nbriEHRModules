@@ -25,7 +25,7 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
     byQuery: {
         'study.arrival': {
             'cage': {
-                allowBlank: false,
+                // allowBlank: false,
                 columnConfig: {
                     fixed: true,
                     width: 200
@@ -39,13 +39,13 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
                 allowBlank: false
             },
             'Id/demographics/birth': {
-                allowBlank: false
+                // allowBlank: false
             },
             'Id/demographics/gender': {
                 allowBlank: false
             },
             'Id/demographics/geographic_origin': {
-                allowBlank: false,
+                // allowBlank: false,
                 columnConfig: {
                     fixed: true,
                     width: 200
@@ -65,10 +65,10 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
                         LABKEY.Filter.create('isActive', true, LABKEY.Filter.Types.EQUAL),
                     ]
                 },
-                allowBlank: false
+                // allowBlank: false
             },
             arrivalProtocol: {
-                allowBlank: false,
+                // allowBlank: false,
                 columnConfig: {
                     width: 200
                 },
@@ -91,14 +91,14 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
                 },
             },
             acquisitionType: {
-                allowBlank: false,
+                // allowBlank: false,
                 columnConfig: {
                     fixed: true,
                     width: 150
                 },
             },
             arrivalType: {
-                allowBlank: false,
+                // allowBlank: false,
                 columnConfig: {
                     width: 200
                 }

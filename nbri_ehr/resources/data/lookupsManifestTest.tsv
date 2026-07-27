@@ -17,6 +17,7 @@ bcs_score
 behavior_abnormality
 behavior_mgmt_codes
 behavior_types
+birth_condition
 blood_draw_reason
 blood_draw_tube_type
 blood_sample_type
@@ -34,6 +35,7 @@ country_category
 daily_enrich_codes
 data_category
 death_reason
+delivery_mode
 delivery_state
 dental_obs
 derm_obs
@@ -56,6 +58,7 @@ general_obs
 genital_types
 genitourinary_obs
 geographic_origins
+breeding_type
 hernia_types
 housing_reason
 hyd_score

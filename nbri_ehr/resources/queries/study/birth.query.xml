@@ -25,6 +25,25 @@
                             <fkDisplayColumnName>cage</fkDisplayColumnName>
                         </fk>
                     </column>
+                    <column columnName="type">
+                        <columnTitle>Delivery Mode</columnTitle>
+                        <required>false</required>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>delivery_mode</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="cond">
+                        <columnTitle>Birth Condition</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>birth_condition</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
                     <column columnName="project">
                         <columnTitle>Project</columnTitle>
                         <fk>

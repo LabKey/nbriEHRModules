@@ -14,9 +14,9 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
     }
 
     // Due to order of operation, this needs to be done in upsert instead of insert
-    if (!row.rearrival && helper.getEvent() == 'insert' && row.Id && triggerHelper.animalIdExists(row.Id)) {
-        EHR.Server.Utils.addError(scriptErrors, 'Id', 'Animal Id ' + row.Id + ' is already in use. Please use a different Id.', 'ERROR');
-    }
+    // if (!row.rearrival && helper.getEvent() == 'insert' && row.Id && triggerHelper.animalIdExists(row.Id)) {
+    //     EHR.Server.Utils.addError(scriptErrors, 'Id', 'Animal Id ' + row.Id + ' is already in use. Please use a different Id.', 'ERROR');
+    // }
 
     if (row.eventDate) {
         row.date = row.eventDate;

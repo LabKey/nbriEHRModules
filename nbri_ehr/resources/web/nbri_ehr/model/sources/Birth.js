@@ -32,7 +32,7 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                 }
             },
             'cage': {
-                allowBlank: false,
+                // allowBlank: false,
                 columnConfig: {
                     fixed: true,
                     width: 200
@@ -40,7 +40,7 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
             },
             project: {
                 xtype: 'combo',
-                allowBlank: false,
+                // allowBlank: false,
                 columnConfig: {
                     width: 150
                 },
@@ -58,7 +58,7 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                 columnConfig: {
                     width: 200
                 },
-                allowBlank: false,
+                // allowBlank: false,
                 lookup: {
                     schemaName: 'ehr',
                     queryName: 'activeProtocols',

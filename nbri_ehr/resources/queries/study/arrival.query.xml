@@ -66,7 +66,8 @@
                         <fk>
                             <fkDbSchema>ehr_lookups</fkDbSchema>
                             <fkTable>source</fkTable>
-                            <fkColumnName>meaning</fkColumnName>
+                            <fkColumnName>code</fkColumnName>
+                            <fkDisplayColumnName>meaning</fkDisplayColumnName>
                         </fk>
                     </column>
                     <column columnName="rearrival">

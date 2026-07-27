@@ -51,6 +51,11 @@ EHR.model.DataModelManager.registerMetadata('Conception', {
                     width: 200
                 },
             },
+            BreedingType: {
+                columnConfig: {
+                    width: 200
+                },
+            },
             Remark: {
                 height: 75,
                 editorConfig: {
