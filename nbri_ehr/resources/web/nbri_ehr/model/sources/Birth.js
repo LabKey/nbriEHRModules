@@ -71,6 +71,11 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
             },
             'Id/demographics/gender': {
                 allowBlank: false
+            },
+            conceptId: {
+                columnConfig: {
+                    width: 150
+                }
             }
         }
     }

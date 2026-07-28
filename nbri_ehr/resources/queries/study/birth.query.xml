@@ -43,6 +43,14 @@
                             <fkDisplayColumnName>title</fkDisplayColumnName>
                         </fk>
                     </column>
+                    <column columnName="conceptId">
+                        <columnTitle>Conception Id</columnTitle>
+                        <fk>
+                            <fkDbSchema>nbri_ehr</fkDbSchema>
+                            <fkTable>Conception</fkTable>
+                            <fkColumnName>ConceptId</fkColumnName>
+                        </fk>
+                    </column>
                     <column columnName="remark"/>
                     <column columnName="performedby"/>
                 </columns>

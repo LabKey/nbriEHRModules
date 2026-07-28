@@ -30,6 +30,22 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         EHR.Server.Utils.addError(scriptErrors, 'Id', 'Birth record already exists for this Id, update existing record to change birth information', 'ERROR');
     }
 
+    if (!helper.isETL() && row.conceptId) {
+        if (triggerHelper.totalRecords('nbri_ehr', 'Conception', 'ConceptId', row.conceptId) === 0) {
+            EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id does not match any conception record', 'WARN');
+        }
+
+        //when updating a record that already carries this conception id, the existing row accounts for one match
+        var conceptIdThreshold = (oldRow && oldRow.conceptId === row.conceptId) ? 1 : 0;
+        if (triggerHelper.totalRecords('study', 'birth', 'conceptId', row.conceptId) > conceptIdThreshold) {
+            EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id is already used by another birth record', 'INFO');
+        }
+
+        if (triggerHelper.totalRecords('study', 'pregnancy', 'conceptId', row.conceptId) > 0) {
+            EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id is already used by a pregnancy outcome record', 'INFO');
+        }
+    }
+
     if (!helper.isETL()) {
 
         if (row.QCStateLabel) {
