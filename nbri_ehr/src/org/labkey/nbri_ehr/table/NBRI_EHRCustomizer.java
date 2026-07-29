@@ -896,15 +896,17 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
 
     private void customizeHousingTable(AbstractTableInfo ti)
     {
+        // ehr_lookups.cage is unique on (Container, Location), so the cage subqueries below must be container-scoped;
+        // a second EHR folder defining the same location would otherwise make them return multiple rows.
+        Container lookupContainer = EHRService.get().getEHRStudyContainer(ti.getUserSchema().getContainer());
+        if (lookupContainer == null)
+            lookupContainer = ti.getUserSchema().getContainer(); // as DefaultEHRCustomizer does
+
         if (ti.getColumn("room") == null && ti.getColumn("cage") != null)
         {
-            UserSchema us = getUserSchema(ti, "ehr_lookups");
-            if (us != null)
-            {
-                SQLFragment roomSql = new SQLFragment("(SELECT room FROM ehr_lookups.cage WHERE location = " + ExprColumn.STR_TABLE_ALIAS + ".cage)");
-                ExprColumn roomCol = new ExprColumn(ti, "room", roomSql, JdbcType.VARCHAR, ti.getColumn("cage"));
-                ti.addColumn(roomCol);
-            }
+            SQLFragment roomSql = new SQLFragment("(SELECT room FROM ehr_lookups.cage WHERE Container = ? AND location = " + ExprColumn.STR_TABLE_ALIAS + ".cage)", lookupContainer);
+            ExprColumn roomCol = new ExprColumn(ti, "room", roomSql, JdbcType.VARCHAR, ti.getColumn("cage"));
+            ti.addColumn(roomCol);
 
             ensureSortColumn(ti, ti.getColumn("room"));
         }
@@ -913,8 +915,8 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             TableInfo realTable = getRealTable(ti);
             if (realTable != null && realTable.getColumn("participantid") != null && realTable.getColumn("date") != null && realTable.getColumn("enddate") != null)
             {
-                SQLFragment roomSql = new SQLFragment(realTable.getSqlDialect().getDateDiff(Calendar.DATE, "{fn curdate()}", "COALESCE((SELECT max(h2.enddate) as d FROM " + realTable.getSelectName() + " h2 LEFT JOIN ehr_lookups.cage cg ON h2.cage = cg.location " +
-                        "WHERE h2.enddate IS NOT NULL AND h2.enddate <= " + ExprColumn.STR_TABLE_ALIAS + ".date AND h2.participantid = " + ExprColumn.STR_TABLE_ALIAS + ".participantid AND cg.room != (SELECT room FROM ehr_lookups.cage WHERE location = " + ExprColumn.STR_TABLE_ALIAS + ".cage)), " + ExprColumn.STR_TABLE_ALIAS + ".date)"));
+                SQLFragment roomSql = new SQLFragment(realTable.getSqlDialect().getDateDiff(Calendar.DATE, "{fn curdate()}", "COALESCE((SELECT max(h2.enddate) as d FROM " + realTable.getSelectName() + " h2 LEFT JOIN ehr_lookups.cage cg ON h2.cage = cg.location AND cg.Container = ? " +
+                        "WHERE h2.enddate IS NOT NULL AND h2.enddate <= " + ExprColumn.STR_TABLE_ALIAS + ".date AND h2.participantid = " + ExprColumn.STR_TABLE_ALIAS + ".participantid AND cg.room != (SELECT room FROM ehr_lookups.cage WHERE Container = ? AND location = " + ExprColumn.STR_TABLE_ALIAS + ".cage)), " + ExprColumn.STR_TABLE_ALIAS + ".date)"), lookupContainer, lookupContainer);
                 ExprColumn roomCol = new ExprColumn(ti, "daysInRoom", roomSql, JdbcType.INTEGER, realTable.getColumn("participantid"), realTable.getColumn("date"), realTable.getColumn("enddate"));
                 roomCol.setLabel("Days In Room");
                 ti.addColumn(roomCol);
