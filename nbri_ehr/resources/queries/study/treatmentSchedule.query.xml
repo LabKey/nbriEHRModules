@@ -2,6 +2,7 @@
     <metadata>
         <tables xmlns="http://labkey.org/data/xml">
             <table tableName="treatmentSchedule" tableDbType="NOT_IN_DB">
+                <javaCustomizer class="org.labkey.nbri_ehr.table.NBRI_EHRCustomizer" />
                 <tableTitle>Treatment Schedule</tableTitle>
                 <tableUrl>/EHR/treatmentDetails.view?key=${lsid}</tableUrl>
                 <pkColumnName>primaryKey</pkColumnName>

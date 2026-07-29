@@ -38,7 +38,6 @@ JOIN(
         timestampdiff('SQL_TSI_DAY', cast(t1.dateOnly AS timestamp), dr.dateOnly) + 1 AS daysElapsed,
         t1.enddate,
         t1.code,
-        t1.treatmentRecord,
         t1.volume,
         t1.vol_units,
         t1.concentration,
