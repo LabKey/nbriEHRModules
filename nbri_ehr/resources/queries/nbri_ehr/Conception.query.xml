@@ -17,6 +17,10 @@
                     <column columnName="ConceptTermDate">
                         <columnTitle>Conception Term Date</columnTitle>
                     </column>
+                    <column columnName="Estimated">
+                        <columnTitle>Estimated</columnTitle>
+                        <description>Conception date is estimated rather than observed</description>
+                    </column>
                     <column columnName="Dam">
                         <required>true</required>
                     </column>
