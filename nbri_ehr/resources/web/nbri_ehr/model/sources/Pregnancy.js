@@ -24,6 +24,11 @@ EHR.model.DataModelManager.registerMetadata('Pregnancy', {
             result: {
                 allowBlank: false,
                 nullable: false,
+            },
+            conceptId: {
+                columnConfig: {
+                    width: 150
+                }
             }
         },
 
