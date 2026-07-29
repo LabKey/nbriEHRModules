@@ -24,8 +24,17 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
     },
     byQuery: {
         'study.birth': {
+            Id: {
+                allowBlank: false,
+                nullable: false
+            },
+            date: {
+                allowBlank: false,
+                nullable: false
+            },
             'Id/demographics/species': {
                 allowBlank: false,
+                nullable: false,
                 columnConfig: {
                     fixed: true,
                     width: 250
@@ -63,9 +72,12 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                 allowBlank: false
             },
             'Id/demographics/gender': {
-                allowBlank: false
+                allowBlank: false,
+                nullable: false
             },
             conceptId: {
+                allowBlank: false,
+                nullable: false,
                 columnConfig: {
                     width: 150
                 }

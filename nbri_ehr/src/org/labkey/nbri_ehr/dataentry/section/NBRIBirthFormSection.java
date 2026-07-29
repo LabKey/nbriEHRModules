@@ -22,15 +22,34 @@ import org.labkey.api.ehr.dataentry.forms.NewAnimalFormSection;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.view.template.ClientDependency;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class NBRIBirthFormSection extends NewAnimalFormSection
 {
+    // left to right column order of the Births grid; the demographics fields are not on study.birth, so they are added here
+    private static final List<FieldKey> COLUMN_ORDER = List.of(
+            FieldKey.fromString("Id"),
+            FieldKey.fromString("date"),
+            FieldKey.fromString("conceptId"),
+            FieldKey.fromString("Id/demographics/species"),
+            FieldKey.fromString("Id/demographics/gender"),
+            FieldKey.fromString("Id/demographics/dam"),
+            FieldKey.fromString("Id/demographics/sire"),
+            FieldKey.fromString("cage"),
+            FieldKey.fromString("type"),
+            FieldKey.fromString("cond"),
+            FieldKey.fromString("breedingType"),
+            FieldKey.fromString("remark"),
+            FieldKey.fromString("performedby")
+    );
+
     public NBRIBirthFormSection()
     {
         super("study", "birth", "Births", false);
         addClientDependency(ClientDependency.supplierFromPath("ehr/window/FormBulkAddWindow.js"));
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/window/FormBulkAddWindow.js"));
+        addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/window/StartWithConceptionWindow.js"));
     }
 
     @Override
@@ -46,14 +65,12 @@ public class NBRIBirthFormSection extends NewAnimalFormSection
     @Override
     protected List<FieldKey> getFieldKeys(TableInfo ti)
     {
-        List<FieldKey> keys = super.getFieldKeys(ti);
+        List<FieldKey> ordered = new ArrayList<>(COLUMN_ORDER);
 
-        keys.add(2, FieldKey.fromString("Id/demographics/species"));
-        keys.add(3, FieldKey.fromString("Id/demographics/gender"));
-        keys.add(4, FieldKey.fromString("Id/demographics/dam"));
-        keys.add(5, FieldKey.fromString("Id/demographics/sire"));
+        // anything not explicitly ordered above (hidden and system fields) keeps its default position at the end
+        super.getFieldKeys(ti).stream().filter(key -> !COLUMN_ORDER.contains(key)).forEach(ordered::add);
 
-        return keys;
+        return ordered;
     }
 
     @Override
@@ -68,6 +85,7 @@ public class NBRIBirthFormSection extends NewAnimalFormSection
             defaultButtons.add(idx, "NBRI_ADDANIMALS");
         }
         defaultButtons.remove("COPYFROMSECTION");
+        defaultButtons.addFirst("NBRI_START_WITH_CONCEPTION");
         return defaultButtons;
     }
 
