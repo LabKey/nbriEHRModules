@@ -896,13 +896,11 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
 
     private void customizeHousingTable(AbstractTableInfo ti)
     {
-        // ehr_lookups.cage is unique on (Container, Location), so every lookup against it must be scoped to a single
-        // container. Without that, a server hosting more than one EHR folder returns a row per folder and the scalar
-        // subqueries below fail with "more than one row returned by a subquery used as an expression". Prefer the EHR
-        // study container, defaulting to the current container as DefaultEHRCustomizer does.
+        // ehr_lookups.cage is unique on (Container, Location), so the cage subqueries below must be container-scoped;
+        // a second EHR folder defining the same location would otherwise make them return multiple rows.
         Container lookupContainer = EHRService.get().getEHRStudyContainer(ti.getUserSchema().getContainer());
         if (lookupContainer == null)
-            lookupContainer = ti.getUserSchema().getContainer();
+            lookupContainer = ti.getUserSchema().getContainer(); // as DefaultEHRCustomizer does
 
         if (ti.getColumn("room") == null && ti.getColumn("cage") != null)
         {
