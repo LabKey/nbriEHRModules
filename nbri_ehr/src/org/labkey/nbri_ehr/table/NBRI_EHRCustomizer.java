@@ -896,27 +896,26 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
 
     private void customizeHousingTable(AbstractTableInfo ti)
     {
-        // ehr_lookups.cage is unique on (Container, Location), so every lookup against it must be scoped to the EHR
-        // study container. Without that, a server hosting more than one EHR folder returns a row per folder and the
-        // scalar subqueries below fail with "more than one row returned by a subquery used as an expression".
-        UserSchema lookupSchema = getEHRUserSchema(ti, "ehr_lookups");
-        Container lookupContainer = lookupSchema == null ? null : lookupSchema.getContainer();
+        // ehr_lookups.cage is unique on (Container, Location), so every lookup against it must be scoped to a single
+        // container. Without that, a server hosting more than one EHR folder returns a row per folder and the scalar
+        // subqueries below fail with "more than one row returned by a subquery used as an expression". Prefer the EHR
+        // study container, defaulting to the current container as DefaultEHRCustomizer does.
+        Container lookupContainer = EHRService.get().getEHRStudyContainer(ti.getUserSchema().getContainer());
+        if (lookupContainer == null)
+            lookupContainer = ti.getUserSchema().getContainer();
 
         if (ti.getColumn("room") == null && ti.getColumn("cage") != null)
         {
-            if (lookupContainer != null)
-            {
-                SQLFragment roomSql = new SQLFragment("(SELECT room FROM ehr_lookups.cage WHERE Container = ? AND location = " + ExprColumn.STR_TABLE_ALIAS + ".cage)", lookupContainer);
-                ExprColumn roomCol = new ExprColumn(ti, "room", roomSql, JdbcType.VARCHAR, ti.getColumn("cage"));
-                ti.addColumn(roomCol);
+            SQLFragment roomSql = new SQLFragment("(SELECT room FROM ehr_lookups.cage WHERE Container = ? AND location = " + ExprColumn.STR_TABLE_ALIAS + ".cage)", lookupContainer);
+            ExprColumn roomCol = new ExprColumn(ti, "room", roomSql, JdbcType.VARCHAR, ti.getColumn("cage"));
+            ti.addColumn(roomCol);
 
-                ensureSortColumn(ti, ti.getColumn("room"));
-            }
+            ensureSortColumn(ti, ti.getColumn("room"));
         }
         if (ti.getColumn("daysInRoom") == null)
         {
             TableInfo realTable = getRealTable(ti);
-            if (lookupContainer != null && realTable != null && realTable.getColumn("participantid") != null && realTable.getColumn("date") != null && realTable.getColumn("enddate") != null)
+            if (realTable != null && realTable.getColumn("participantid") != null && realTable.getColumn("date") != null && realTable.getColumn("enddate") != null)
             {
                 SQLFragment roomSql = new SQLFragment(realTable.getSqlDialect().getDateDiff(Calendar.DATE, "{fn curdate()}", "COALESCE((SELECT max(h2.enddate) as d FROM " + realTable.getSelectName() + " h2 LEFT JOIN ehr_lookups.cage cg ON h2.cage = cg.location AND cg.Container = ? " +
                         "WHERE h2.enddate IS NOT NULL AND h2.enddate <= " + ExprColumn.STR_TABLE_ALIAS + ".date AND h2.participantid = " + ExprColumn.STR_TABLE_ALIAS + ".participantid AND cg.room != (SELECT room FROM ehr_lookups.cage WHERE Container = ? AND location = " + ExprColumn.STR_TABLE_ALIAS + ".cage)), " + ExprColumn.STR_TABLE_ALIAS + ".date)"), lookupContainer, lookupContainer);
