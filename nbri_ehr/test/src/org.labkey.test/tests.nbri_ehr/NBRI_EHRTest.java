@@ -363,13 +363,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     @Override
     protected String getMale()
     {
-        return "3";
+        return "M";
     }
 
     @Override
     protected String getFemale()
     {
-        return "2";
+        return "F";
     }
 
     @Test
@@ -576,13 +576,24 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         arrivals.setGridCell(1, "acquisitionType", "Lab Transfer (Wild Born)");
         arrivals.setGridCell(1, "Id", arrivedAnimal);
         arrivals.setGridCell(1, "cage", "C1");
-        arrivals.setGridCell(1, "project", "640991");
-        arrivals.setGridCell(1, "arrivalProtocol", "dummyprotocol");
-        arrivals.setGridCell(1, "Id/demographics/gender", "female");
+        arrivals.setGridCell(1, "Id/demographics/gender", "Female");
         arrivals.setGridCell(1, "Id/demographics/geographic_origin", "BRAZIL");
-        arrivals.setGridCell(1, "Id/demographics/species", "Macaca nemestrina PIG");
+        arrivals.setGridCell(1, "Id/demographics/species", "Pig-Tailed Macaque");
         arrivals.setGridCellJS(1, "Id/demographics/birth", now.minusDays(7).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         arrivals.setGridCell(1, "sourceFacility", "BIOQUAL, Inc.");
+
+        Ext4GridRef protocolAssignments = _helper.getExt4GridForFormSection("Protocol Assignment");
+        _helper.addRecordToGrid(protocolAssignments);
+        protocolAssignments.setGridCell(1, "Id", arrivedAnimal);
+        protocolAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        protocolAssignments.setGridCell(1, "protocol", "dummyprotocol");
+
+        Ext4GridRef projectAssignments = _helper.getExt4GridForFormSection("Project Assignment");
+        _helper.addRecordToGrid(projectAssignments);
+        projectAssignments.setGridCell(1, "Id", arrivedAnimal);
+        projectAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        projectAssignments.setGridCell(1, "project", "640991");
+
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -590,13 +601,19 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table.setFilter("Id", "Equals", arrivedAnimal);
         CustomizeView view = table.openCustomizeGrid();
         view.addColumn("cage");
-        view.addColumn("project");
-        view.addColumn("arrivalProtocol");
         view.applyCustomView();
         Assert.assertEquals("Invalid Arrival record", Arrays.asList(arrivedAnimal), table.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid Arrival record", Arrays.asList("C1"), table.getRowDataAsText(0, "cage"));
-        Assert.assertEquals("Invalid Arrival record", Arrays.asList("640991"), table.getRowDataAsText(0, "project"));
-        Assert.assertEquals("Invalid Arrival record", Arrays.asList("dummyprotocol"), table.getRowDataAsText(0, "arrivalProtocol"));
+
+        goToSchemaBrowser();
+        table = viewQueryData("study", "assignment");
+        table.setFilter("Id", "Equals", arrivedAnimal);
+        Assert.assertEquals("Invalid project assignment", Arrays.asList("640991"), table.getRowDataAsText(0, "project"));
+
+        goToSchemaBrowser();
+        table = viewQueryData("study", "protocolAssignment");
+        table.setFilter("Id", "Equals", arrivedAnimal);
+        Assert.assertEquals("Invalid protocol assignment", Arrays.asList("dummyprotocol"), table.getRowDataAsText(0, "protocol"));
 
         verifyRowCreated("study", "birth", arrivedAnimal, 1);
         verifyRowCreated("study", "assignment", arrivedAnimal, 1);
@@ -626,11 +643,22 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         births.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         births.setGridCell(1, "Id", bornAnimal);
         births.setGridCell(1, "cage", "C3");
-        births.setGridCell(1, "Id/demographics/species", "Cebus apella CAP");
-        births.setGridCell(1, "Id/demographics/gender", "female");
-        births.setGridCell(1, "project", "795644");
-        births.setGridCell(1, "birthProtocol", "protocol101");
+        births.setGridCell(1, "Id/demographics/species", "Brown-Tufted Capuchin");
+        births.setGridCell(1, "Id/demographics/gender", "Female");
         births.setGridCell(1, "conceptId", conceptId);
+
+        Ext4GridRef protocolAssignments = _helper.getExt4GridForFormSection("Protocol Assignment");
+        _helper.addRecordToGrid(protocolAssignments);
+        protocolAssignments.setGridCell(1, "Id", bornAnimal);
+        protocolAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        protocolAssignments.setGridCell(1, "protocol", "protocol101");
+
+        Ext4GridRef projectAssignments = _helper.getExt4GridForFormSection("Project Assignment");
+        _helper.addRecordToGrid(projectAssignments);
+        projectAssignments.setGridCell(1, "Id", bornAnimal);
+        projectAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        projectAssignments.setGridCell(1, "project", "795644");
+
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -638,9 +666,17 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table.setFilter("Id", "Equals", bornAnimal);
         Assert.assertEquals("Invalid Birth record", Arrays.asList(bornAnimal), table.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList("C3"), table.getRowDataAsText(0, "cage"));
-        Assert.assertEquals("Invalid Birth record", Arrays.asList("795644"), table.getRowDataAsText(0, "project"));
-        Assert.assertEquals("Invalid Birth record", Arrays.asList("protocol101"), table.getRowDataAsText(0, "birthProtocol"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
+
+        goToSchemaBrowser();
+        table = viewQueryData("study", "assignment");
+        table.setFilter("Id", "Equals", bornAnimal);
+        Assert.assertEquals("Invalid project assignment", Arrays.asList("795644"), table.getRowDataAsText(0, "project"));
+
+        goToSchemaBrowser();
+        table = viewQueryData("study", "protocolAssignment");
+        table.setFilter("Id", "Equals", bornAnimal);
+        Assert.assertEquals("Invalid protocol assignment", Arrays.asList("protocol101"), table.getRowDataAsText(0, "protocol"));
 
         verifyRowCreated("study", "assignment", bornAnimal, 1);
         verifyRowCreated("study", "protocolAssignment", bornAnimal, 1);

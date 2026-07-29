@@ -64,6 +64,7 @@ ehr_lookups	genital_types	Colony Management	Genital Types	Clinical observation f
 ehr_lookups	genitourinary_obs	Clinical	Genitourinary Observation Types	Clinical observation fixed values.
 ehr_lookups	geographic_origins	Colony Management	Geographic Origins	Used in demographics dataset.
 ehr_lookups	breeding_type	Colony Management	Breeding Type	Breeding group assignment codes.
+ehr_lookups	group_status	Colony Management	Group Status	Group assignment status codes.
 ehr_lookups	hernia_types	Clinical	Hernia Types	Clinical observation fixed values.
 ehr_lookups	housing_reason	Housing	Housing Move Reason	Used in housing dataset for location transfers.
 ehr_lookups	hyd_score	Clinical	Hydration Score	Clinical observation fixed values.

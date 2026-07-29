@@ -17,7 +17,7 @@ SELECT
     WHEN T1.EarliestArrival IS NULL AND d.birth IS NOT NULL THEN true
     ELSE false
   END as fromCenter,
-  d.source as source,
+  T2.sourceFacility as source,
 
   CASE
     WHEN T1.EarliestArrival IS NULL AND d.birth IS NOT NULL THEN 'Born at NBRI'

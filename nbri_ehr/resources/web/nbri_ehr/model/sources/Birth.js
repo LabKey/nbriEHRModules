@@ -38,33 +38,26 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                     width: 200
                 },
             },
-            project: {
-                xtype: 'combo',
-                // allowBlank: false,
-                columnConfig: {
-                    width: 150
-                },
-                lookup: {
-                    schemaName: 'ehr',
-                    queryName: 'project',
-                    keyColumn: 'project',
-                    columns: 'project,name',
-                    filterArray: [
-                        LABKEY.Filter.create('isActive', true, LABKEY.Filter.Types.EQUAL),
-                    ]
-                }
-            },
-            birthProtocol: {
+            type: {
                 columnConfig: {
                     width: 200
                 },
-                // allowBlank: false,
-                lookup: {
-                    schemaName: 'ehr',
-                    queryName: 'activeProtocols',
-                    keyColumn: 'protocol',
-                    columns: 'protocol,title'
+            },
+            cond: {
+                columnConfig: {
+                    width: 200
                 },
+            },
+            // project and protocol are entered through the Project Assignment and Protocol Assignment sections
+            project: {
+                allowBlank: true,
+                hidden: true,
+                showInGrid: false
+            },
+            birthProtocol: {
+                allowBlank: true,
+                hidden: true,
+                showInGrid: false
             },
             'Id/demographics/birth': {
                 allowBlank: false

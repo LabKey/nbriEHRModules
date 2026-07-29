@@ -12,7 +12,6 @@
         <column name="species"/>
         <column name="dam"/>
         <column name="sire"/>
-        <column name="source"/>
         <column name="disposition"/>
         <column name="termination"/>
         <column name="implantNumber"/>

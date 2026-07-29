@@ -746,7 +746,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             {
                 UserSchema us = getEHRUserSchema(ti, "ehr_lookups");
                 col.setLabel("Species");
-                col.setFk(new QueryForeignKey(ti.getUserSchema(), ti.getContainerFilter(), us, null, "species_codes", "code", "scientific_name"));
+                col.setFk(new QueryForeignKey(ti.getUserSchema(), ti.getContainerFilter(), us, null, "species_codes", "code", "common_name"));
             }
             if ("protocol".equalsIgnoreCase(col.getName()) && null == col.getFk() && !"protocol".equalsIgnoreCase(ti.getName()))
             {

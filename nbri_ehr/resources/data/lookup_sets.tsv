@@ -51,6 +51,7 @@ general_obs	General Observations	value
 genital_types	Genital Types	value
 genitourinary_obs	Genitourinary Observations	value
 breeding_type	Breeding Type	value	title
+group_status	Group Status	value	title
 hernia_types	Hernia Types	value
 housing_reason	Housing Reason	value
 hyd_score	Hyd Score	value
@@ -101,6 +102,7 @@ req_order_type	Req Order Type	value	title
 respiratory_observations	Respiratory Observations	value	title
 sib_score	SIB Score	value
 skin_problem	Skin Problem	value
+status_codes	Status Code Field Values	value	title
 stool_score	Stool Score	value
 stool_types	Stool Types	value
 tb_obs_score	TB Obs Score	value

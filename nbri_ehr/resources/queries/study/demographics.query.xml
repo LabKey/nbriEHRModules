@@ -99,9 +99,6 @@
                             <fkDisplayColumnName>meaning</fkDisplayColumnName>
                         </fk>
                     </column>
-                    <column columnName="source">
-                        <columnTitle>Source</columnTitle>
-                    </column>
                     <column columnName="cites">
                         <columnTitle>CITES</columnTitle>
                     </column>

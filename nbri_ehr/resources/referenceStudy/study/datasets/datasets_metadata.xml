@@ -475,9 +475,6 @@
             <column columnName="geographic_origin">
                 <datatype>varchar</datatype>
             </column>
-            <column columnName="source">
-                <datatype>varchar</datatype>
-            </column>
             <column columnName="CITES">
                 <datatype>varchar</datatype>
             </column>
