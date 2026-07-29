@@ -69,6 +69,11 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                 columnConfig: {
                     width: 150
                 }
+            },
+            breedingType: {
+                columnConfig: {
+                    width: 200
+                }
             }
         }
     }

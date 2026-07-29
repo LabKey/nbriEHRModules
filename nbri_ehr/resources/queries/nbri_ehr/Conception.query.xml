@@ -21,15 +21,6 @@
                         <required>true</required>
                     </column>
                     <column columnName="Sire" />
-                    <column columnName="BreedingType">
-                        <columnTitle>Breeding Type</columnTitle>
-                        <fk>
-                            <fkDbSchema>ehr_lookups</fkDbSchema>
-                            <fkTable>breeding_type</fkTable>
-                            <fkColumnName>value</fkColumnName>
-                            <fkDisplayColumnName>title</fkDisplayColumnName>
-                        </fk>
-                    </column>
                     <column columnName="TaskId">
                         <columnTitle>Task Id</columnTitle>
                         <facetingBehavior>ALWAYS_OFF</facetingBehavior>

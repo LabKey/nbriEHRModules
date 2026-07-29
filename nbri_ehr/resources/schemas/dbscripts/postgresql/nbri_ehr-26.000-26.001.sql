@@ -12,7 +12,6 @@ CREATE TABLE nbri_ehr.Conception
     Remark              TEXT,
     Dam                 VARCHAR(100),
     Sire                VARCHAR(100),
-    BreedingType        VARCHAR(100),
     TaskId              ENTITYID,
     QCState             INTEGER,
     Container           entityId NOT NULL,

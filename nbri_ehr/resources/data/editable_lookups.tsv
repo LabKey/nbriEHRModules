@@ -23,6 +23,7 @@ ehr_lookups	blood_draw_reason	Clinical	Blood Draw Reason	Used in blood draw data
 ehr_lookups	blood_draw_tube_type	Clinical	Blood Draw Tube Type	Used in blood draw datasets.
 ehr_lookups	blood_sample_type	Clinical	Blood Sample Types	Used in blood draw datasets.
 ehr_lookups	blood_tube_volumes	Clinical	Blood Tube Volumes	Used in blood draw datasets.
+ehr_lookups	breeding_type	Colony Management	Breeding Type	Breeding group assignment codes.
 ehr_lookups	cage_type	Colony Management	Cage Type	Used in cage details.
 ehr_lookups	calculated_status_codes	Colony Management	Calculated Status	Animal status values.
 ehr_lookups	capillary_refill_time	Clinical	Capillary Refill Times	Used clinical observations.
@@ -63,7 +64,6 @@ ehr_lookups	general_obs	Clinical	General Observation Types	Clinical observation 
 ehr_lookups	genital_types	Colony Management	Genital Types	Clinical observation fixed values.
 ehr_lookups	genitourinary_obs	Clinical	Genitourinary Observation Types	Clinical observation fixed values.
 ehr_lookups	geographic_origins	Colony Management	Geographic Origins	Used in demographics dataset.
-ehr_lookups	breeding_type	Colony Management	Breeding Type	Breeding group assignment codes.
 ehr_lookups	group_status	Colony Management	Group Status	Group assignment status codes.
 ehr_lookups	hernia_types	Clinical	Hernia Types	Clinical observation fixed values.
 ehr_lookups	housing_reason	Housing	Housing Move Reason	Used in housing dataset for location transfers.

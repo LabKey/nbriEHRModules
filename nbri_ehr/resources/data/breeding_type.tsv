@@ -1,9 +1,10 @@
 value	title	sort_order
-0	Not assigned	1
-A	Assigned breeding protocol	2
-C	Cull	3
-H	Held from mating activity	4
-M	Multi-male	5
-Q	Testing as breeder	6
-S	Single male harem	7
-T	Time-mated	8
+A	Assigned Breeding Protocol	1
+C	Cull	2
+H	Held from Mating Activity	3
+M	Multi-Male	4
+P	Project Breeding	5
+Q	Testing as Breeder	6
+S	Single Male Harem	7
+T	Time-Mated	8
+O	Not Assigned	9

@@ -19,6 +19,7 @@ behavior_types	Behavior Types	value
 birth_condition	Birth Condition	value	title
 blood_draw_reason	Blood Draw Reason	value
 blood_sample_type	Blood Sample Types	value
+breeding_type	Breeding Type	value	title
 cage_type	Cage Type	value	title
 capillary_refill_time	Capillary Refill Time	value
 card_format	Card Format	value	title
@@ -50,7 +51,6 @@ gastro_types	Gastrointestinal Types	value
 general_obs	General Observations	value
 genital_types	Genital Types	value
 genitourinary_obs	Genitourinary Observations	value
-breeding_type	Breeding Type	value	title
 group_status	Group Status	value	title
 hernia_types	Hernia Types	value
 housing_reason	Housing Reason	value
