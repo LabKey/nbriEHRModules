@@ -69,7 +69,9 @@ import java.util.Set;
 
 public class NBRI_EHRCustomizer extends AbstractTableCustomizer
 {
-    private static final TreatmentLinkConfig RECORD_TREATMENT = TreatmentLinkConfig.builder().build();
+    private static final TreatmentLinkConfig RECORD_TREATMENT = TreatmentLinkConfig.builder()
+            .formTypes("Behavior", "Behavioral Rounds", "Bulk Behavior Entry")
+            .build();
 
     public UserSchema getEHRUserSchema(AbstractTableInfo ds, String name)
     {
