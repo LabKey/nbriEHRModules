@@ -580,7 +580,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         arrivals.setGridCell(1, "Id/demographics/geographic_origin", "BRAZIL");
         arrivals.setGridCell(1, "Id/demographics/species", "Pig-Tailed Macaque");
         arrivals.setGridCellJS(1, "Id/demographics/birth", now.minusDays(7).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
-        arrivals.setGridCell(1, "sourceFacility", "BIOQUAL, INCORPORATED");
+        arrivals.setGridCell(1, "sourceFacility", "Bioqual, Incorporated");
 
         Ext4GridRef protocolAssignments = _helper.getExt4GridForFormSection("Protocol Assignment");
         _helper.addRecordToGrid(protocolAssignments);
