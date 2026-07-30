@@ -736,6 +736,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     {
         String animalId = "TEST4551032";
         String conceptId = "TESTCONCEPT2";
+        // a non-live outcome, so ConceptionsByDam reports it rather than falling through to 'Live Birth'
+        String result = "Fetal Death";
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating conception record");
@@ -751,7 +753,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         _helper.addRecordToGrid(outcomes);
         outcomes.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         outcomes.setGridCell(1, "Id", animalId);
-        outcomes.setGridCell(1, "result", "Stillborn");
+        outcomes.setGridCell(1, "result", result);
         outcomes.setGridCell(1, "conceptId", conceptId);
         submitForm("Submit Final", "Finalize");
 
@@ -759,7 +761,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         DataRegionTable table = viewQueryData("study", "pregnancy");
         table.setFilter("Id", "Equals", animalId);
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(animalId), table.getRowDataAsText(0, "Id"));
-        Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList("Stillborn"), table.getRowDataAsText(0, "result"));
+        Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(result), table.getRowDataAsText(0, "result"));
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
 
         log("Verifying conception outcome in ConceptionsByDam");
@@ -767,7 +769,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
         report.setFilter("ConceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(animalId), report.getRowDataAsText(0, "Id"));
-        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Stillborn"), report.getRowDataAsText(0, "conceptionOutcome"));
+        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(result), report.getRowDataAsText(0, "conceptionOutcome"));
     }
 
     @Test
@@ -1241,7 +1243,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Marking an animal departed");
         InsertRowsCommand departure = new InsertRowsCommand("study", "departure");
-        departure.addRow(Map.of("Id", departedAnimalId, "date", LocalDateTime.now().minusDays(1), "destination", "Oregon NPRC", "performedby", 1004));
+        // destination stores an ehr_lookups.source code; the facility name is only the display value
+        departure.addRow(Map.of("Id", departedAnimalId, "date", LocalDateTime.now().minusDays(1), "destination", "ORPRC", "performedby", 1004));
         departure.execute(getApiHelper().getConnection(), getContainerPath());
     }
 

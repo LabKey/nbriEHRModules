@@ -80,17 +80,24 @@ Ext4.define('NBRI_EHR.window.StartWithConceptionWindow', {
         var sire = record.get('Sire');
 
         btn.disable();
-        this.getSpecies(dam, function(species){
+        this.getSpecies(dam, function(species, speciesError){
             this.addRow(conceptId, dam, sire, species);
             btn.enable();
             this.close();
+
+            // the row is still added so the conception values are not lost, but a blank species would otherwise
+            // surface only as a bare "Species is required" error with no hint that the copy from the dam failed
+            if (speciesError){
+                Ext4.Msg.alert('Species Not Copied', speciesError + '  Enter the species on the new birth record manually.');
+            }
         }, this);
     },
 
-    // the species of the offspring is inferred from the dam of the conception
+    // the species of the offspring is inferred from the dam of the conception.  When it cannot be determined the
+    // callback receives a message explaining why, rather than a null that is indistinguishable from an unset field.
     getSpecies: function(dam, callback, scope){
         if (!dam){
-            callback.call(scope, null);
+            callback.call(scope, null, 'The conception record has no dam, so the species could not be determined.');
             return;
         }
 
@@ -101,12 +108,22 @@ Ext4.define('NBRI_EHR.window.StartWithConceptionWindow', {
             filterArray: [LABKEY.Filter.create('Id', dam, LABKEY.Filter.Types.EQUAL)],
             scope: this,
             success: function(results){
-                var species = results.rows && results.rows.length ? results.rows[0].species : null;
-                callback.call(scope, species);
+                var rows = (results && results.rows) || [];
+                if (!rows.length){
+                    callback.call(scope, null, 'No demographics record was found for dam ' + dam + '.');
+                    return;
+                }
+
+                if (!rows[0].species){
+                    callback.call(scope, null, 'No species is recorded on the demographics record for dam ' + dam + '.');
+                    return;
+                }
+
+                callback.call(scope, rows[0].species);
             },
             failure: function(error){
                 console.error(error);
-                callback.call(scope, null);
+                callback.call(scope, null, 'Unable to look up the species of dam ' + dam + ': ' + ((error && error.exception) || 'the query failed') + '.');
             }
         });
     },
@@ -127,6 +144,17 @@ EHR.DataEntryUtils.registerGridButton('NBRI_START_WITH_CONCEPTION', function(con
         tooltip: EHR.DataEntryUtils.shouldShowTooltips() ? 'Click to add a birth record populated from an existing conception record' : undefined,
         handler: function(btn){
             var grid = btn.up('gridpanel');
+            if (!grid.store || !grid.store.hasLoaded()){
+                console.log('no store or store hasnt loaded');
+                return;
+            }
+
+            // commit any in-progress cell edit first; the modal window blocks the grid, so an open editor would
+            // otherwise be abandoned and its pending value lost
+            var cellEditing = grid.getPlugin(grid.editingPluginId);
+            if (cellEditing){
+                cellEditing.completeEdit();
+            }
 
             Ext4.create('NBRI_EHR.window.StartWithConceptionWindow', {
                 targetStore: grid.store,

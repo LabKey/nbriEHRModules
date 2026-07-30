@@ -19,7 +19,8 @@ SELECT
     c.Remark,
     c.QCState AS qcstate
 FROM Conception c
-LEFT JOIN (SELECT b.conceptId, GROUP_CONCAT(DISTINCT b.Id, ', ') AS offspring FROM study.birth b WHERE b.conceptId IS NOT NULL GROUP BY b.conceptId) b
+-- a conception yields at most one birth; the aggregate only guards against duplicates the birth trigger warns about but does not block
+LEFT JOIN (SELECT b.conceptId, MAX(b.Id) AS offspring FROM study.birth b WHERE b.conceptId IS NOT NULL GROUP BY b.conceptId) b
     ON b.conceptId = c.ConceptId
 LEFT JOIN (SELECT p.conceptId, MAX(p.result.title) AS result FROM study.pregnancy p WHERE p.conceptId IS NOT NULL GROUP BY p.conceptId) po
     ON po.conceptId = c.ConceptId

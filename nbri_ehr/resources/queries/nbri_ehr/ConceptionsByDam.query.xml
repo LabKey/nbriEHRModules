@@ -20,7 +20,7 @@
                     </column>
                     <column columnName="offspring">
                         <columnTitle>Offspring</columnTitle>
-                        <description>Animals born from this conception, if a birth record references it</description>
+                        <description>Animal born from this conception, if a birth record references it</description>
                     </column>
                 </columns>
             </table>
