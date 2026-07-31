@@ -1185,6 +1185,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitForText("Id: ERROR: Animal is not at the center.");
 
         setFormElement(Locator.name("Id"), aliveAnimalId);
+        _ext4Helper.selectComboBoxItem("Death Type:", "Spontaneous/Normal");
         _ext4Helper.selectComboBoxItem("Disposition:", "Euthaniasia (project)");
         waitForElement(Locator.name("deathWeight"));
         setFormElement(Locator.name("deathWeight"), "23");

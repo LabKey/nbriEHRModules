@@ -31,6 +31,7 @@ country_category	Country Category	value	title
 daily_enrich_codes	Daily Enrichment Codes	value
 data_category	Data Category Field Values	value
 death_reason	Death Reason	value
+death_type	Death Type	value	title
 delivery_state	Delivery State	value	title
 dental_obs	Dental Observations	value
 derm_obs	Dermatologic Observations	value

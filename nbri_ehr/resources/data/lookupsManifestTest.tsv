@@ -34,6 +34,7 @@ country_category
 daily_enrich_codes
 data_category
 death_reason
+death_type
 delivery_state
 dental_obs
 derm_obs

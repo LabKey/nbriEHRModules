@@ -530,6 +530,9 @@
             <column columnName="deathWeight">
                 <datatype>double</datatype>
             </column>
+            <column columnName="type">
+                <datatype>varchar</datatype>
+            </column>
         </columns>
     </table>
     <table tableName="exemptions" tableDbType="TABLE">

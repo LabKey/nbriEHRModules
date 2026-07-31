@@ -37,6 +37,7 @@ ehr_lookups	country_category	Colony Management	Country Category
 ehr_lookups	daily_enrich_codes	Behavior	Daily enrichment codes.	
 ehr_lookups	data_category	Clinical	Data Categories	Used in datasets.
 ehr_lookups	death_reason	Colony Management	Death Reason	
+ehr_lookups	death_type	Colony Management	Death Type	Death type codes.
 ehr_lookups	delivery_state	Colony Management	Delivery State	
 ehr_lookups	dental_obs	Clinical	Dental Observation Types	Clinical observation values.
 ehr_lookups	derm_obs	Clinical	Dermatologic Observation Types	Clinical observation values.

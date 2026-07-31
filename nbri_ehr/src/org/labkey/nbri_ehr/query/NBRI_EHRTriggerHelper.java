@@ -325,6 +325,16 @@ public class NBRI_EHRTriggerHelper
 
     public void upsertWeightRecord(Map<String, Object> row) throws QueryUpdateServiceException, DuplicateKeyException, SQLException, BatchValidationException, InvalidKeyException
     {
+        upsertWeightRecord(row, true);
+    }
+
+    /**
+     * When announceChanges is false, the nested weight trigger will not announce the modified id
+     * (skipAnnounceChangedParticipants). Callers must mark study.weight as modified on the outer helper
+     * (addTableModified) so the single announcement at trigger completion covers it.
+     */
+    public void upsertWeightRecord(Map<String, Object> row, boolean announceChanges) throws QueryUpdateServiceException, DuplicateKeyException, SQLException, BatchValidationException, InvalidKeyException
+    {
         BatchValidationException errors = new BatchValidationException();
         Date date = ConvertHelper.convert(row.get("date"), Date.class);
         String taskId = ConvertHelper.convert(row.get("taskid"), String.class);
@@ -362,13 +372,17 @@ public class NBRI_EHRTriggerHelper
         List<Map<String, Object>> rows = new ArrayList<>();
         rows.add(saveRow);
 
+        Map<String, Object> context = getExtraContext();
+        if (!announceChanges)
+            context.put("skipAnnounceChangedParticipants", true);
+
         if (updateRecord)
         {
-            ti.getUpdateService().updateRows(_user, _container, rows, null, null, getExtraContext());
+            ti.getUpdateService().updateRows(_user, _container, rows, null, null, context);
         }
         else
         {
-            ti.getUpdateService().insertRows(_user, _container, rows, errors, null, getExtraContext());
+            ti.getUpdateService().insertRows(_user, _container, rows, errors, null, context);
         }
 
         if (errors.hasErrors())
