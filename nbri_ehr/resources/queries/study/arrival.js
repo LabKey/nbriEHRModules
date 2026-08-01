@@ -40,7 +40,6 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         row.birth = row['Id/demographics/birth'] || null;
         row.gender = row['Id/demographics/gender'] || null;
         row.geographic_origin = row['Id/demographics/geographic_origin'] || null;
-        row.source = row.sourceFacility || null;
 
         if (row.QCStateLabel) {
             row.qcstate = helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId();

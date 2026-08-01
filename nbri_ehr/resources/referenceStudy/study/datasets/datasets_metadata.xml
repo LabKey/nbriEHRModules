@@ -224,6 +224,15 @@
             <column columnName="conceptId">
                 <datatype>varchar</datatype>
             </column>
+            <column columnName="breedingType">
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="cond">
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="type">
+                <datatype>varchar</datatype>
+            </column>
         </columns>
     </table>
     <table tableName="blood" tableDbType="TABLE">
@@ -467,9 +476,6 @@
                 <datatype>integer</datatype>
             </column>
             <column columnName="geographic_origin">
-                <datatype>varchar</datatype>
-            </column>
-            <column columnName="source">
                 <datatype>varchar</datatype>
             </column>
             <column columnName="CITES">

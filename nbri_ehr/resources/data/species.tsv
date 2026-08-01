@@ -1,7 +1,15 @@
 Common	Scientific Name	Id Prefix	Mhc Prefix	Max Blood Draw (mL/kg)	Max Percent Blood Drawn	Blood Reconstitution Interval (Days)	Cites Code	Date Disabled	USDA	Gestation
-African Green Monkey	Chlorocebus aethiops AGM			3.0000	1.0000	7.0000
-Brown-Tufted Capuchin	Cebus apella CAP			3.0000	1.0000	7.0000
-Cynomolgus Macaque	Macaca fascicularis CYN			3.0000	1.0000	7.0000
-Marmoset				3.0000	1.0000	7.0000
-Pig-Tailed Macaque	Macaca nemestrina PIG			3.0000	1.0000	7.0000
-Rhesus Macaque	Macaca mulatta RHM			3.0000	1.0000	7.0000
+Rhesus Macaque	Macaca Mulatta			3.0000	1.0000	7.0000
+Pig-Tailed Macaque	Macaca Nemestrina			3.0000	1.0000	7.0000
+Bonnet Macaque	Macaca Radiata			3.0000	1.0000	7.0000
+Olive Baboon	Papio Anubis			3.0000	1.0000	7.0000
+Yellow Baboon	Papio Cynocephalus			3.0000	1.0000	7.0000
+Squirrel Monkey	Saimiri Sciureus			3.0000	1.0000	7.0000
+African Green Monkey	Chlorocebus Aethiops			3.0000	1.0000	7.0000
+Domestic Dog	Canis Familiaris			3.0000	1.0000	7.0000
+Formosan Rock Macaque	Macaca Cyclopis			3.0000	1.0000	7.0000
+Japanese Macaque	Macaca Fuscata			3.0000	1.0000	7.000
+Talapoin Monkey	Cercopithecus Talapoin			3.0000	1.0000	7.0000
+Sykes' Monkey	Cercopithecus M Albogulari			3.0000	1.0000	7.0000
+Dusky Titi Monkey	Callicebus Moloch			3.0000	1.0000	7.0000
+Brown-Tufted Capuchin	Cebus Apella			3.0000	1.0000	7.0000

@@ -9,6 +9,7 @@ CREATE TABLE nbri_ehr.Conception
     ConceptId           VARCHAR(100),
     ConceptDate         TIMESTAMP,
     ConceptTermDate     TIMESTAMP,
+    Estimated           BOOLEAN DEFAULT FALSE,
     Remark              TEXT,
     Dam                 VARCHAR(100),
     Sire                VARCHAR(100),

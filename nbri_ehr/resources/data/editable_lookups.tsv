@@ -18,10 +18,12 @@ ehr_lookups	bcs_score	Clinical	Body Condition Score	Clinical observation fixed v
 ehr_lookups	behavior_abnormality	Clinical	Behavior Abnormality	Clinical observation fixed values.
 ehr_lookups	behavior_mgmt_codes	Behavior	Behavior Management Codes	Behavior observation fixed values.
 ehr_lookups	behavior_types	Behavior	Behavior Types	Behavior observation fixed values.
+ehr_lookups	birth_condition	Colony Management	Birth Condition	Birth condition values.
 ehr_lookups	blood_draw_reason	Clinical	Blood Draw Reason	Used in blood draw datasets.
 ehr_lookups	blood_draw_tube_type	Clinical	Blood Draw Tube Type	Used in blood draw datasets.
 ehr_lookups	blood_sample_type	Clinical	Blood Sample Types	Used in blood draw datasets.
 ehr_lookups	blood_tube_volumes	Clinical	Blood Tube Volumes	Used in blood draw datasets.
+ehr_lookups	breeding_type	Colony Management	Breeding Type	Breeding group assignment codes.
 ehr_lookups	cage_type	Colony Management	Cage Type	Used in cage details.
 ehr_lookups	calculated_status_codes	Colony Management	Calculated Status	Animal status values.
 ehr_lookups	capillary_refill_time	Clinical	Capillary Refill Times	Used clinical observations.
@@ -37,6 +39,7 @@ ehr_lookups	country_category	Colony Management	Country Category
 ehr_lookups	daily_enrich_codes	Behavior	Daily enrichment codes.	
 ehr_lookups	data_category	Clinical	Data Categories	Used in datasets.
 ehr_lookups	death_reason	Colony Management	Death Reason	
+ehr_lookups	delivery_mode	Colony Management	Delivery Mode
 ehr_lookups	delivery_state	Colony Management	Delivery State	
 ehr_lookups	dental_obs	Clinical	Dental Observation Types	Clinical observation values.
 ehr_lookups	derm_obs	Clinical	Dermatologic Observation Types	Clinical observation values.
