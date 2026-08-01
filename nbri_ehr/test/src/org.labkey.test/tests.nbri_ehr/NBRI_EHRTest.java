@@ -103,6 +103,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String deadAnimalId = "D5454";
     private static final String departedAnimalId = "H6767";
     private static final String aliveAnimalId = "A4545";
+    // never inserted into demographics; exercises the deaths trigger's unknown-Id rejection
+    private static final String unknownAnimalId = "X9999";
     // Dedicated animal for testScheduledObservationTaskGrouping; provisioned (alive, housed, assigned) in
     // createTestSubjects so the clinical case form raises no warnings that would keep the validation banner up.
     private static final String taskGroupAnimalId = "TESTGRP9090";
@@ -1184,6 +1186,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         setFormElement(Locator.name("Id"), departedAnimalId);
         waitForText("Id: ERROR: Animal is not at the center.");
 
+        setFormElement(Locator.name("Id"), unknownAnimalId);
+        waitForText("Id: ERROR: Id not found in the demographics table.");
+
+        setFormElement(Locator.name("Id"), deadAnimalId);
+        waitForText("Id: ERROR: Death record already exists for this animal.");
+
         setFormElement(Locator.name("Id"), aliveAnimalId);
         _ext4Helper.selectComboBoxItem("Death Type:", "Spontaneous/Normal");
         _ext4Helper.selectComboBoxItem("Disposition:", "Euthaniasia (project)");
@@ -1193,6 +1201,15 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Assert.assertFalse(isElementPresent(Locator.linkWithText("Submit Final")));
         submitForm("Submit Death", "Confirm");
         stopImpersonating();
+
+        log("Verify a second death insert is rejected with a validation error, not a unique constraint violation");
+        SimplePostCommand duplicateDeath = getApiHelper().prepareInsertCommand("study", "deaths", "lsid",
+                new String[]{"Id", "date", "reason", "performedby"},
+                new Object[][]{{aliveAnimalId, LocalDateTime.now(), "4", 1004}});
+        CommandException duplicateError = getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), duplicateDeath, getExtraContext());
+        Map<String, List<String>> duplicateErrors = getApiHelper().extractErrors(duplicateError.getProperties());
+        Assert.assertTrue("Expected duplicate death validation error, got: " + duplicateErrors,
+                duplicateErrors.getOrDefault("Id", List.of()).contains("ERROR: A death record already exists for this animal (Request: Pending)."));
 
         log("Trigger notifications");
         goToEHRFolder();

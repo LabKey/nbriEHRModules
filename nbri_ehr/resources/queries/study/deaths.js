@@ -6,7 +6,6 @@
 require("ehr/triggers").initScript(this);
 
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
-var validIds = [];
 var idMap = {};
 var deathIdMap = {};
 
@@ -26,9 +25,7 @@ function onInit(event, helper){
                 return;
 
             for(var i=0; i < results.rows.length; i++) {
-                validIds.push(results.rows[i]["Id"]["value"])
                 idMap[results.rows[i]["Id"]["value"]] = {calculated_status: results.rows[i]["calculated_status"]["value"], QCStateLabel: results.rows[i]["QCState/Label"]["value"]};
-                // console.log(idMap[results.rows[i]["Id"]["value"]]);
             }
         },
         failure: function (error) {
@@ -84,13 +81,27 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
         //only allow death record to be created if the animal is in the demographics table
         if (idMap[row.Id]) {
 
+            // deathIdMap has no entry for the animal on initial import, and any of these values can be null
+            var status = idMap[row.Id].calculated_status ? idMap[row.Id].calculated_status.toUpperCase() : null;
+            var priorDeathQCState = deathIdMap[row.Id] && deathIdMap[row.Id].QCStateLabel ? deathIdMap[row.Id].QCStateLabel.toUpperCase() : null;
+            var rowQCState = row.QCStateLabel ? row.QCStateLabel.toUpperCase() : null;
+
+            // deathIdMap is a snapshot taken before any row was processed, so it cannot see earlier rows of this same
+            // save. Track them separately: study.deaths is demographic, so a second row for one animal cannot be saved.
+            var deathsInTransaction = helper.getProperty('deathsInTransaction') || {};
+
+            var errorMsg = null;
+
             // check if a death record already exists for this animal
-            if (idMap[row.Id].calculated_status.toUpperCase() === 'DEAD' && deathIdMap[row.Id].QCStateLabel.toUpperCase() === 'COMPLETED') {
-                EHR.Server.Utils.addError(scriptErrors, 'Id', 'Death record already exists for this animal.', 'ERROR');
+            if (status === 'DEAD' && priorDeathQCState === 'COMPLETED') {
+                errorMsg = 'Death record already exists for this animal.';
             }
             // check if the animal is at the center
-            else if (idMap[row.Id].calculated_status.toUpperCase() === 'SHIPPED') {
-                EHR.Server.Utils.addError(scriptErrors, 'Id', 'Animal is not at the center.', 'ERROR');
+            else if (status === 'SHIPPED') {
+                errorMsg = 'Animal is not at the center.';
+            }
+            else if (deathsInTransaction[row.Id]) {
+                errorMsg = 'This animal is entered more than once. Only one death record per animal can be saved.';
             }
             // Check if an animal that's being entered is pending any request/review.
             // Note 1: When trying to enter a new record for an animal, the QCState = 'IN PROGRESS'.
@@ -98,23 +109,28 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
             // the QCState will get set to 'Review Required' - this way we can distinguish between the two states in the Death/Necropsy workflow.
             // If a user tries to submit a new Death record (identified by QCState = 'IN PROGRESS') for an animal that
             // already has a pending request/review status in study.deaths, then below error message will be displayed.
-            else if (row.QCStateLabel.toUpperCase() === 'IN PROGRESS' &&
-                    deathIdMap[row.Id] && deathIdMap[row.Id].QCStateLabel &&
-                    (deathIdMap[row.Id].QCStateLabel.toUpperCase() === 'REQUEST: PENDING' ||
-                            deathIdMap[row.Id].QCStateLabel.toUpperCase() === 'REVIEW REQUIRED')) {
-                EHR.Server.Utils.addError(scriptErrors, 'Id', 'Death record is pending review for this animal', 'ERROR');
+            else if (rowQCState === 'IN PROGRESS' &&
+                    (priorDeathQCState === 'REQUEST: PENDING' || priorDeathQCState === 'REVIEW REQUIRED')) {
+                errorMsg = 'Death record is pending review for this animal';
             }
             // if 'Save Draft' record already exists, it doesn't allow to 'Save Draft' or 'Submit Death'
             // on the same animal again - throws an error "duplicate key value violates unique constraint"
             // So, added this check to allow 'Save Draft' record to be saved only once.
-            else if (oldRow === undefined && row.QCStateLabel.toUpperCase() === 'IN PROGRESS' &&
-                    deathIdMap[row.Id] && deathIdMap[row.Id].QCStateLabel &&
-                    deathIdMap[row.Id].QCStateLabel.toUpperCase() === 'IN PROGRESS') {
-                EHR.Server.Utils.addError(scriptErrors, 'Id', 'Death/Necropsy data entry is in progress for this animal', 'ERROR');
+            else if (oldRow === undefined && rowQCState === 'IN PROGRESS' && priorDeathQCState === 'IN PROGRESS') {
+                errorMsg = 'Death/Necropsy data entry is in progress for this animal';
             }
-            else if (!helper.isValidateOnly() && row.Id && row.date && row.QCStateLabel.toUpperCase() === 'COMPLETED') {
+            // study.deaths is demographic (one row per animal), so any other new row for an animal with an existing
+            // record would fail on the unique constraint; report it as a validation error instead. Test record
+            // existence, not QC state: ETL/import-sourced rows can carry a null QCState.
+            else if (oldRow === undefined && deathIdMap[row.Id]) {
+                errorMsg = 'A death record already exists for this animal (' + (deathIdMap[row.Id].QCStateLabel || 'unknown state') + ').';
+            }
 
-                if (validIds.indexOf(row.id) !== -1) {
+            if (errorMsg) {
+                EHR.Server.Utils.addError(scriptErrors, 'Id', errorMsg, 'ERROR');
+            }
+            else {
+                if (!helper.isValidateOnly() && row.Id && row.date && rowQCState === 'COMPLETED') {
 
                     // update demographics
                     demographicsUpdates.push({
@@ -128,25 +144,32 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
                     helper.getJavaHelper().updateDemographicsRecord(demographicsUpdates);
                     console.log('updated demographics death date for animal: ' + row.Id);
                 }
-                else {
-                    console.log(row.id + " is not a valid animal id");
+
+                if (!helper.isValidateOnly() && row.date && row.QCStateLabel && EHR.Server.Security.getQCStateByLabel(row.QCStateLabel).PublicData) {
+                    var qcstate = helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId();
+
+                    //add/update weight record
+                    var weightRecord = {
+                        Id: row.Id,
+                        date: row.date,
+                        weight: row.deathWeight,
+                        taskid: row.taskid,
+                        qcstate: qcstate,
+                        performedby: row.performedby
+                    };
+                    if (triggerHelper.upsertWeightRecord(weightRecord, false)) {
+                        helper.addTableModified('study', 'weight');
+                    }
                 }
-            }
 
-            if(row.QCStateLabel && EHR.Server.Security.getQCStateByLabel(row.QCStateLabel).PublicData) {
-                var qcstate = helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId();
-
-                //add/update weight record
-                var weightRecord = {
-                    Id: row.Id,
-                    date: row.date,
-                    weight: row.deathWeight,
-                    taskid: row.taskid,
-                    qcstate: qcstate,
-                    performedby: row.performedby
-                };
-                triggerHelper.upsertWeightRecord(weightRecord);
+                // mark only rows that passed, so a duplicate of a failed row reports that row's underlying error
+                deathsInTransaction[row.Id] = true;
+                helper.setProperty('deathsInTransaction', deathsInTransaction);
             }
+        }
+        // insert-only: updates of existing death records keep their prior behavior
+        else if (oldRow === undefined) {
+            EHR.Server.Utils.addError(scriptErrors, 'Id', 'Id not found in the demographics table.', 'ERROR');
         }
     }
 }
