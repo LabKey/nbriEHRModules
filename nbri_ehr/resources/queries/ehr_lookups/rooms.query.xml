@@ -8,6 +8,8 @@
                     <column columnName="name" />
                     <column columnName="building" />
                     <column columnName="room">
+                        <!-- Carried onto any lookup that displays this column, so room/room links the same way cage/room does. -->
+                        <url>/nbri_ehr/cageDetails.view?room=${room}</url>
                         <isHidden>true</isHidden>
                         <shownInInsertView>false</shownInInsertView>
                         <shownInUpdateView>false</shownInUpdateView>

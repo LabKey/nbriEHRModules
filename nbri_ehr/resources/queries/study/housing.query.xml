@@ -30,7 +30,7 @@
                             <fkDbSchema>ehr_lookups</fkDbSchema>
                             <fkTable>rooms</fkTable>
                             <fkColumnName>room</fkColumnName>
-                            <fkDisplayColumnName>name</fkDisplayColumnName>
+                            <fkDisplayColumnName>room</fkDisplayColumnName>
                         </fk>
                     </column>
                     <column columnName="reason">

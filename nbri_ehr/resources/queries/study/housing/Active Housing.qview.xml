@@ -4,6 +4,7 @@
         <column name="Id/Demographics/species"/>
         <column name="date"/>
         <column name="enddate"/>
+        <column name="room/room" />
         <column name="cage"/>
         <column name="duration">
             <properties>

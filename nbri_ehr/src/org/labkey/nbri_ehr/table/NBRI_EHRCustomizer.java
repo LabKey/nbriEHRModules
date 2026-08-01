@@ -713,7 +713,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             {
                 UserSchema us = getEHRUserSchema(ti, "ehr_lookups");
                 col.setLabel("Room");
-                col.setFk(new QueryForeignKey(ti.getUserSchema(), ti.getContainerFilter(), us, null, "rooms", "room", "fullRoom"));
+                col.setFk(new QueryForeignKey(ti.getUserSchema(), ti.getContainerFilter(), us, null, "rooms", "room", "room"));
                 col.setURL(StringExpressionFactory.createURL("/nbri_ehr/cageDetails.view?room=${room}"));
             }
             if ("building".equalsIgnoreCase(col.getName()) && !ti.getName().equalsIgnoreCase("buildings"))
@@ -726,7 +726,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             {
                 UserSchema us = getEHRUserSchema(ti, "ehr_lookups");
                 col.setLabel("Floor");
-                col.setFk(new QueryForeignKey(ti.getUserSchema(), ti.getContainerFilter(), us, null, "floors", "floor", "fullFloor"));
+                col.setFk(new QueryForeignKey(ti.getUserSchema(), ti.getContainerFilter(), us, null, "floors", "floor", "name"));
             }
             if ("area".equalsIgnoreCase(col.getName()) && !ti.getName().equalsIgnoreCase("areas"))
             {

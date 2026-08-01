@@ -107,6 +107,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     // createTestSubjects so the clinical case form raises no warnings that would keep the validation banner up.
     private static final String taskGroupAnimalId = "TESTGRP9090";
 
+    // Rooms are keyed by building and name, so every room fixture needs a building to hang off of.
+    // 'buildings' derives its key from the description, and 'SPF' is one of the areas seeded with the ehr_lookups schema.
+    private static final String BUILDING_ID = "TestBuilding";
+    private static final String BUILDING_AREA = "SPF";
+
     private final String[] weightFields = {"Id", "date", "enddate", "project", "weight", FIELD_QCSTATELABEL, FIELD_OBJECTID, FIELD_LSID, "_recordid", "performedby"};
     private final Object[] weightData1 = {getExpectedAnimalIDCasing("TESTSUBJECT1"), EHRClientAPIHelper.DATE_SUBSTITUTION, null, null, "12", EHRQCState.IN_PROGRESS.label, null, null, "_recordID", 1004};
 
@@ -244,20 +249,44 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         RowsResponse saveRowsResponse = insertRowsCommand.execute(getApiHelper().getConnection(), getContainerPath());
     }
 
+    /**
+     * The key a room trigger derives for the given room name. Mirrors ehr_lookups/rooms.js.
+     */
+    private static String roomKey(String roomName)
+    {
+        return BUILDING_ID + "-" + roomName;
+    }
+
+    @LogMethod
+    private void populateBuildingRecords() throws Exception
+    {
+        InsertRowsCommand insertCmd = new InsertRowsCommand("ehr_lookups", "buildings");
+        Map<String, Object> rowMap = new HashMap<>();
+        // Supply the derived key rather than relying on the trigger to fill it, matching how the base class seeds rooms.
+        rowMap.put("name", BUILDING_ID);
+        rowMap.put("description", BUILDING_ID);
+        rowMap.put("area", BUILDING_AREA);
+        insertCmd.addRow(rowMap);
+
+        insertCmd.execute(createDefaultConnection(), getContainerPath());
+    }
+
     @Override
     protected void populateRoomRecords() throws Exception
     {
+        populateBuildingRecords();
+
         InsertRowsCommand insertCmd = new InsertRowsCommand("ehr_lookups", "rooms");
         Map<String, Object> rowMap = new HashMap<>();
         rowMap.put("name", ROOM_ID);
-        rowMap.put("floor", "floor1");
+        rowMap.put("building", BUILDING_ID);
         rowMap.put("housingType", 1);
         rowMap.put("housingCondition", 1);
         insertCmd.addRow(rowMap);
 
         rowMap = new HashMap<>();
         rowMap.put("name", ROOM_ID2);
-        rowMap.put("floor", "floor2");
+        rowMap.put("building", BUILDING_ID);
         rowMap.put("housingType", 1);
         rowMap.put("housingCondition", 1);
         insertCmd.addRow(rowMap);
@@ -321,19 +350,20 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private void populateLocations() throws IOException, CommandException
     {
         goToEHRFolder();
+        // BUILDING_ID is created by populateRoomRecords, which runs earlier as part of initProject.
         log("Inserting values in rooms");
         InsertRowsCommand roomCmd = new InsertRowsCommand("ehr_lookups", "rooms");
-        roomCmd.addRow(Map.of("name", "R1", "floor", "F1"));
-        roomCmd.addRow(Map.of("name", "R2", "floor", "F2"));
-        roomCmd.addRow(Map.of("name", "R3", "floor", "F3"));
+        roomCmd.addRow(Map.of("name", "R1", "building", BUILDING_ID));
+        roomCmd.addRow(Map.of("name", "R2", "building", BUILDING_ID));
+        roomCmd.addRow(Map.of("name", "R3", "building", BUILDING_ID));
         roomCmd.execute(getApiHelper().getConnection(), getContainerPath());
 
         log("Inserting values in cage");
         InsertRowsCommand cageCmd = new InsertRowsCommand("ehr_lookups", "cage");
-        cageCmd.addRow(Map.of("location", "L1", "cage", "C1", "room", "R1"));
-        cageCmd.addRow(Map.of("location", "L2", "cage", "C2", "room", "R1"));
-        cageCmd.addRow(Map.of("location", "L3", "cage", "C3", "room", "R2"));
-        cageCmd.addRow(Map.of("location", "L4", "cage", "C4", "room", "R3"));
+        cageCmd.addRow(Map.of("location", "L1", "cage", "C1", "room", roomKey("R1")));
+        cageCmd.addRow(Map.of("location", "L2", "cage", "C2", "room", roomKey("R1")));
+        cageCmd.addRow(Map.of("location", "L3", "cage", "C3", "room", roomKey("R2")));
+        cageCmd.addRow(Map.of("location", "L4", "cage", "C4", "room", roomKey("R3")));
         cageCmd.execute(getApiHelper().getConnection(), getContainerPath());
     }
 

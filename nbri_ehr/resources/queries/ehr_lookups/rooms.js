@@ -15,6 +15,11 @@ function onUpsert(row, oldRow, errors){
             return;
         }
 
+        if (!row.building) {
+            errors['building'] = 'Building is required.';
+            return;
+        }
+
         if (!row.room) {
             if (oldRow && oldRow.room && oldRow.room[0]) {
                 row.room = oldRow.room[0];
