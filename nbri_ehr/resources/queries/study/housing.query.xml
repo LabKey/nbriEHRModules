@@ -21,7 +21,7 @@
                             <fkDbSchema>ehr_lookups</fkDbSchema>
                             <fkTable>cage</fkTable>
                             <fkColumnName>location</fkColumnName>
-                            <fkDisplayColumnName>cage</fkDisplayColumnName>
+<!--                            <fkDisplayColumnName>cage</fkDisplayColumnName>-->
                         </fk>
                     </column>
                     <column columnName="room">

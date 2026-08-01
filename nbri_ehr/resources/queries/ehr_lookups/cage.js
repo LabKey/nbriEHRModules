@@ -7,6 +7,15 @@ var LABKEY = require("labkey");
 
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 
+// 'location' is not user editable, so it is absent from the incoming row map and the value this script
+// derives has nowhere to land. Declaring it managed reserves a slot so the derived key is persisted.
+function managedColumns() {
+    return {
+        insert: ["location"],
+        update: ["location"],
+    };
+}
+
 function onUpsert(row, oldRow, errors){
     if (extraContext.dataSource != "etl") {
         if (!row.location) {

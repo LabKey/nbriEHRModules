@@ -25,7 +25,7 @@ function onUpsert(row, oldRow, errors){
                 return;
             }
 
-            row.name = row.description + '-' + row.area;
+            row.name = row.description;
         }
     }
 }

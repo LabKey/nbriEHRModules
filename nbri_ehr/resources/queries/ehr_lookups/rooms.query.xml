@@ -6,7 +6,7 @@
                 <tableTitle>Rooms</tableTitle>
                 <columns>
                     <column columnName="name" />
-                    <column columnName="floor" />
+                    <column columnName="building" />
                     <column columnName="room">
                         <isHidden>true</isHidden>
                         <shownInInsertView>false</shownInInsertView>

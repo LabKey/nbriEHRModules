@@ -15,18 +15,13 @@ function onUpsert(row, oldRow, errors){
             return;
         }
 
-        if (!row.floor) {
-            errors['floor'] = 'Floor is required.';
-            return;
-        }
-
         if (!row.room) {
             if (oldRow && oldRow.room && oldRow.room[0]) {
                 row.room = oldRow.room[0];
                 return;
             }
 
-            row.room = row.name + '-' + row.floor;
+            row.room = row.building + '-' + row.name;
         }
     }
 }
