@@ -323,17 +323,19 @@ public class NBRI_EHRTriggerHelper
         return false;
     }
 
-    public void upsertWeightRecord(Map<String, Object> row) throws QueryUpdateServiceException, DuplicateKeyException, SQLException, BatchValidationException, InvalidKeyException
+    public boolean upsertWeightRecord(Map<String, Object> row) throws QueryUpdateServiceException, DuplicateKeyException, SQLException, BatchValidationException, InvalidKeyException
     {
-        upsertWeightRecord(row, true);
+        return upsertWeightRecord(row, true);
     }
 
     /**
      * When announceChanges is false, the nested weight trigger will not announce the modified id
      * (skipAnnounceChangedParticipants). Callers must mark study.weight as modified on the outer helper
      * (addTableModified) so the single announcement at trigger completion covers it.
+     *
+     * @return whether a weight record was written; false when there was nothing to record
      */
-    public void upsertWeightRecord(Map<String, Object> row, boolean announceChanges) throws QueryUpdateServiceException, DuplicateKeyException, SQLException, BatchValidationException, InvalidKeyException
+    public boolean upsertWeightRecord(Map<String, Object> row, boolean announceChanges) throws QueryUpdateServiceException, DuplicateKeyException, SQLException, BatchValidationException, InvalidKeyException
     {
         BatchValidationException errors = new BatchValidationException();
         Date date = ConvertHelper.convert(row.get("date"), Date.class);
@@ -341,25 +343,16 @@ public class NBRI_EHRTriggerHelper
 
         TableInfo ti = getTableInfo("study", "weight");
 
-        // If there is already a weight record for this task, update that record
-        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), row.get("Id"));
-        filter.addCondition(FieldKey.fromString("taskid"), taskId);
-        TableSelector ts = new TableSelector(ti, PageFlowUtil.set("lsid", "objectid"), filter, null);
-        boolean updateRecord = ts.exists();
-
-        Map<String, Object> saveRow = new CaseInsensitiveHashMap<>();
-        saveRow.put("Id", row.get("Id"));
-        saveRow.put("date", date);
-        saveRow.put("taskid", taskId);
-        saveRow.put("qcstate", row.get("qcstate"));
-        saveRow.put("performedby", row.get("performedby"));
-        if (updateRecord)
+        // If there is already a weight record for this task, update that record. A null taskid filter flips to
+        // "taskid IS NULL" and would match unrelated historical weights, so task-less entry (e.g. a non-EHR bulk
+        // import form) is insert-only.
+        Map<String, Object> existingRecord = null;
+        if (taskId != null)
         {
-            saveRow.put("objectid", ts.getMap().get("objectid"));
-        }
-        else
-        {
-            saveRow.put("objectid", new GUID().toString());
+            SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), row.get("Id"));
+            filter.addCondition(FieldKey.fromString("taskid"), taskId);
+            TableSelector ts = new TableSelector(ti, PageFlowUtil.set("lsid", "objectid"), filter, null);
+            existingRecord = ts.getMap();
         }
 
         Double weight = null;
@@ -367,16 +360,39 @@ public class NBRI_EHRTriggerHelper
         {
             weight = ConvertHelper.convert(row.get("weight"), Double.class);
         }
-        saveRow.put("weight", weight);
-
-        List<Map<String, Object>> rows = new ArrayList<>();
-        rows.add(saveRow);
 
         Map<String, Object> context = getExtraContext();
         if (!announceChanges)
             context.put("skipAnnounceChangedParticipants", true);
 
-        if (updateRecord)
+        // Weight is optional, so with none entered there is nothing to record. Delete any record left by an earlier
+        // save rather than blanking it: the weight trigger only WARNs on a null weight and the default threshold
+        // filters that out, so the emptied record would survive the save.
+        if (weight == null)
+        {
+            if (existingRecord == null)
+                return false;
+
+            Map<String, Object> keyRow = new CaseInsensitiveHashMap<>();
+            keyRow.put("lsid", existingRecord.get("lsid"));
+            ti.getUpdateService().deleteRows(_user, _container, List.of(keyRow), null, context);
+
+            return true;
+        }
+
+        Map<String, Object> saveRow = new CaseInsensitiveHashMap<>();
+        saveRow.put("Id", row.get("Id"));
+        saveRow.put("date", date);
+        saveRow.put("taskid", taskId);
+        saveRow.put("qcstate", row.get("qcstate"));
+        saveRow.put("performedby", row.get("performedby"));
+        saveRow.put("objectid", existingRecord != null ? existingRecord.get("objectid") : new GUID().toString());
+        saveRow.put("weight", weight);
+
+        List<Map<String, Object>> rows = new ArrayList<>();
+        rows.add(saveRow);
+
+        if (existingRecord != null)
         {
             ti.getUpdateService().updateRows(_user, _container, rows, null, null, context);
         }
@@ -387,6 +403,8 @@ public class NBRI_EHRTriggerHelper
 
         if (errors.hasErrors())
             throw errors;
+
+        return true;
     }
 
     public void clinicalMoveNotification(final String animalId, final String date)
