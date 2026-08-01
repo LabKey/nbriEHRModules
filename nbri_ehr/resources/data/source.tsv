@@ -1,108 +1,103 @@
 code	meaning
-1	Adv Bioscience Labs
-2	Alamogordo PrimateFaclty
-3	Alpha Genesis, Inc.
-4	Barton West End Farm
-5	Battelle Memorial Inst
-6	Baylor Research Inst
-7	BIOCULTURE (MTIUS) LTD
-8	Bioculture US LLC
-9	BIOQUAL, Inc.
-10	Boehringer Ingelheim
-11	Boston University
-12	Buckshire Corporation
-13	Caribbean Primate Rsrch
-14	CBNC
-15	CDC
-16	Charles River Laboratory
-17	Charles River/Reno
-18	Chimp Haven
-19	China/Guangxi GF Sci Pri
-20	Chiron Corp
-21	CiToxLab North America
-22	Covance Research Prod
-23	CR Rsrch Models Houston
-24	Ctr Captive Chimp Care
-25	Cynologics Ltd
-26	DHMRI
-27	Duke Univ Medical Ctr
-28	Durham Research Center
-29	Emory University YPRC
-30	Envigo Global Services
-31	Guangdong Landau Biotech
-32	Hainan, China
-33	Harvard Medical School
-34	Indonesia (Pt. W. Sat)
-35	Johns Hopkins University
-36	LC Preclinical Research
-37	Lovelace Biomedical
-38	LRRI
-39	LSU Health Science BR
-40	LSU Health Science NO
-41	LSU Health Science Shv
-42	Mannheimer Foundation
-43	Mass. General Hospital
-44	MD Anderson Cancer Ctr.
-45	Merck & Co (Rahway)
-46	Merck & Co (WP)
-47	Merck Research Labs WP
-48	Nationwide Children's
-49	New England NPRC
-50	New York University
-51	NIAID (Bioqual)
-52	NIAID Morgan Island
-53	NIAID NIH Animal Ctr
-54	NICHD/NIH
-55	NIH
-56	NIH Animal Center
-57	NINDS NIH Animal Ctr
-58	Novartis Pharm. Corp.
-59	Novartis Vaccines Srl
-60	NYU School of Medicine
-61	Oregon NPRC
-62	Pfizer
-63	Pfizer-Andover
-64	Pfizer-Pearl River
-65	PreLabs
-66	Primate Products
-67	Primedica Labs
-68	PrimGen
-69	Primgen CSP
-70	RainForest Adventures
-71	Republic of Mauritius
-72	Rocky Mountain Lab
-73	Save the Chimps
-74	Siconbrec Inc
-75	Sierra Biomedical
-76	SNBL-SRC
-77	SRI International
-78	St. Jude Childrens Rsrch
-79	St. Kitts
-80	Stanford Univ School Med
-81	Stony Brook University
-82	SUNY Downstate Medical
-83	SW Found Biomed Rsrch
-84	Texas Biomed
-85	Three Springs Scientific
-86	Tulane NPC (Covington)
-87	Tulane Univ Medical Ctr
-88	Univ Alabama Birmingham
-89	Univ of Illinois
-90	Univ of Kansas Med Ctr
-91	Univ of Maryland
-92	Univ of Nebraska Med Ctr
-93	Univ of Pittsburgh
-94	Univ of Texas at Austin
-95	Univ of Washington NPRC
-96	Univ of Wisconsin
-97	Univ Tex MD Anderson CC
-98	USAMRICD
-99	USAMRIID
-100	Virginia Commonwealth U
-101	WakeForest School of Med
-102	WaNPRC
-103	Worldwide Primates, Inc.
-104	WRAIR
-105	Wyeth-Ayerst Rsrch (PR)
-106	Yale Univ Sch Medicine
-107	Yerkes Regional PRC
+AAI	Asiatic Animal Imports
+BIOQUAL	Bioqual, Incorporated
+BRANDEIS	Brandeis University
+CA-DPH	Calif Dept Public Health Facilities
+CA-DOH	California State Department of Health
+CPRC	Carribean Primate Center
+CWRU	Case Western Reserve University
+UCD-CNS	Center for Neuroscience, UCD
+CR-KL	Charles River - Key Lois
+CRL	Charles River Labs
+CRRP	Charles River Research Primates Inc
+BROOKFIELD	Chicago Zoological Park (Brookfield Zoo)
+CHILDRENS	Childrens Hospital
+CHIMR	Christ Hospital Inst. for Medical Res.
+CSU	Colorado State University
+CORNELL	Cornell University
+COULSTON	Coulston Foundation
+COVANCE	Covance Research Products, Inc.
+PRIMGEN	CSP-Primgen
+CUTTER	Cutter Lab
+DMT	Del Mundo Trading
+EPZ	El Paso Zoological Gardens
+ENVIGO	Envigo
+HAHNEMANN	Hahnemann University
+HL	Hazelton Laboratories
+HLA	Hazelton Laboratories America Inc.
+UNK	Institution Unknown
+ISU-VDL	Iowa State Univ, Vet Diagnostic Lab
+JVL	Jan Vacek Limited
+JHMC	Jewish Hospital & Medical Center
+JRI	Johnson Research Institute
+KNLPC	Kunming National Laboratory Primate Ctr.
+LABS	Laboratory Animal Breeders and Services
+LABSINDO	Labsindo
+LEMSIP	LEMSIP, New York Medical Center, RDI
+LAIR	Letterman Army Res Inst-Presidio
+LB	Litton Bionetics
+LLU	Loma Linda University
+MSU-MI	Michigan State University
+MSU-MT	Montana State University
+MPI	MPI Research
+NASA-ARC	NASA-Ames Research Center
+NAMRL	Naval Aerospace Medical Research Lab
+NEPRC	New England Primate Research Center
+NIHAC	NIH Animal Center
+ORPRC	Oregon Regional Primate Research Center
+PARC-SAF	Parc Safari African
+PPC	Perrine Primate Center
+PPP	Peruvian Primatological Project
+PET-FARM	Pet Farm
+PRIMLAB	Primate Laboratory
+PPI	Primate Products, Incorporated
+PRIVATE	Private Party
+RIEPT	Res. Inst. of Exp. Pathology & Therapy
+SALK	Salk Institute
+SFGH	San Francisco General Hospital
+SNBL	Shin Nippon Biomedical Laboratories
+SICONBREC	Siconbrec
+SBM	Sierra Biomedical
+SKB	Smith, Kline, Beecham
+SIU	Southern Illinois University
+SIU-SOM	Southern Illinois University Med School
+SORI	Southern Research Institute
+SFRE	Southwest Foundation for Res. & Educ.
+SWRF	Southwest Research Foundation
+SWRI	Southwest Research Institute
+SOPF	Stanford Outdoor Primate Facility
+SRI	Stanford Research Institute
+SUNY-SB	State Univ of New York at Stony Brook
+SXZ	Suzhou Xishan Zhongke Lab Animal Co.
+SYNTEX	Syntex (USA) Incorporated
+TARPON	Tarpon Zoo
+TTUHSC	Texas Tech Health Science Center
+BROOKS-AFB	Texas, Brooks Air Force Base
+TPI	The Parkinson's Institute
+TNPRC	Tulane (Delta) Regional Primate Res Ctr
+UCB	UC Berkeley
+UCLA	UC Los Angeles
+UCR	UC Riverside
+UCSD	UC San Diego
+UCSF	UC San Francisco Vivarium
+UC-ARS	Univ of Calif, Animal Resources Service
+GPC	Univ of Gottingen Primate Center
+UH-RAF	Univ of Hawaii, Research Animal Facility
+OUHSC	Univ of Oklahoma Health Sci. Center
+UTHSC-H	Univ of Texas, Health Sci Ctr, Houston
+UCHSC	University of Colorado Health Sciences
+UCMC	University of Colorado Medical Center
+UIC	University of Illinois at Chicago
+UNV	University of Nevada
+UNM	University of New Mexico
+UPR	University of Puerto Rico
+UTSCC	University of Texas System Cancer Center
+UNK-CN	Unknown Institution, China
+VBS	Valley Biosystems
+WFSM	Wake Forest School of Medicine
+WANPRC	Washington Regional Primate Research Ctr
+WHMC	Wilford Hall Medical Center
+WRPRC	Wisconsin Regional Primate Research Ctr
+WAI	Woodward Asiatic Imports
+WWP	World Wide Primates, Inc.
+YPRC	Yemassee Primate Research Center

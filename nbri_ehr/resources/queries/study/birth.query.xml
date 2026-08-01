@@ -8,10 +8,17 @@
                 <updateUrl />
                 <deleteUrl />
                 <columns>
-                    <column columnName="Id">
-                    </column>
+                    <column columnName="Id" />
                     <column columnName="date">
                         <columnTitle>Birth Date</columnTitle>
+                    </column>
+                    <column columnName="conceptId">
+                        <columnTitle>Conception Id</columnTitle>
+                        <fk>
+                            <fkDbSchema>nbri_ehr</fkDbSchema>
+                            <fkTable>Conception</fkTable>
+                            <fkColumnName>ConceptId</fkColumnName>
+                        </fk>
                     </column>
                     <column columnName="cage">
                         <columnTitle>Birth Location</columnTitle>
@@ -23,6 +30,25 @@
                             <fkTable>cage</fkTable>
                             <fkColumnName>location</fkColumnName>
                             <fkDisplayColumnName>cage</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="type">
+                        <columnTitle>Delivery Mode</columnTitle>
+                        <required>false</required>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>delivery_mode</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="cond">
+                        <columnTitle>Birth Condition</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>birth_condition</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
                         </fk>
                     </column>
                     <column columnName="project">
@@ -43,12 +69,13 @@
                             <fkDisplayColumnName>title</fkDisplayColumnName>
                         </fk>
                     </column>
-                    <column columnName="conceptId">
-                        <columnTitle>Conception Id</columnTitle>
+                    <column columnName="breedingType">
+                        <columnTitle>Breeding Type</columnTitle>
                         <fk>
-                            <fkDbSchema>nbri_ehr</fkDbSchema>
-                            <fkTable>Conception</fkTable>
-                            <fkColumnName>ConceptId</fkColumnName>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>breeding_type</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
                         </fk>
                     </column>
                     <column columnName="remark"/>

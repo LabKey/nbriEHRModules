@@ -17,10 +17,12 @@ bcs_score
 behavior_abnormality
 behavior_mgmt_codes
 behavior_types
+birth_condition
 blood_draw_reason
 blood_draw_tube_type
 blood_sample_type
 blood_tube_volumes
+breeding_type
 cage_type
 calculated_status_codes
 capillary_refill_time
@@ -35,6 +37,7 @@ daily_enrich_codes
 data_category
 death_reason
 death_type
+delivery_mode
 delivery_state
 dental_obs
 derm_obs

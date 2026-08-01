@@ -365,13 +365,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     @Override
     protected String getMale()
     {
-        return "3";
+        return "M";
     }
 
     @Override
     protected String getFemale()
     {
-        return "2";
+        return "F";
     }
 
     @Test
@@ -578,13 +578,24 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         arrivals.setGridCell(1, "acquisitionType", "Lab Transfer (Wild Born)");
         arrivals.setGridCell(1, "Id", arrivedAnimal);
         arrivals.setGridCell(1, "cage", "C1");
-        arrivals.setGridCell(1, "project", "640991");
-        arrivals.setGridCell(1, "arrivalProtocol", "dummyprotocol");
-        arrivals.setGridCell(1, "Id/demographics/gender", "female");
+        arrivals.setGridCell(1, "Id/demographics/gender", "Female");
         arrivals.setGridCell(1, "Id/demographics/geographic_origin", "BRAZIL");
-        arrivals.setGridCell(1, "Id/demographics/species", "Macaca nemestrina PIG");
+        arrivals.setGridCell(1, "Id/demographics/species", "Pig-Tailed Macaque");
         arrivals.setGridCellJS(1, "Id/demographics/birth", now.minusDays(7).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
-        arrivals.setGridCell(1, "sourceFacility", "BIOQUAL, Inc.");
+        arrivals.setGridCell(1, "sourceFacility", "Bioqual, Incorporated");
+
+        Ext4GridRef protocolAssignments = _helper.getExt4GridForFormSection("Protocol Assignment");
+        _helper.addRecordToGrid(protocolAssignments);
+        protocolAssignments.setGridCell(1, "Id", arrivedAnimal);
+        protocolAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        protocolAssignments.setGridCell(1, "protocol", "dummyprotocol");
+
+        Ext4GridRef projectAssignments = _helper.getExt4GridForFormSection("Project Assignment");
+        _helper.addRecordToGrid(projectAssignments);
+        projectAssignments.setGridCell(1, "Id", arrivedAnimal);
+        projectAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        projectAssignments.setGridCell(1, "project", "640991");
+
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -592,13 +603,19 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table.setFilter("Id", "Equals", arrivedAnimal);
         CustomizeView view = table.openCustomizeGrid();
         view.addColumn("cage");
-        view.addColumn("project");
-        view.addColumn("arrivalProtocol");
         view.applyCustomView();
         Assert.assertEquals("Invalid Arrival record", Arrays.asList(arrivedAnimal), table.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid Arrival record", Arrays.asList("C1"), table.getRowDataAsText(0, "cage"));
-        Assert.assertEquals("Invalid Arrival record", Arrays.asList("640991"), table.getRowDataAsText(0, "project"));
-        Assert.assertEquals("Invalid Arrival record", Arrays.asList("dummyprotocol"), table.getRowDataAsText(0, "arrivalProtocol"));
+
+        goToSchemaBrowser();
+        table = viewQueryData("study", "assignment");
+        table.setFilter("Id", "Equals", arrivedAnimal);
+        Assert.assertEquals("Invalid project assignment", Arrays.asList("640991"), table.getRowDataAsText(0, "project"));
+
+        goToSchemaBrowser();
+        table = viewQueryData("study", "protocolAssignment");
+        table.setFilter("Id", "Equals", arrivedAnimal);
+        Assert.assertEquals("Invalid protocol assignment", Arrays.asList("dummyprotocol"), table.getRowDataAsText(0, "protocol"));
 
         verifyRowCreated("study", "birth", arrivedAnimal, 1);
         verifyRowCreated("study", "assignment", arrivedAnimal, 1);
@@ -608,15 +625,24 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     }
 
     @Test
-    public void testBirthForm() throws IOException, CommandException
+    public void testBirthForm() throws Exception
     {
         String bornAnimal = "80801";
+        String damId = "TESTDAM01";
+        String sireId = "TESTSIRE01";
+        // demographics.species holds an ehr_lookups.species_codes code; the grids display its common name
+        String damSpeciesCode = "CAP";
+        String damSpecies = "Brown-Tufted Capuchin";
         String conceptId = "TESTCONCEPT1";
+        String breedingType = "Time-Mated";
         LocalDateTime now = LocalDateTime.now();
+
+        log("Creating the dam and sire of the conception");
+        createBreedingPair(damId, sireId, damSpeciesCode);
 
         log("Creating conception record");
         InsertRowsCommand conception = new InsertRowsCommand("nbri_ehr", "Conception");
-        conception.addRow(Map.of("ConceptId", conceptId, "ConceptDate", now.minusDays(160), "Dam", "TEST4551032"));
+        conception.addRow(Map.of("ConceptId", conceptId, "ConceptDate", now.minusDays(160), "Dam", damId, "Sire", sireId));
         conception.execute(getApiHelper().getConnection(), getContainerPath());
 
         gotoEnterData();
@@ -624,15 +650,47 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         lockForm();
 
         Ext4GridRef births = _helper.getExt4GridForFormSection("Births");
-        _helper.addRecordToGrid(births);
+        verifyBirthColumnOrder(births);
+
+        log("Starting a birth record from the conception");
+        births.clickTbarButton("Start with Conception");
+        Window<?> conceptionWindow = new Window.WindowFinder(getDriver()).withTitle("Start with Conception").waitFor();
+        Ext4ComboRef conceptionCombo = _ext4Helper.queryOne("window #conceptionField", Ext4ComboRef.class);
+        Assert.assertNotNull("Conception Id field not found in the Start with Conception window", conceptionCombo);
+        conceptionCombo.waitForStoreLoad();
+        conceptionCombo.setComboByDisplayValue(conceptId);
+        conceptionWindow.clickButton("Submit", 0);
+        births.waitForRowCount(1);
+
+        log("Verifying the conception populated the new birth record");
+        assertEquals("Conception Id was not copied from the conception", conceptId, births.getFieldValue(1, "conceptId"));
+        assertEquals("Dam was not copied from the conception", damId, births.getFieldValue(1, "Id/demographics/dam"));
+        assertEquals("Sire was not copied from the conception", sireId, births.getFieldValue(1, "Id/demographics/sire"));
+        assertEquals("Species was not copied from the dam of the conception", damSpeciesCode, births.getFieldValue(1, "Id/demographics/species"));
+
+        log("Verifying Conception Id is required");
+        births.setGridCellJS(1, "conceptId", null);
+        waitForFormError("The field: Conception Id is required");
+        births.setGridCellJS(1, "conceptId", conceptId);
+
         births.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         births.setGridCell(1, "Id", bornAnimal);
         births.setGridCell(1, "cage", "C3");
-        births.setGridCell(1, "Id/demographics/species", "Cebus apella CAP");
-        births.setGridCell(1, "Id/demographics/gender", "female");
-        births.setGridCell(1, "project", "795644");
-        births.setGridCell(1, "birthProtocol", "protocol101");
-        births.setGridCell(1, "conceptId", conceptId);
+        births.setGridCell(1, "Id/demographics/gender", "Female");
+        births.setGridCell(1, "breedingType", breedingType);
+
+        Ext4GridRef protocolAssignments = _helper.getExt4GridForFormSection("Protocol Assignment");
+        _helper.addRecordToGrid(protocolAssignments);
+        protocolAssignments.setGridCell(1, "Id", bornAnimal);
+        protocolAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        protocolAssignments.setGridCell(1, "protocol", "protocol101");
+
+        Ext4GridRef projectAssignments = _helper.getExt4GridForFormSection("Project Assignment");
+        _helper.addRecordToGrid(projectAssignments);
+        projectAssignments.setGridCell(1, "Id", bornAnimal);
+        projectAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        projectAssignments.setGridCell(1, "project", "795644");
+
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -640,20 +698,39 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table.setFilter("Id", "Equals", bornAnimal);
         Assert.assertEquals("Invalid Birth record", Arrays.asList(bornAnimal), table.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList("C3"), table.getRowDataAsText(0, "cage"));
-        Assert.assertEquals("Invalid Birth record", Arrays.asList("795644"), table.getRowDataAsText(0, "project"));
-        Assert.assertEquals("Invalid Birth record", Arrays.asList("protocol101"), table.getRowDataAsText(0, "birthProtocol"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
+        Assert.assertEquals("Invalid Birth record", Arrays.asList(breedingType), table.getRowDataAsText(0, "breedingType"));
+
+        log("Verifying the dam and sire of the conception reached demographics");
+        goToSchemaBrowser();
+        table = viewQueryData("study", "demographics");
+        table.setFilter("Id", "Equals", bornAnimal);
+        Assert.assertEquals("Invalid demographics record", Arrays.asList(damId), table.getRowDataAsText(0, "dam"));
+        Assert.assertEquals("Invalid demographics record", Arrays.asList(sireId), table.getRowDataAsText(0, "sire"));
+        Assert.assertEquals("Invalid demographics record", Arrays.asList(damSpecies), table.getRowDataAsText(0, "species"));
+
+        goToSchemaBrowser();
+        table = viewQueryData("study", "assignment");
+        table.setFilter("Id", "Equals", bornAnimal);
+        Assert.assertEquals("Invalid project assignment", Arrays.asList("795644"), table.getRowDataAsText(0, "project"));
+
+        goToSchemaBrowser();
+        table = viewQueryData("study", "protocolAssignment");
+        table.setFilter("Id", "Equals", bornAnimal);
+        Assert.assertEquals("Invalid protocol assignment", Arrays.asList("protocol101"), table.getRowDataAsText(0, "protocol"));
 
         verifyRowCreated("study", "assignment", bornAnimal, 1);
         verifyRowCreated("study", "protocolAssignment", bornAnimal, 1);
         verifyRowCreated("study", "housing", bornAnimal, 1);
         verifyRowCreated("study", "demographics", bornAnimal, 1);
 
-        log("Verifying conception outcome in ConceptionsByDam");
+        log("Verifying conception outcome and offspring in ConceptionsByDam");
         goToSchemaBrowser();
         DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
         report.setFilter("ConceptId", "Equals", conceptId);
+        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(damId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Live Birth"), report.getRowDataAsText(0, "conceptionOutcome"));
+        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(bornAnimal), report.getRowDataAsText(0, "offspring"));
     }
 
     @Test
@@ -661,6 +738,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     {
         String animalId = "TEST4551032";
         String conceptId = "TESTCONCEPT2";
+        // a non-live outcome, so ConceptionsByDam reports it rather than falling through to 'Live Birth'
+        String result = "Fetal Death";
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating conception record");
@@ -676,7 +755,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         _helper.addRecordToGrid(outcomes);
         outcomes.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         outcomes.setGridCell(1, "Id", animalId);
-        outcomes.setGridCell(1, "result", "Stillborn");
+        outcomes.setGridCell(1, "result", result);
         outcomes.setGridCell(1, "conceptId", conceptId);
         submitForm("Submit Final", "Finalize");
 
@@ -684,7 +763,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         DataRegionTable table = viewQueryData("study", "pregnancy");
         table.setFilter("Id", "Equals", animalId);
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(animalId), table.getRowDataAsText(0, "Id"));
-        Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList("Stillborn"), table.getRowDataAsText(0, "result"));
+        Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(result), table.getRowDataAsText(0, "result"));
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
 
         log("Verifying conception outcome in ConceptionsByDam");
@@ -692,7 +771,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
         report.setFilter("ConceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(animalId), report.getRowDataAsText(0, "Id"));
-        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Stillborn"), report.getRowDataAsText(0, "conceptionOutcome"));
+        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(result), report.getRowDataAsText(0, "conceptionOutcome"));
     }
 
     @Test
@@ -708,13 +787,20 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         lockForm();
 
         Ext4GridRef conceptions = _helper.getExt4GridForFormSection("Conception");
+        Assert.assertFalse("Breeding Type describes the birth and should no longer appear on the Conception form",
+                conceptions.isColumnPresent("breedingType", false));
+
         _helper.addRecordToGrid(conceptions);
         conceptions.setGridCell(1, "ConceptId", conceptId);
         conceptions.setGridCellJS(1, "ConceptDate", now.minusDays(30).format(_dateFormat));
         conceptions.setGridCellJS(1, "ConceptTermDate", now.plusDays(135).format(_dateFormat));
+        conceptions.setGridCellJS(1, "Estimated", true);
         conceptions.setGridCell(1, "Dam", damId);
         conceptions.setGridCell(1, "Sire", sireId);
-        conceptions.setGridCell(1, "Remark", "Conception entry test");
+        // Remark renders as a textarea, which Ext4GridRef's cell editor helpers cannot drive: they only recognize
+        // an <input> as the active editor, so the click that opens the textarea is followed by a retry click that
+        // the open textarea intercepts. Set it through the store instead.
+        conceptions.setGridCellJS(1, "Remark", "Conception entry test");
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -722,6 +808,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table.setFilter("ConceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid Conception record", Arrays.asList(damId), table.getRowDataAsText(0, "Dam"));
         Assert.assertEquals("Invalid Conception record", Arrays.asList(sireId), table.getRowDataAsText(0, "Sire"));
+        Assert.assertEquals("Invalid Conception record", Arrays.asList("true"), table.getRowDataAsText(0, "Estimated"));
         Assert.assertEquals("Invalid Conception record", Arrays.asList("Conception entry test"), table.getRowDataAsText(0, "Remark"));
 
         log("Verifying unmatched conception appears as Unknown in ConceptionsByDam");
@@ -1158,7 +1245,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Marking an animal departed");
         InsertRowsCommand departure = new InsertRowsCommand("study", "departure");
-        departure.addRow(Map.of("Id", departedAnimalId, "date", LocalDateTime.now().minusDays(1), "destination", "Oregon NPRC", "performedby", 1004));
+        // destination stores an ehr_lookups.source code; the facility name is only the display value
+        departure.addRow(Map.of("Id", departedAnimalId, "date", LocalDateTime.now().minusDays(1), "destination", "ORPRC", "performedby", 1004));
         departure.execute(getApiHelper().getConnection(), getContainerPath());
     }
 
@@ -1631,6 +1719,44 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
             }
             return count;
         }
+    }
+
+    // Creates the parents of a conception. They need a species from the ehr_lookups.species list because the
+    // Start with Conception window copies the dam's species onto the newborn, and the reference study's
+    // demographics data carries placeholder species values that no lookup entry matches.
+    private void createBreedingPair(String damId, String sireId, String species) throws Exception
+    {
+        String[] fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
+        Object[][] data = new Object[][]{
+                {damId, species, (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {sireId, species, (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
+        };
+        SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
+        getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", damId + ";" + sireId, Filter.Operator.IN));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+    }
+
+    // Asserts the Births columns appear in the expected left to right order. Relative position is checked rather
+    // than absolute index so that hidden and system columns can come and go without breaking the test.
+    private void verifyBirthColumnOrder(Ext4GridRef births)
+    {
+        List<String> expectedOrder = List.of("Id", "date", "conceptId", "Id/demographics/species", "Id/demographics/gender",
+                "Id/demographics/dam", "Id/demographics/sire", "cage", "type", "cond", "breedingType", "remark", "performedby");
+
+        int previousIdx = 0;
+        String previousCol = null;
+        for (String col : expectedOrder)
+        {
+            int idx = births.getIndexOfColumn(col, true);
+            Assert.assertTrue("Births column '" + col + "' should appear to the right of '" + previousCol + "'", idx > previousIdx);
+            previousIdx = idx;
+            previousCol = col;
+        }
+    }
+
+    private void waitForFormError(String message)
+    {
+        waitFor(() -> isTextPresent(message), "Form did not report: " + message, WAIT_FOR_JAVASCRIPT);
     }
 
     private void verifyRowCreated(String schema, String query, String animalId, int rowCount)

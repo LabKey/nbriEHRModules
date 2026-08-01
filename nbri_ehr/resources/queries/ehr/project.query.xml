@@ -47,6 +47,13 @@
                     </column>
                     <column columnName="investigatorId">
                         <isHidden>true</isHidden>
+                        <!-- lookup needed even though the column is hidden: EHR's project field selects investigatorId/lastName -->
+                        <fk>
+                            <fkDbSchema>core</fkDbSchema>
+                            <fkTable>Users</fkTable>
+                            <fkColumnName>UserId</fkColumnName>
+                            <fkDisplayColumnName>DisplayName</fkDisplayColumnName>
+                        </fk>
                     </column>
                     <column columnName="inves2">
                         <isHidden>true</isHidden>

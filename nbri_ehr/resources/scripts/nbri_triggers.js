@@ -40,9 +40,15 @@ exports.init = function (EHR) {
         });
     });
 
+    // the arrival and birth forms assign animals that do not have a demographics record yet, so those forms ask for Id validation to be relaxed
+    function isAllowAnyIdRequested(helper) {
+        helper.decodeExtraContextProperty('allowAnyId', false);
+        return helper.getProperty('allowAnyId') === true; // this can be true or an empty object
+    }
+
     EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'protocolAssignment', function(event, helper) {
         helper.setScriptOptions({
-            allowAnyId: false,
+            allowAnyId: isAllowAnyIdRequested(helper),
             requiresStatusRecalc: false,
             allowDatesInDistantPast: true
         });
@@ -50,7 +56,7 @@ exports.init = function (EHR) {
 
     EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'assignment', function(event, helper) {
         helper.setScriptOptions({
-            allowAnyId: false,
+            allowAnyId: isAllowAnyIdRequested(helper),
             requiresStatusRecalc: false,
             allowDatesInDistantPast: true,
             skipAssignmentCheck: true,

@@ -25,7 +25,7 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
     byQuery: {
         'study.arrival': {
             'cage': {
-                allowBlank: false,
+                // allowBlank: false,
                 columnConfig: {
                     fixed: true,
                     width: 200
@@ -39,45 +39,28 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
                 allowBlank: false
             },
             'Id/demographics/birth': {
-                allowBlank: false
+                // allowBlank: false
             },
             'Id/demographics/gender': {
                 allowBlank: false
             },
             'Id/demographics/geographic_origin': {
-                allowBlank: false,
+                // allowBlank: false,
                 columnConfig: {
                     fixed: true,
                     width: 200
                 }
             },
+            // project and protocol are entered through the Project Assignment and Protocol Assignment sections
             project: {
-                xtype: 'combo',
-                columnConfig: {
-                    width: 150
-                },
-                lookup: {
-                    schemaName: 'ehr',
-                    queryName: 'project',
-                    keyColumn: 'project',
-                    columns: 'project,name',
-                    filterArray: [
-                        LABKEY.Filter.create('isActive', true, LABKEY.Filter.Types.EQUAL),
-                    ]
-                },
-                allowBlank: false
+                allowBlank: true,
+                hidden: true,
+                showInGrid: false
             },
             arrivalProtocol: {
-                allowBlank: false,
-                columnConfig: {
-                    width: 200
-                },
-                lookup: {
-                    schemaName: 'ehr',
-                    queryName: 'activeProtocols',
-                    keyColumn: 'protocol',
-                    columns: 'protocol,title'
-                },
+                allowBlank: true,
+                hidden: true,
+                showInGrid: false
             },
             performedby: {
                 hidden: true,
@@ -91,14 +74,14 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
                 },
             },
             acquisitionType: {
-                allowBlank: false,
+                // allowBlank: false,
                 columnConfig: {
                     fixed: true,
                     width: 150
                 },
             },
             arrivalType: {
-                allowBlank: false,
+                // allowBlank: false,
                 columnConfig: {
                     width: 200
                 }

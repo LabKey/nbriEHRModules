@@ -37,12 +37,14 @@ EHR.model.DataModelManager.registerMetadata('Assignment', {
                     fixed: true,
                     width: 150
                 },
+                // set displayColumn: ehr.protocol's title column (displayName) is not returned by this query
                 lookup: {
                     schemaName: 'ehr',
                     queryName: 'activeProtocols',
                     keyColumn: 'protocol',
+                    displayColumn: 'protocol',
                     columns: 'protocol,title'
-                },
+                }
             }
         }
     }

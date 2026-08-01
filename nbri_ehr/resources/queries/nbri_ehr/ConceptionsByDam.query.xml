@@ -11,8 +11,16 @@
                     <column columnName="ConceptId">
                         <columnTitle>Conception Id</columnTitle>
                     </column>
+                    <column columnName="Estimated">
+                        <columnTitle>Estimated</columnTitle>
+                        <description>Conception date is estimated rather than observed</description>
+                    </column>
                     <column columnName="conceptionOutcome">
                         <columnTitle>Conception Outcome</columnTitle>
+                    </column>
+                    <column columnName="offspring">
+                        <columnTitle>Offspring</columnTitle>
+                        <description>Animal born from this conception, if a birth record references it</description>
                     </column>
                 </columns>
             </table>

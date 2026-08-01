@@ -35,6 +35,13 @@ EHR.model.DataModelManager.registerMetadata('Conception', {
                     width: 200
                 },
             },
+            Estimated: {
+                xtype: 'checkbox',
+                defaultValue: false,
+                columnConfig: {
+                    width: 100
+                },
+            },
             Dam: {
                 xtype: 'ehr-animalfield',
                 lookups: false,
