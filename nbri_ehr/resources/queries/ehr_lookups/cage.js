@@ -7,6 +7,10 @@ var LABKEY = require("labkey");
 
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 
+// Width of ehr_lookups.cage.location. The derived key builds on the room key, which is itself derived, so it can
+// overrun the column; reject it here rather than letting the database raise an unreadable error.
+var MAX_LOCATION_LENGTH = 100;
+
 // 'location' is not user editable, so it is absent from the incoming row map and the value this script
 // derives has nowhere to land. Declaring it managed reserves a slot so the derived key is persisted.
 function managedColumns() {
@@ -29,9 +33,16 @@ function onUpsert(row, oldRow, errors){
                 return;
             }
 
-            row.location = row.room;
+            let location = row.room;
             if (row.cage)
-                row.location += '-' + row.cage;
+                location += '-' + row.cage;
+
+            if (location.length > MAX_LOCATION_LENGTH) {
+                errors['cage'] = 'Room and cage are too long: they combine to a ' + location.length + ' character location key, which cannot exceed ' + MAX_LOCATION_LENGTH + '.';
+                return;
+            }
+
+            row.location = location;
         }
     }
 }

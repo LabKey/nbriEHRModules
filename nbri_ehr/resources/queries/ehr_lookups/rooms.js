@@ -8,6 +8,19 @@ var console = require("console");
 
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 
+// Width of ehr_lookups.rooms.room. The derived key is built from values the user supplies, so it can overrun the
+// column; reject it here rather than letting the database raise an unreadable error.
+var MAX_ROOM_LENGTH = 100;
+
+// 'room' is not user editable, so it is absent from the incoming row map and the value this script derives has
+// nowhere to land. Declaring it managed reserves a slot so the derived key is persisted.
+function managedColumns() {
+    return {
+        insert: ["room"],
+        update: ["room"],
+    };
+}
+
 function onUpsert(row, oldRow, errors){
     if (extraContext.dataSource != "etl") {
         if (!row.name) {
@@ -26,7 +39,13 @@ function onUpsert(row, oldRow, errors){
                 return;
             }
 
-            row.room = row.building + '-' + row.name;
+            let room = row.building + '-' + row.name;
+            if (room.length > MAX_ROOM_LENGTH) {
+                errors['name'] = 'Building and room name are too long: they combine to a ' + room.length + ' character room key, which cannot exceed ' + MAX_ROOM_LENGTH + '.';
+                return;
+            }
+
+            row.room = room;
         }
     }
 }
