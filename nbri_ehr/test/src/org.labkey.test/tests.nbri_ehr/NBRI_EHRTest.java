@@ -1219,9 +1219,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "birth", "lsid",
                 new String[]{"Id", "Date", "gender", "QCStateLabel", "performedby"},
                 new Object[][]{
-                        {aliveAnimalId, LocalDateTime.now().minusDays(30), "f", "Completed", 1004},
-                        {deadAnimalId, LocalDateTime.now().minusDays(30), "m", "Completed", 1004},
-                        {departedAnimalId, LocalDateTime.now().minusDays(30), "m", "Completed", 1004},
+                        {aliveAnimalId, LocalDateTime.now().minusDays(30), getFemale(), "Completed", 1004},
+                        {deadAnimalId, LocalDateTime.now().minusDays(30), getMale(), "Completed", 1004},
+                        {departedAnimalId, LocalDateTime.now().minusDays(30), getMale(), "Completed", 1004},
                 }
         ), getExtraContext());
 
@@ -1705,9 +1705,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         }
     }
 
-    // Creates the parents of a conception. They need a species from the ehr_lookups.species list because the
-    // Start with Conception window copies the dam's species onto the newborn, and the reference study's
-    // demographics data carries placeholder species values that no lookup entry matches.
+    // Creates the parents of a conception. They need an ehr_lookups.species_codes code because the Start with
+    // Conception window copies the dam's species onto the newborn, and the test asserts the resulting record.
     private void createBreedingPair(String damId, String sireId, String species) throws Exception
     {
         String[] fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
