@@ -29,11 +29,8 @@
                         </fk>
                     </column>
                     <column columnName="performedBy" />
-                    <!-- Re-declared from ehr/queries/study/Weight.query.xml. Module query metadata
-                         is not merged: QueryServiceImpl.findMetadataOverrideInModules takes the
-                         first matching file only, and orderModules puts dependent modules first,
-                         so this file replaces ehr's outright. Without these two the ehr-supplied
-                         "Percent Change" view cannot resolve relChange/PctChange. -->
+                    <!-- Re-declared because this file replaces ehr's metadata rather than merging
+                         with it; without these the ehr "Percent Change" view cannot resolve. -->
                     <column columnName="percentChange" wrappedColumnName="lsid">
                         <columnTitle>Percent Change</columnTitle>
                         <isHidden>false</isHidden>
