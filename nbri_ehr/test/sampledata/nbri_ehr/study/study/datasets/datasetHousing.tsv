@@ -1,9 +1,9 @@
-objectid	Id	QCStateLabel	date	enddate	cage	performedby
-1	44444	Completed	-1381d	-1321d	11 - Rm 202B - ZZA	1004
-2	44444	Completed	-1321d		11 - Rm 202B - ZZB	1004
-3	44446	Completed	-1406d	-1316d	11 - Rm 202B - ZZA	1004
-4	44446	Completed	-1316d		11 - Rm 202B - ZZC	1004
-5	TEST4551032	Completed	-6362d		11 - Rm 202B - ZZD	1004
-6	44442	Completed	-6100d	-5920d	11 - Rm 202B - ZZA	1004
-7	44442	Completed	-5920d		11 - Rm 202B - ZZC	1004
-8	44443	Completed	-6100d		11 - Rm 202B - ZZF	1004
+objectid	Id	QCStateLabel	date	enddate	room	cage	performedby
+1	44444	Completed	-1381d	-1321d	TestBuilding-R1	L1	1004
+2	44444	Completed	-1321d		TestBuilding-R1	L2	1004
+3	44446	Completed	-1406d	-1316d	TestBuilding-R1	L1	1004
+4	44446	Completed	-1316d		TestBuilding-R2	L3	1004
+5	TEST4551032	Completed	-6362d		TestBuilding-R3	L4	1004
+6	44442	Completed	-6100d	-5920d	TestBuilding-R1	L1	1004
+7	44442	Completed	-5920d		TestBuilding-R2	L3	1004
+8	44443	Completed	-6100d		TestBuilding-R1	L2	1004
