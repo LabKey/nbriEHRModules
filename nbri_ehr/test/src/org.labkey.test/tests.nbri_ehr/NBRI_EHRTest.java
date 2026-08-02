@@ -114,10 +114,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String BUILDING_ID = "TestBuilding";
     private static final String BUILDING_AREA = "SPF";
 
-    // Cage locations seeded by populateLocations, named for the room each one sits in. Housing records key off the
-    // location rather than the cage name, so these are what belongs in a housing row's 'cage' field.
-    private static final String CAGE_IN_R1 = "L1";
-    private static final String CAGE_IN_R3 = "L4";
+    // Cage locations seeded by populateLocations, named for the room each one sits in. The cage trigger derives these
+    // from the room and cage, and housing records key off the location, so these are what belongs in a housing row's
+    // 'cage' field. datasetHousing.tsv spells the same values out, since a TSV cannot call cageLocation.
+    private static final String CAGE_IN_R1 = cageLocation("R1", "C1");
+    private static final String CAGE_IN_R3 = cageLocation("R3", "C4");
 
     // A group pen has no cage, so its location is the room key alone. Created by testGroupPenCagemates.
     private static final String PEN_ROOM_NAME = "PEN1";
@@ -269,6 +270,15 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     }
 
     /**
+     * The location a cage trigger derives for the given room and cage. Mirrors ehr_lookups/cage.js. Note that
+     * ehr_lookups.cage.location is varchar(24), so these keys cannot grow much beyond the fixture's short names.
+     */
+    private static String cageLocation(String roomName, String cageName)
+    {
+        return roomKey(roomName) + "-" + cageName;
+    }
+
+    /**
      * Housing records store the derived room key, so the fixture rooms have to be named by key for the room
      * lookups to resolve. The base implementation returns names that match no room in this study.
      */
@@ -379,12 +389,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         roomCmd.addRow(Map.of("name", "R3", "building", BUILDING_ID));
         roomCmd.execute(getApiHelper().getConnection(), getContainerPath());
 
+        // 'location' is left out so the cage trigger derives it, exercising the same path production entry takes.
         log("Inserting values in cage");
         InsertRowsCommand cageCmd = new InsertRowsCommand("ehr_lookups", "cage");
-        cageCmd.addRow(Map.of("location", "L1", "cage", "C1", "room", roomKey("R1")));
-        cageCmd.addRow(Map.of("location", "L2", "cage", "C2", "room", roomKey("R1")));
-        cageCmd.addRow(Map.of("location", "L3", "cage", "C3", "room", roomKey("R2")));
-        cageCmd.addRow(Map.of("location", "L4", "cage", "C4", "room", roomKey("R3")));
+        cageCmd.addRow(Map.of("cage", "C1", "room", roomKey("R1")));
+        cageCmd.addRow(Map.of("cage", "C2", "room", roomKey("R1")));
+        cageCmd.addRow(Map.of("cage", "C3", "room", roomKey("R2")));
+        cageCmd.addRow(Map.of("cage", "C4", "room", roomKey("R3")));
         cageCmd.execute(getApiHelper().getConnection(), getContainerPath());
     }
 
@@ -1631,8 +1642,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         roomCmd.addRow(Map.of("name", PEN_ROOM_NAME, "building", BUILDING_ID));
         roomCmd.execute(getApiHelper().getConnection(), getContainerPath());
 
+        // With no cage supplied the trigger derives the location as the room key alone.
         InsertRowsCommand penCmd = new InsertRowsCommand("ehr_lookups", "cage");
-        penCmd.addRow(Map.of("location", penRoom, "room", penRoom));
+        penCmd.addRow(Map.of("room", penRoom));
         penCmd.execute(getApiHelper().getConnection(), getContainerPath());
 
         log("Housing two animals in the pen");
