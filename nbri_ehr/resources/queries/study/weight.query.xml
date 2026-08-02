@@ -29,6 +29,31 @@
                         </fk>
                     </column>
                     <column columnName="performedBy" />
+                    <!-- Re-declared from ehr/queries/study/Weight.query.xml. Module query metadata
+                         is not merged: QueryServiceImpl.findMetadataOverrideInModules takes the
+                         first matching file only, and orderModules puts dependent modules first,
+                         so this file replaces ehr's outright. Without these two the ehr-supplied
+                         "Percent Change" view cannot resolve relChange/PctChange. -->
+                    <column columnName="percentChange" wrappedColumnName="lsid">
+                        <columnTitle>Percent Change</columnTitle>
+                        <isHidden>false</isHidden>
+                        <isUnselectable>true</isUnselectable>
+                        <fk>
+                            <fkDbSchema>study</fkDbSchema>
+                            <fkTable>weightPctChange</fkTable>
+                            <fkColumnName>lsid</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="relChange" wrappedColumnName="lsid">
+                        <columnTitle>Relative Change</columnTitle>
+                        <isHidden>false</isHidden>
+                        <isUnselectable>true</isUnselectable>
+                        <fk>
+                            <fkDbSchema>study</fkDbSchema>
+                            <fkTable>weightRelChange</fkTable>
+                            <fkColumnName>lsid</fkColumnName>
+                        </fk>
+                    </column>
                 </columns>
             </table>
         </tables>

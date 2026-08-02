@@ -45,6 +45,25 @@
                     <column columnName="remark"/>
                     <column columnName="performedBy">
                     </column>
+                    <!-- Re-declared from ehr/queries/study/housing.query.xml; this file replaces
+                         ehr's rather than merging with it. See weight.query.xml.
+
+                         fkColumnName deliberately differs from ehr: ehr (and jhu, onprc, snprc,
+                         tnprc, wnprc) all say objectid, but study.housingTotalRoommates selects
+                         only lsid and TotalRoommates. With objectid the wrapper column appears in
+                         getQueryDetails yet the join never resolves: TotalRoommates/TotalRoommates
+                         is silently dropped from selectRows and LabKey SQL reports
+                         "Unknown field". With lsid it returns real cagemate counts. -->
+                    <column columnName="TotalRoommates" wrappedColumnName="lsid">
+                        <columnTitle>Total Cagemates</columnTitle>
+                        <isHidden>false</isHidden>
+                        <isUnselectable>true</isUnselectable>
+                        <fk>
+                            <fkDbSchema>study</fkDbSchema>
+                            <fkTable>housingTotalRoommates</fkTable>
+                            <fkColumnName>lsid</fkColumnName>
+                        </fk>
+                    </column>
                 </columns>
             </table>
         </tables>
