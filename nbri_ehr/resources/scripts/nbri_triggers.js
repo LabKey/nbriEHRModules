@@ -115,6 +115,12 @@ exports.init = function (EHR) {
         });
     });
 
+    EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'flags', function(event, helper) {
+        helper.setScriptOptions({
+            allowFutureDates: true,
+        });
+    });
+
     EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'treatment_order', function(event, helper) {
         helper.setScriptOptions({
             allowFutureDates: true,

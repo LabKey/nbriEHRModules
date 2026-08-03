@@ -47,6 +47,7 @@ public class ActiveFlagsDemographicsProvider extends AbstractListDemographicsPro
         keys.add(FieldKey.fromString("flag"));
         keys.add(FieldKey.fromString("flag/category"));
         keys.add(FieldKey.fromString("flag/value"));
+        keys.add(FieldKey.fromString("flag/description"));
         keys.add(FieldKey.fromString("performedby"));
         keys.add(FieldKey.fromString("remark"));
 
