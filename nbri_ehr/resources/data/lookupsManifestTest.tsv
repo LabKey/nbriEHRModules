@@ -12,6 +12,7 @@ amount_units
 app_score
 arrival_type
 arthritis_types
+att_score
 bandage_observations
 bcs_score
 behavior_abnormality
@@ -54,6 +55,8 @@ expense_class
 fecal_score
 fecal_smear_score
 feed_assess_types
+flag_categories
+flag_values
 gastro_types
 gender_codes
 general_obs

@@ -327,7 +327,7 @@ EHR.model.DataModelManager.registerMetadata('Default', {
             flag: {
                 allowBlank: false,
                 lookup: {
-                    columns: 'objectid,value,category,code',
+                    columns: 'objectid,value,description,category,code',
                     sort: 'category,code,value',
                     filterArray: [LABKEY.Filter.create('datedisabled', null, LABKEY.Filter.Types.ISBLANK)]
                 },
@@ -341,7 +341,7 @@ EHR.model.DataModelManager.registerMetadata('Default', {
                         allowChooseOther: false
                     })],
                     listConfig: {
-                        innerTpl: '{[(values.category ? ("<b>" + LABKEY.Utils.encodeHtml(values.category) + ":</b> ") : "") + LABKEY.Utils.encodeHtml(values.value)]}',
+                        innerTpl: '{[(values.category ? ("<b>" + LABKEY.Utils.encodeHtml(values.category) + ":</b> ") : "") + LABKEY.Utils.encodeHtml(values.description || values.value)]}',
                         getInnerTpl: function () {
                             return this.innerTpl;
                         }

@@ -55,6 +55,8 @@ expense_class
 fecal_score
 fecal_smear_score
 feed_assess_types
+flag_categories
+flag_values
 gastro_types
 gender_codes
 general_obs
