@@ -1,7 +1,7 @@
 <query xmlns="http://labkey.org/data/xml/query">
     <metadata>
         <tables xmlns="http://labkey.org/data/xml">
-            <table tableName="serology" tableDbType="TABLE" useColumnOrder="true">
+            <table tableName="chemistryResults" tableDbType="TABLE" useColumnOrder="true">
                 <tableUrl />
                 <insertUrl />
                 <importUrl />
@@ -14,6 +14,18 @@
                     </column>
                     <column columnName="type">
                         <columnTitle>Type</columnTitle>
+                    </column>
+                    <!-- Re-declared from ehr/queries/study/chemistryResults.query.xml; this file
+                         replaces ehr's rather than merging with it. See weight.query.xml. -->
+                    <column columnName="refRange" wrappedColumnName="lsid">
+                        <columnTitle>Ref Range</columnTitle>
+                        <isUnselectable>true</isUnselectable>
+                        <isHidden>false</isHidden>
+                        <fk>
+                            <fkDbSchema>study</fkDbSchema>
+                            <fkTable>chemistryRefRange</fkTable>
+                            <fkColumnName>lsid</fkColumnName>
+                        </fk>
                     </column>
                 </columns>
             </table>

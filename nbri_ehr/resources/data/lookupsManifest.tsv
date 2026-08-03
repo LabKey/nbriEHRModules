@@ -112,6 +112,8 @@ routes
 sib_score
 source
 snomed
+species
+species_codes
 skin_problem
 status_codes
 stool_score

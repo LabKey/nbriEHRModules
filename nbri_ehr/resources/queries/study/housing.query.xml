@@ -45,6 +45,19 @@
                     <column columnName="remark"/>
                     <column columnName="performedBy">
                     </column>
+                    <!-- Re-declared because this file replaces ehr's metadata rather than merging
+                         with it. Keyed on lsid, not ehr's objectid: housingTotalRoommates selects
+                         only lsid, so objectid leaves the join silently unresolved. -->
+                    <column columnName="TotalRoommates" wrappedColumnName="lsid">
+                        <columnTitle>Total Cagemates</columnTitle>
+                        <isHidden>false</isHidden>
+                        <isUnselectable>true</isUnselectable>
+                        <fk>
+                            <fkDbSchema>study</fkDbSchema>
+                            <fkTable>housingTotalRoommates</fkTable>
+                            <fkColumnName>lsid</fkColumnName>
+                        </fk>
+                    </column>
                 </columns>
             </table>
         </tables>

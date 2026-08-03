@@ -409,13 +409,15 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         //insert into demographics
         log("Creating test subjects");
+        // demographics.species holds an ehr_lookups.species_codes code, and ehr_lookups.weight_ranges is keyed
+        // on that same code, so weight validation only fires for animals given a real code here.
         fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
         data = new Object[][]{
-                {SUBJECTS[0], "Rhesus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {SUBJECTS[1], "Cynomolgus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {SUBJECTS[2], "Marmoset", (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {SUBJECTS[3], "Cynomolgus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {SUBJECTS[4], "Cynomolgus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
+                {SUBJECTS[0], "MMU", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {SUBJECTS[1], "MNE", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {SUBJECTS[2], "CAE", (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {SUBJECTS[3], "MNE", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {SUBJECTS[4], "MNE", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
         };
         insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
         getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", StringUtils.join(SUBJECTS, ";"), Filter.Operator.IN));
@@ -423,11 +425,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         //for simplicity, also create the animals from MORE_ANIMAL_IDS right now
         data = new Object[][]{
-                {MORE_ANIMAL_IDS[0], "Rhesus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {MORE_ANIMAL_IDS[1], "Cynomolgus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {MORE_ANIMAL_IDS[2], "Marmoset", (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {MORE_ANIMAL_IDS[3], "Cynomolgus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {MORE_ANIMAL_IDS[4], "Cynomolgus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
+                {MORE_ANIMAL_IDS[0], "MMU", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {MORE_ANIMAL_IDS[1], "MNE", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {MORE_ANIMAL_IDS[2], "CAE", (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {MORE_ANIMAL_IDS[3], "MNE", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {MORE_ANIMAL_IDS[4], "MNE", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
         };
         insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
         getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", StringUtils.join(MORE_ANIMAL_IDS, ";"), Filter.Operator.IN));
@@ -480,7 +482,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         log("Creating task grouping test subject");
         fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
         data = new Object[][]{
-                {taskGroupAnimalId, "Rhesus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
+                {taskGroupAnimalId, "MMU", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
         };
         insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
         getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", taskGroupAnimalId));
@@ -537,7 +539,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         };
         Map<String, List<String>> expected = new HashMap<>();
         expected.put("weight", Arrays.asList(
-                "WARN: Weight above the allowable value of 20.0 kg for Cynomolgus",
+                "WARN: Weight above the allowable value of 30.0 kg for MNE",
                 "INFO: Weight gain of >10%. Last weight 12 kg")
         );
         getApiHelper().testValidationMessage(DATA_ADMIN.getEmail(), "study", "weight", getWeightFields(), data, expected);
@@ -1219,9 +1221,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "birth", "lsid",
                 new String[]{"Id", "Date", "gender", "QCStateLabel", "performedby"},
                 new Object[][]{
-                        {aliveAnimalId, LocalDateTime.now().minusDays(30), "f", "Completed", 1004},
-                        {deadAnimalId, LocalDateTime.now().minusDays(30), "m", "Completed", 1004},
-                        {departedAnimalId, LocalDateTime.now().minusDays(30), "m", "Completed", 1004},
+                        {aliveAnimalId, LocalDateTime.now().minusDays(30), getFemale(), "Completed", 1004},
+                        {deadAnimalId, LocalDateTime.now().minusDays(30), getMale(), "Completed", 1004},
+                        {departedAnimalId, LocalDateTime.now().minusDays(30), getMale(), "Completed", 1004},
                 }
         ), getExtraContext());
 
@@ -1721,9 +1723,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         }
     }
 
-    // Creates the parents of a conception. They need a species from the ehr_lookups.species list because the
-    // Start with Conception window copies the dam's species onto the newborn, and the reference study's
-    // demographics data carries placeholder species values that no lookup entry matches.
+    // Creates the parents of a conception. They need an ehr_lookups.species_codes code because the Start with
+    // Conception window copies the dam's species onto the newborn, and the test asserts the resulting record.
     private void createBreedingPair(String damId, String sireId, String species) throws Exception
     {
         String[] fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};

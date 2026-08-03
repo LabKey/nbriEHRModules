@@ -29,6 +29,28 @@
                         </fk>
                     </column>
                     <column columnName="performedBy" />
+                    <!-- Re-declared because this file replaces ehr's metadata rather than merging
+                         with it; without these the ehr "Percent Change" view cannot resolve. -->
+                    <column columnName="percentChange" wrappedColumnName="lsid">
+                        <columnTitle>Percent Change</columnTitle>
+                        <isHidden>false</isHidden>
+                        <isUnselectable>true</isUnselectable>
+                        <fk>
+                            <fkDbSchema>study</fkDbSchema>
+                            <fkTable>weightPctChange</fkTable>
+                            <fkColumnName>lsid</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="relChange" wrappedColumnName="lsid">
+                        <columnTitle>Relative Change</columnTitle>
+                        <isHidden>false</isHidden>
+                        <isUnselectable>true</isUnselectable>
+                        <fk>
+                            <fkDbSchema>study</fkDbSchema>
+                            <fkTable>weightRelChange</fkTable>
+                            <fkColumnName>lsid</fkColumnName>
+                        </fk>
+                    </column>
                 </columns>
             </table>
         </tables>
