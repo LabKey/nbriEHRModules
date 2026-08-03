@@ -34,6 +34,8 @@ import org.labkey.remoteapi.query.Filter;
 import org.labkey.remoteapi.query.ImportDataCommand;
 import org.labkey.remoteapi.query.InsertRowsCommand;
 import org.labkey.remoteapi.query.RowsResponse;
+import org.labkey.remoteapi.query.SelectRowsCommand;
+import org.labkey.remoteapi.query.SelectRowsResponse;
 import org.labkey.remoteapi.security.CreateUserResponse;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
@@ -108,6 +110,28 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     // Dedicated animal for testScheduledObservationTaskGrouping; provisioned (alive, housed, assigned) in
     // createTestSubjects so the clinical case form raises no warnings that would keep the validation banner up.
     private static final String taskGroupAnimalId = "TESTGRP9090";
+
+    // Rooms are keyed by building and name, so every room fixture needs a building to hang off of.
+    // 'buildings' derives its key from the description, and 'SPF' is one of the areas seeded with the ehr_lookups schema.
+    private static final String BUILDING_ID = "TestBuilding";
+    private static final String BUILDING_AREA = "SPF";
+
+    // Cage locations seeded by populateLocations, named for the room each one sits in. The cage trigger derives these
+    // from the room and cage, and housing records key off the location, so these are what belongs in a housing row's
+    // 'cage' field. datasetHousing.tsv spells the same values out, since a TSV cannot call cageLocation.
+    private static final String CAGE_IN_R1 = cageLocation("R1", "C1");
+    private static final String CAGE_IN_R3 = cageLocation("R3", "C4");
+
+    // A group pen has no cage, so its location is the room key alone. Created by testGroupPenCagemates.
+    private static final String PEN_ROOM_NAME = "PEN1";
+    private static final String[] PEN_ANIMALS = {"PEN0001", "PEN0002"};
+
+    // Housed with a cage but no room, which is how a record entered against a cage alone lands. Every cage seeded by
+    // populateLocations already has occupants from datasetHousing.tsv, so testCagematesWithoutRoom creates its own to
+    // keep the expected cagemate count exact.
+    private static final String ROOMLESS_CAGE_NAME = "C9";
+    private static final String ROOMLESS_CAGE = cageLocation("R1", ROOMLESS_CAGE_NAME);
+    private static final String[] ROOMLESS_ANIMALS = {"CAGE0001", "CAGE0002"};
 
     private final String[] weightFields = {"Id", "date", "enddate", "project", "weight", FIELD_QCSTATELABEL, FIELD_OBJECTID, FIELD_LSID, "_recordid", "performedby"};
     private final Object[] weightData1 = {getExpectedAnimalIDCasing("TESTSUBJECT1"), EHRClientAPIHelper.DATE_SUBSTITUTION, null, null, "12", EHRQCState.IN_PROGRESS.label, null, null, "_recordID", 1004};
@@ -246,20 +270,62 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         RowsResponse saveRowsResponse = insertRowsCommand.execute(getApiHelper().getConnection(), getContainerPath());
     }
 
+    /**
+     * The key a room trigger derives for the given room name. Mirrors ehr_lookups/rooms.js.
+     */
+    private static String roomKey(String roomName)
+    {
+        return BUILDING_ID + "-" + roomName;
+    }
+
+    /**
+     * The location a cage trigger derives for the given room and cage. Mirrors ehr_lookups/cage.js.
+     */
+    private static String cageLocation(String roomName, String cageName)
+    {
+        return roomKey(roomName) + "-" + cageName;
+    }
+
+    /**
+     * Housing records store the derived room key, so the fixture rooms have to be named by key for the room
+     * lookups to resolve. The base implementation returns names that match no room in this study.
+     */
+    @Override
+    protected String[] getRooms()
+    {
+        return new String[]{roomKey("R1"), roomKey("R2"), roomKey("R3")};
+    }
+
+    @LogMethod
+    private void populateBuildingRecords() throws Exception
+    {
+        InsertRowsCommand insertCmd = new InsertRowsCommand("ehr_lookups", "buildings");
+        Map<String, Object> rowMap = new HashMap<>();
+        // Supply the derived key rather than relying on the trigger to fill it, matching how the base class seeds rooms.
+        rowMap.put("name", BUILDING_ID);
+        rowMap.put("description", BUILDING_ID);
+        rowMap.put("area", BUILDING_AREA);
+        insertCmd.addRow(rowMap);
+
+        insertCmd.execute(createDefaultConnection(), getContainerPath());
+    }
+
     @Override
     protected void populateRoomRecords() throws Exception
     {
+        populateBuildingRecords();
+
         InsertRowsCommand insertCmd = new InsertRowsCommand("ehr_lookups", "rooms");
         Map<String, Object> rowMap = new HashMap<>();
         rowMap.put("name", ROOM_ID);
-        rowMap.put("floor", "floor1");
+        rowMap.put("building", BUILDING_ID);
         rowMap.put("housingType", 1);
         rowMap.put("housingCondition", 1);
         insertCmd.addRow(rowMap);
 
         rowMap = new HashMap<>();
         rowMap.put("name", ROOM_ID2);
-        rowMap.put("floor", "floor2");
+        rowMap.put("building", BUILDING_ID);
         rowMap.put("housingType", 1);
         rowMap.put("housingCondition", 1);
         insertCmd.addRow(rowMap);
@@ -323,19 +389,21 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private void populateLocations() throws IOException, CommandException
     {
         goToEHRFolder();
+        // BUILDING_ID is created by populateRoomRecords, which runs earlier as part of initProject.
         log("Inserting values in rooms");
         InsertRowsCommand roomCmd = new InsertRowsCommand("ehr_lookups", "rooms");
-        roomCmd.addRow(Map.of("name", "R1", "floor", "F1"));
-        roomCmd.addRow(Map.of("name", "R2", "floor", "F2"));
-        roomCmd.addRow(Map.of("name", "R3", "floor", "F3"));
+        roomCmd.addRow(Map.of("name", "R1", "building", BUILDING_ID));
+        roomCmd.addRow(Map.of("name", "R2", "building", BUILDING_ID));
+        roomCmd.addRow(Map.of("name", "R3", "building", BUILDING_ID));
         roomCmd.execute(getApiHelper().getConnection(), getContainerPath());
 
+        // 'location' is left out so the cage trigger derives it, exercising the same path production entry takes.
         log("Inserting values in cage");
         InsertRowsCommand cageCmd = new InsertRowsCommand("ehr_lookups", "cage");
-        cageCmd.addRow(Map.of("location", "L1", "cage", "C1", "room", "R1"));
-        cageCmd.addRow(Map.of("location", "L2", "cage", "C2", "room", "R1"));
-        cageCmd.addRow(Map.of("location", "L3", "cage", "C3", "room", "R2"));
-        cageCmd.addRow(Map.of("location", "L4", "cage", "C4", "room", "R3"));
+        cageCmd.addRow(Map.of("cage", "C1", "room", roomKey("R1")));
+        cageCmd.addRow(Map.of("cage", "C2", "room", roomKey("R1")));
+        cageCmd.addRow(Map.of("cage", "C3", "room", roomKey("R2")));
+        cageCmd.addRow(Map.of("cage", "C4", "room", roomKey("R3")));
         cageCmd.execute(getApiHelper().getConnection(), getContainerPath());
     }
 
@@ -443,10 +511,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         log("Creating initial housing records");
         fields = new String[]{"Id", "date", "enddate", "room", "cage", "performedby"};
         data = new Object[][]{
-                {SUBJECTS[0], pastDate1, pastDate2, getRooms()[0], CAGES[0], 1004},
-                {SUBJECTS[0], pastDate2, null, getRooms()[0], CAGES[0], 1004},
-                {SUBJECTS[1], pastDate1, pastDate2, getRooms()[0], CAGES[0], 1004},
-                {SUBJECTS[1], pastDate2, null, getRooms()[2], CAGES[2], 1004}
+                {SUBJECTS[0], pastDate1, pastDate2, getRooms()[0], CAGE_IN_R1, 1004},
+                {SUBJECTS[0], pastDate2, null, getRooms()[0], CAGE_IN_R1, 1004},
+                {SUBJECTS[1], pastDate1, pastDate2, getRooms()[0], CAGE_IN_R1, 1004},
+                {SUBJECTS[1], pastDate2, null, getRooms()[2], CAGE_IN_R3, 1004}
         };
         insertCommand = getApiHelper().prepareInsertCommand("study", "Housing", "lsid", fields, data);
         getApiHelper().deleteAllRecords("study", "Housing", new Filter("Id", StringUtils.join(SUBJECTS, ";"), Filter.Operator.IN));
@@ -490,7 +558,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         fields = new String[]{"Id", "date", "enddate", "room", "cage", "performedby"};
         data = new Object[][]{
-                {taskGroupAnimalId, pastDate1, null, getRooms()[0], CAGES[0], 1004}
+                {taskGroupAnimalId, pastDate1, null, getRooms()[0], CAGE_IN_R1, 1004}
         };
         insertCommand = getApiHelper().prepareInsertCommand("study", "Housing", "lsid", fields, data);
         getApiHelper().deleteAllRecords("study", "Housing", new Filter("Id", taskGroupAnimalId));
@@ -1237,7 +1305,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         project.execute(getApiHelper().getConnection(), getContainerPath());
 
         InsertRowsCommand housing = new InsertRowsCommand("study", "housing");
-        housing.addRow(Map.of("Id", aliveAnimalId, "date", LocalDateTime.now().minusDays(10), "cage", "C4", "QCStateLabel", "Completed", "performedby", 1004));
+        housing.addRow(Map.of("Id", aliveAnimalId, "date", LocalDateTime.now().minusDays(10), "room", getRooms()[2], "cage", CAGE_IN_R3, "QCStateLabel", "Completed", "performedby", 1004));
         housing.execute(getApiHelper().getConnection(), getContainerPath());
 
         log("Marking an animal dead");
@@ -1554,6 +1622,159 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         int columnCount = table.getColumnCount();
         List<String> row = table.getRowDataAsText(0);
         assertEquals("Calculated ages are incorrect", Arrays.asList("4.8", "4.0", "58.0"), row.subList(columnCount - 3, columnCount));
+    }
+
+    @Test
+    public void testRoomKeyDerivation() throws Exception
+    {
+        log("Verifying a room derives its key from its building and name");
+        SelectRowsCommand selectCmd = new SelectRowsCommand("ehr_lookups", "rooms");
+        selectCmd.setColumns(List.of("room", "name", "building"));
+        selectCmd.addFilter(new Filter("name", "R1"));
+        SelectRowsResponse response = selectCmd.execute(getApiHelper().getConnection(), getContainerPath());
+
+        Assert.assertEquals("Expected exactly one room named R1", 1, response.getRows().size());
+        Map<String, Object> room = response.getRows().get(0);
+        Assert.assertEquals("Room key should combine the building and the name", roomKey("R1"), room.get("room"));
+        Assert.assertEquals("Room should belong to the seeded building", BUILDING_ID, room.get("building"));
+    }
+
+    @Test
+    public void testRoomRequiresBuilding()
+    {
+        log("Verifying a room cannot be created without a building");
+        InsertRowsCommand insertCmd = new InsertRowsCommand("ehr_lookups", "rooms");
+        insertCmd.addRow(Map.of("name", "NOBUILDING"));
+
+        try
+        {
+            insertCmd.execute(getApiHelper().getConnection(), getContainerPath());
+            Assert.fail("Room insert should have been rejected when no building was supplied");
+        }
+        catch (IOException | CommandException e)
+        {
+            Assert.assertTrue("Unexpected failure inserting a room without a building: " + e.getMessage(),
+                    e.getMessage() != null && e.getMessage().contains("Building is required"));
+        }
+    }
+
+    @Test
+    public void testDuplicateBuildingRejected()
+    {
+        log("Verifying a second building cannot reuse an existing description");
+        // The description alone is the building key now, so reusing the seeded building's description would collide.
+        InsertRowsCommand insertCmd = new InsertRowsCommand("ehr_lookups", "buildings");
+        insertCmd.addRow(Map.of("description", BUILDING_ID, "area", BUILDING_AREA));
+
+        try
+        {
+            insertCmd.execute(getApiHelper().getConnection(), getContainerPath());
+            Assert.fail("Building insert should have been rejected when the description was already in use");
+        }
+        catch (IOException | CommandException e)
+        {
+            Assert.assertTrue("Unexpected failure inserting a duplicate building: " + e.getMessage(),
+                    e.getMessage() != null && e.getMessage().contains("already exists"));
+        }
+    }
+
+    @Test
+    public void testGroupPenCagemates() throws Exception
+    {
+        String penRoom = roomKey(PEN_ROOM_NAME);
+
+        log("Creating a group pen, whose location is the room with no cage");
+        InsertRowsCommand roomCmd = new InsertRowsCommand("ehr_lookups", "rooms");
+        roomCmd.addRow(Map.of("name", PEN_ROOM_NAME, "building", BUILDING_ID));
+        roomCmd.execute(getApiHelper().getConnection(), getContainerPath());
+
+        // With no cage supplied the trigger derives the location as the room key alone.
+        InsertRowsCommand penCmd = new InsertRowsCommand("ehr_lookups", "cage");
+        penCmd.addRow(Map.of("room", penRoom));
+        penCmd.execute(getApiHelper().getConnection(), getContainerPath());
+
+        createAliveAnimals(PEN_ANIMALS);
+
+        // The cage is deliberately left null: a penned animal is housed against the room, which is the case the
+        // cagemates query has to bound by room rather than by cage.
+        log("Housing two animals in the pen, with no cage");
+        houseAnimals(PEN_ANIMALS, penRoom, null);
+
+        log("Verifying penned animals resolve as each other's cagemates");
+        assertCagemates(PEN_ANIMALS[0], 2, PEN_ANIMALS[1]);
+    }
+
+    @Test
+    public void testCagematesWithoutRoom() throws Exception
+    {
+        log("Creating an unoccupied cage");
+        InsertRowsCommand cageCmd = new InsertRowsCommand("ehr_lookups", "cage");
+        cageCmd.addRow(Map.of("cage", ROOMLESS_CAGE_NAME, "room", roomKey("R1")));
+        cageCmd.execute(getApiHelper().getConnection(), getContainerPath());
+
+        createAliveAnimals(ROOMLESS_ANIMALS);
+
+        // The cage is a location key that already names its room, so the room is redundant here and nothing requires
+        // it. Cagemates must still resolve when it is absent.
+        log("Housing two animals in the same cage, with no room");
+        houseAnimals(ROOMLESS_ANIMALS, null, ROOMLESS_CAGE);
+
+        log("Verifying caged animals resolve as each other's cagemates without a room");
+        assertCagemates(ROOMLESS_ANIMALS[0], 2, ROOMLESS_ANIMALS[1]);
+    }
+
+    /**
+     * Creates living demographics records for the given animals, replacing any left behind by an earlier run.
+     */
+    private void createAliveAnimals(String[] animalIds) throws Exception
+    {
+        log("Creating animals " + StringUtils.join(animalIds, ", "));
+        String[] fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
+        Object[][] data = new Object[animalIds.length][];
+        for (int i = 0; i < animalIds.length; i++)
+        {
+            data[i] = new Object[]{animalIds[i], "Rhesus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004};
+        }
+
+        SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
+        getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", StringUtils.join(animalIds, ";"), Filter.Operator.IN));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+    }
+
+    /**
+     * Opens a completed housing record for each animal at the given location, replacing any left behind by an earlier
+     * run. Either the room or the cage may be null, which is how records entered against one alone land.
+     */
+    private void houseAnimals(String[] animalIds, String room, String cage) throws Exception
+    {
+        String[] fields = new String[]{"Id", "date", "enddate", "room", "cage", "QCStateLabel", "performedby"};
+        Object[][] data = new Object[animalIds.length][];
+        for (int i = 0; i < animalIds.length; i++)
+        {
+            data[i] = new Object[]{animalIds[i], new Date(), null, room, cage, EHRQCState.COMPLETED.label, 1004};
+        }
+
+        SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "Housing", "lsid", fields, data);
+        getApiHelper().deleteAllRecords("study", "Housing", new Filter("Id", StringUtils.join(animalIds, ";"), Filter.Operator.IN));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+    }
+
+    /**
+     * Asserts the cagemates report resolves the expected companions for an animal. A null total means the join matched
+     * nothing at all, which is reported as its own failure rather than as an unexpected count.
+     */
+    private void assertCagemates(String animalId, int expectedTotal, String expectedCompanion) throws Exception
+    {
+        SelectRowsCommand selectCmd = new SelectRowsCommand("study", "demographicsCagemates");
+        selectCmd.addFilter(new Filter("Id", animalId));
+        SelectRowsResponse response = selectCmd.execute(getApiHelper().getConnection(), getContainerPath());
+
+        Assert.assertEquals("Expected one cagemates row for " + animalId, 1, response.getRows().size());
+        Map<String, Object> cagemates = response.getRows().get(0);
+        Assert.assertNotNull("Cagemates resolved no location for " + animalId, cagemates.get("total"));
+        Assert.assertEquals("Unexpected cagemate count for " + animalId, expectedTotal, ((Number) cagemates.get("total")).intValue());
+        Assert.assertTrue("Cagemate list should name " + expectedCompanion + ", was: " + cagemates.get("animals"),
+                String.valueOf(cagemates.get("animals")).contains(expectedCompanion));
     }
 
     @Test

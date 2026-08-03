@@ -93,16 +93,6 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
                 customizeTasks(ti);
             }
 
-            if (matches(ti, "ehr_lookups", "rooms"))
-            {
-                customizeRooms(ti);
-            }
-
-            if (matches(ti, "ehr_lookups", "floors"))
-            {
-                customizeFloors(ti);
-            }
-
             if (matches(ti, "nbri_ehr", "necropsyTasks"))
             {
                 addNecropsyReportLink(ti);
@@ -581,60 +571,6 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         }
     }
 
-    private void customizeRooms(AbstractTableInfo ti)
-    {
-        ColumnInfo roomCol = ti.getColumn("name");
-        ColumnInfo floorCol = ti.getColumn("floor");
-        if (roomCol != null && floorCol != null && ti.getColumn("fullRoom") == null)
-        {
-            ExprColumn col = new ExprColumn(ti, new FieldKey(null, "fullRoom"), new SQLFragment("##ERROR"), JdbcType.VARCHAR, roomCol, floorCol) {
-                @Override
-                public SQLFragment getValueSql(String tableAlias)
-                {
-                    // Need to subclass and override this function due to issue using ExprColumn.STR_TABLE_ALIAS with extensible columns
-                    SQLFragment sql = new SQLFragment("(SELECT COALESCE(r.room, 'Room N/A') || ', ' || COALESCE(r.floor, 'Floor N/A') || ', ' || COALESCE(r.building, 'Building N/A') \n" +
-                            "        FROM (\n" +
-                            "            SELECT \n").append(roomCol.getValueSql(tableAlias));
-                    sql.append(" AS room,\n" +
-                            "    ff.name as floor,\n" +
-                            "    bb.description as building\n" +
-                            "    FROM ehr_lookups.floors ff \n" +
-                            "    JOIN ehr_lookups.buildings bb ON ff.building = bb.name\n" +
-                            "    WHERE ff.floor =\n").append(floorCol.getValueSql(tableAlias));
-                    sql.append("        ) r\n" +
-                            "    )");
-
-                    return sql;
-                }
-            };
-            col.setName("fullRoom");
-            col.setLabel("Full Room");
-            ti.addColumn(col);
-        }
-    }
-
-    private void customizeFloors(AbstractTableInfo ti)
-    {
-        ColumnInfo floorCol = ti.getColumn("name");
-        ColumnInfo bldgCol = ti.getColumn("building");
-        if (floorCol != null && bldgCol != null && ti.getColumn("fullFloor") == null)
-        {
-            SQLFragment sql = new SQLFragment("(SELECT COALESCE(r.floor, 'Floor N/A') || ', ' || COALESCE(r.building, 'Building N/A') \n" +
-                    "        FROM (\n" +
-                    "            SELECT " + ExprColumn.STR_TABLE_ALIAS + ".name\n");
-            sql.append(" AS floor,\n" +
-                    "    bb.description as building\n" +
-                    "    FROM ehr_lookups.buildings bb \n" +
-                    "    WHERE bb.name = " + ExprColumn.STR_TABLE_ALIAS + ".building\n");
-            sql.append("        ) r\n" +
-                    "    )");
-
-            ExprColumn col = new ExprColumn(ti, "fullFloor", sql, JdbcType.VARCHAR, floorCol, bldgCol);
-            col.setLabel("Full Floor");
-            ti.addColumn(col);
-        }
-    }
-
     private void customizeTasks(AbstractTableInfo ti)
     {
         DetailsURL detailsURL = DetailsURL.fromString("/ehr/dataEntryFormDetails.view?formType=${formtype}&taskid=${taskid}");
@@ -777,7 +713,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             {
                 UserSchema us = getEHRUserSchema(ti, "ehr_lookups");
                 col.setLabel("Room");
-                col.setFk(new QueryForeignKey(ti.getUserSchema(), ti.getContainerFilter(), us, null, "rooms", "room", "fullRoom"));
+                col.setFk(new QueryForeignKey(ti.getUserSchema(), ti.getContainerFilter(), us, null, "rooms", "room", "room"));
                 col.setURL(StringExpressionFactory.createURL("/nbri_ehr/cageDetails.view?room=${room}"));
             }
             if ("building".equalsIgnoreCase(col.getName()) && !ti.getName().equalsIgnoreCase("buildings"))
@@ -790,7 +726,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             {
                 UserSchema us = getEHRUserSchema(ti, "ehr_lookups");
                 col.setLabel("Floor");
-                col.setFk(new QueryForeignKey(ti.getUserSchema(), ti.getContainerFilter(), us, null, "floors", "floor", "fullFloor"));
+                col.setFk(new QueryForeignKey(ti.getUserSchema(), ti.getContainerFilter(), us, null, "floors", "floor", "name"));
             }
             if ("area".equalsIgnoreCase(col.getName()) && !ti.getName().equalsIgnoreCase("areas"))
             {

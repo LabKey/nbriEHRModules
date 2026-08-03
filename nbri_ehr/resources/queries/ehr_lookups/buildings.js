@@ -7,6 +7,19 @@ var LABKEY = require("labkey");
 
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 
+// Width of ehr_lookups.buildings.name. The description it is derived from is a wider column, so it can overrun the
+// key; reject it here rather than letting the database raise an unreadable error.
+var MAX_NAME_LENGTH = 100;
+
+// 'name' is not user editable, so it is absent from the incoming row map and the value this script derives has
+// nowhere to land. Declaring it managed reserves a slot so the derived key is persisted.
+function managedColumns() {
+    return {
+        insert: ["name"],
+        update: ["name"],
+    };
+}
+
 function onUpsert(row, oldRow, errors){
     if (extraContext.dataSource != "etl") {
         if (!row.description) {
@@ -25,7 +38,19 @@ function onUpsert(row, oldRow, errors){
                 return;
             }
 
-            row.name = row.description + '-' + row.area;
+            if (row.description.length > MAX_NAME_LENGTH) {
+                errors['description'] = 'Description is too long: it becomes the building key, which cannot exceed ' + MAX_NAME_LENGTH + ' characters.';
+                return;
+            }
+
+            // The description alone identifies the building now that the area is no longer folded in, so a duplicate
+            // would collide on the key. Say so here instead of surfacing a constraint violation on a hidden column.
+            if (triggerHelper.totalRecords("ehr_lookups", "buildings", "name", row.description) > 0) {
+                errors['description'] = 'A building described as ' + row.description + ' already exists. Building descriptions must be unique.';
+                return;
+            }
+
+            row.name = row.description;
         }
     }
 }

@@ -9,6 +9,11 @@
                     </column>
                     <column columnName="room">
                         <columnTitle>Room</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>rooms</fkTable>
+                            <fkColumnName>room</fkColumnName>
+                        </fk>
                     </column>
                     <column columnName="location">
                         <isHidden>true</isHidden>

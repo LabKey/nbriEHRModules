@@ -42,7 +42,7 @@
                     schemaName: 'ehr_lookups',
                     queryName: 'cage',
                     filterArray: detailFilterArray,
-                    columns: 'cage,room,room/floor,room/floor/building,room/floor/building/area,outdoor',
+                    columns: 'cage,room,room/building,room/building/area,outdoor',
                 },
                 title: 'Cage Details',
                 renderTo: 'cageDetails_' + webpart.wrapperDivId,
@@ -56,7 +56,7 @@
                 queryName: 'cage',
                 filterArray: detailFilterArray,
                 sort: 'cage',
-                columns: 'cage,room,room/floor,room/floor/building,room/floor/building/area,outdoor',
+                columns: 'cage,room,room/building,room/building/area,outdoor',
             }).render('cageDetails_' + webpart.wrapperDivId);
         }
 

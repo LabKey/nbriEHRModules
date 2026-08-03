@@ -20,7 +20,6 @@
         <dataset name="flags" id="1020" category="Colony Management" type="Standard"/>
         <dataset name="foster" id="1010" category="Colony Management" type="Standard"/>
         <dataset name="histopathology" id="1037" category="Pathology" type="Standard"/>
-        <dataset name="historicalOther" id="1036" category="Colony Management" type="Standard"/>
         <dataset name="housing" id="1018" category="Colony Management" type="Standard"/>
         <dataset name="inbreeding" id="1021" category="Colony Management" type="Standard"/>
         <dataset name="necropsy" id="1019" category="Pathology" type="Standard"/>

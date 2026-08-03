@@ -6,8 +6,10 @@
                 <tableTitle>Rooms</tableTitle>
                 <columns>
                     <column columnName="name" />
-                    <column columnName="floor" />
+                    <column columnName="building" />
                     <column columnName="room">
+                        <!-- Carried onto any lookup that displays this column, so room/room links the same way cage/room does. -->
+                        <url>/nbri_ehr/cageDetails.view?room=${room}</url>
                         <isHidden>true</isHidden>
                         <shownInInsertView>false</shownInInsertView>
                         <shownInUpdateView>false</shownInUpdateView>
@@ -16,6 +18,14 @@
                         <isHidden>true</isHidden>
                         <shownInInsertView>false</shownInInsertView>
                         <shownInUpdateView>false</shownInUpdateView>
+                    </column>
+                    <!-- A room is keyed by its building, so floor no longer carries anything. Kept out of every view
+                         rather than dropped, since existing rooms still hold a value. -->
+                    <column columnName="floor">
+                        <isHidden>true</isHidden>
+                        <shownInInsertView>false</shownInInsertView>
+                        <shownInUpdateView>false</shownInUpdateView>
+                        <shownInDetailsView>false</shownInDetailsView>
                     </column>
                 </columns>
             </table>

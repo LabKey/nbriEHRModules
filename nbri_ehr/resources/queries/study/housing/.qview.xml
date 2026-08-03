@@ -7,7 +7,7 @@
         <column name="Id/Demographics/species"/>
         <column name="date"/>
         <column name="enddate"/>
-        <column name="room/fullRoom" />
+        <column name="room/room" />
         <column name="cage" />
         <column name="reason" />
         <column name="remark"/>
