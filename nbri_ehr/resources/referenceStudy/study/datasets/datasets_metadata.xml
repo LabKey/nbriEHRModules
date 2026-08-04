@@ -224,6 +224,15 @@
             <column columnName="conceptId">
                 <datatype>varchar</datatype>
             </column>
+            <column columnName="breedingType">
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="cond">
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="type">
+                <datatype>varchar</datatype>
+            </column>
         </columns>
     </table>
     <table tableName="blood" tableDbType="TABLE">
@@ -469,9 +478,6 @@
             <column columnName="geographic_origin">
                 <datatype>varchar</datatype>
             </column>
-            <column columnName="source">
-                <datatype>varchar</datatype>
-            </column>
             <column columnName="CITES">
                 <datatype>varchar</datatype>
             </column>
@@ -529,6 +535,9 @@
             </column>
             <column columnName="deathWeight">
                 <datatype>double</datatype>
+            </column>
+            <column columnName="type">
+                <datatype>varchar</datatype>
             </column>
         </columns>
     </table>
@@ -616,30 +625,6 @@
                 <rangeURI>http://cpas.fhcrc.org/exp/xml#fileLink</rangeURI>
             </column>
         </columns>
-    </table>
-    <table tableName="historicalOther" tableDbType="TABLE">
-        <columns>
-            <column columnName="Id">
-                <datatype>varchar</datatype>
-                <propertyURI>http://cpas.labkey.com/Study#ParticipantId</propertyURI>
-                <importAliases>
-                    <importAlias>ptid</importAlias>
-                </importAliases>
-            </column>
-            <column columnName="date">
-                <datatype>timestamp</datatype>
-                <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
-                <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
-            </column>
-            <column columnName="remark">
-                <datatype>varchar</datatype>
-            </column>
-            <column columnName="type">
-                <datatype>varchar</datatype>
-            </column>
-        </columns>
-        <tableTitle>Historical Other</tableTitle>
-        <description>Captures miscellaneous historical health and research records for primates that do not fit other specific categories.</description>
     </table>
     <table tableName="housing" tableDbType="TABLE">
         <tableTitle>Housing</tableTitle>

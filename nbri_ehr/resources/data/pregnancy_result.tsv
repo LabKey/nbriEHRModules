@@ -1,3 +1,7 @@
 value	title
-1	Stillborn
-2	Abort
+NT	No Tissue
+FD	Fetal Death
+FN	Found at necropsy
+FX	Live, Term, euthanized at birth
+ND	Live, Died day of birth (lungs inflated)
+FL	Fetal Delivery, live in Utero

@@ -21,7 +21,6 @@
                             <fkDbSchema>ehr_lookups</fkDbSchema>
                             <fkTable>cage</fkTable>
                             <fkColumnName>location</fkColumnName>
-                            <fkDisplayColumnName>cage</fkDisplayColumnName>
                         </fk>
                     </column>
                     <column columnName="room">
@@ -31,7 +30,7 @@
                             <fkDbSchema>ehr_lookups</fkDbSchema>
                             <fkTable>rooms</fkTable>
                             <fkColumnName>room</fkColumnName>
-                            <fkDisplayColumnName>name</fkDisplayColumnName>
+                            <fkDisplayColumnName>room</fkDisplayColumnName>
                         </fk>
                     </column>
                     <column columnName="reason">
@@ -44,6 +43,19 @@
                     </column>
                     <column columnName="remark"/>
                     <column columnName="performedBy">
+                    </column>
+                    <!-- Re-declared because this file replaces ehr's metadata rather than merging
+                         with it. Keyed on lsid, not ehr's objectid: housingTotalRoommates selects
+                         only lsid, so objectid leaves the join silently unresolved. -->
+                    <column columnName="TotalRoommates" wrappedColumnName="lsid">
+                        <columnTitle>Total Cagemates</columnTitle>
+                        <isHidden>false</isHidden>
+                        <isUnselectable>true</isUnselectable>
+                        <fk>
+                            <fkDbSchema>study</fkDbSchema>
+                            <fkTable>housingTotalRoommates</fkTable>
+                            <fkColumnName>lsid</fkColumnName>
+                        </fk>
                     </column>
                 </columns>
             </table>

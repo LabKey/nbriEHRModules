@@ -19,13 +19,11 @@ EHR.model.DataModelManager.registerMetadata('DeathNecropsy', {
                 },
             },
             deathWeight: {
-                label: 'Weight (kg)',
-                allowBlank: false,
-                nullable: false,
+                label: 'Weight (kg)'
             },
-            reason: {
+            type: {
                 allowBlank: false,
-                nullable: false,
+                nullable: false
             }
         },
         'study.necropsy': {

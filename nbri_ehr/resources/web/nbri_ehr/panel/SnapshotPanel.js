@@ -228,6 +228,10 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
         toSet['flags'] = values.length ? '<a id="nbriFlagsLink">' + values.join('<br>') + '</div>' : null;
     },
 
+    getFlagDisplayValue: function(row) {
+        return row['flag/description'] || row['flag/value'];
+    },
+
     appendAssignments: function(toSet, results){
         toSet['projectAssignment'] = null;
 

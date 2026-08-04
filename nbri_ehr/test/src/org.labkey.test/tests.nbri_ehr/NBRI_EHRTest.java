@@ -34,6 +34,8 @@ import org.labkey.remoteapi.query.Filter;
 import org.labkey.remoteapi.query.ImportDataCommand;
 import org.labkey.remoteapi.query.InsertRowsCommand;
 import org.labkey.remoteapi.query.RowsResponse;
+import org.labkey.remoteapi.query.SelectRowsCommand;
+import org.labkey.remoteapi.query.SelectRowsResponse;
 import org.labkey.remoteapi.security.CreateUserResponse;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
@@ -103,9 +105,33 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String deadAnimalId = "D5454";
     private static final String departedAnimalId = "H6767";
     private static final String aliveAnimalId = "A4545";
+    // never inserted into demographics; exercises the deaths trigger's unknown-Id rejection
+    private static final String unknownAnimalId = "X9999";
     // Dedicated animal for testScheduledObservationTaskGrouping; provisioned (alive, housed, assigned) in
     // createTestSubjects so the clinical case form raises no warnings that would keep the validation banner up.
     private static final String taskGroupAnimalId = "TESTGRP9090";
+
+    // Rooms are keyed by building and name, so every room fixture needs a building to hang off of.
+    // 'buildings' derives its key from the description, and 'SPF' is one of the areas seeded with the ehr_lookups schema.
+    private static final String BUILDING_ID = "TestBuilding";
+    private static final String BUILDING_AREA = "SPF";
+
+    // Cage locations seeded by populateLocations, named for the room each one sits in. The cage trigger derives these
+    // from the room and cage, and housing records key off the location, so these are what belongs in a housing row's
+    // 'cage' field. datasetHousing.tsv spells the same values out, since a TSV cannot call cageLocation.
+    private static final String CAGE_IN_R1 = cageLocation("R1", "C1");
+    private static final String CAGE_IN_R3 = cageLocation("R3", "C4");
+
+    // A group pen has no cage, so its location is the room key alone. Created by testGroupPenCagemates.
+    private static final String PEN_ROOM_NAME = "PEN1";
+    private static final String[] PEN_ANIMALS = {"PEN0001", "PEN0002"};
+
+    // Housed with a cage but no room, which is how a record entered against a cage alone lands. Every cage seeded by
+    // populateLocations already has occupants from datasetHousing.tsv, so testCagematesWithoutRoom creates its own to
+    // keep the expected cagemate count exact.
+    private static final String ROOMLESS_CAGE_NAME = "C9";
+    private static final String ROOMLESS_CAGE = cageLocation("R1", ROOMLESS_CAGE_NAME);
+    private static final String[] ROOMLESS_ANIMALS = {"CAGE0001", "CAGE0002"};
 
     private final String[] weightFields = {"Id", "date", "enddate", "project", "weight", FIELD_QCSTATELABEL, FIELD_OBJECTID, FIELD_LSID, "_recordid", "performedby"};
     private final Object[] weightData1 = {getExpectedAnimalIDCasing("TESTSUBJECT1"), EHRClientAPIHelper.DATE_SUBSTITUTION, null, null, "12", EHRQCState.IN_PROGRESS.label, null, null, "_recordID", 1004};
@@ -244,20 +270,62 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         RowsResponse saveRowsResponse = insertRowsCommand.execute(getApiHelper().getConnection(), getContainerPath());
     }
 
+    /**
+     * The key a room trigger derives for the given room name. Mirrors ehr_lookups/rooms.js.
+     */
+    private static String roomKey(String roomName)
+    {
+        return BUILDING_ID + "-" + roomName;
+    }
+
+    /**
+     * The location a cage trigger derives for the given room and cage. Mirrors ehr_lookups/cage.js.
+     */
+    private static String cageLocation(String roomName, String cageName)
+    {
+        return roomKey(roomName) + "-" + cageName;
+    }
+
+    /**
+     * Housing records store the derived room key, so the fixture rooms have to be named by key for the room
+     * lookups to resolve. The base implementation returns names that match no room in this study.
+     */
+    @Override
+    protected String[] getRooms()
+    {
+        return new String[]{roomKey("R1"), roomKey("R2"), roomKey("R3")};
+    }
+
+    @LogMethod
+    private void populateBuildingRecords() throws Exception
+    {
+        InsertRowsCommand insertCmd = new InsertRowsCommand("ehr_lookups", "buildings");
+        Map<String, Object> rowMap = new HashMap<>();
+        // Supply the derived key rather than relying on the trigger to fill it, matching how the base class seeds rooms.
+        rowMap.put("name", BUILDING_ID);
+        rowMap.put("description", BUILDING_ID);
+        rowMap.put("area", BUILDING_AREA);
+        insertCmd.addRow(rowMap);
+
+        insertCmd.execute(createDefaultConnection(), getContainerPath());
+    }
+
     @Override
     protected void populateRoomRecords() throws Exception
     {
+        populateBuildingRecords();
+
         InsertRowsCommand insertCmd = new InsertRowsCommand("ehr_lookups", "rooms");
         Map<String, Object> rowMap = new HashMap<>();
         rowMap.put("name", ROOM_ID);
-        rowMap.put("floor", "floor1");
+        rowMap.put("building", BUILDING_ID);
         rowMap.put("housingType", 1);
         rowMap.put("housingCondition", 1);
         insertCmd.addRow(rowMap);
 
         rowMap = new HashMap<>();
         rowMap.put("name", ROOM_ID2);
-        rowMap.put("floor", "floor2");
+        rowMap.put("building", BUILDING_ID);
         rowMap.put("housingType", 1);
         rowMap.put("housingCondition", 1);
         insertCmd.addRow(rowMap);
@@ -321,19 +389,21 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private void populateLocations() throws IOException, CommandException
     {
         goToEHRFolder();
+        // BUILDING_ID is created by populateRoomRecords, which runs earlier as part of initProject.
         log("Inserting values in rooms");
         InsertRowsCommand roomCmd = new InsertRowsCommand("ehr_lookups", "rooms");
-        roomCmd.addRow(Map.of("name", "R1", "floor", "F1"));
-        roomCmd.addRow(Map.of("name", "R2", "floor", "F2"));
-        roomCmd.addRow(Map.of("name", "R3", "floor", "F3"));
+        roomCmd.addRow(Map.of("name", "R1", "building", BUILDING_ID));
+        roomCmd.addRow(Map.of("name", "R2", "building", BUILDING_ID));
+        roomCmd.addRow(Map.of("name", "R3", "building", BUILDING_ID));
         roomCmd.execute(getApiHelper().getConnection(), getContainerPath());
 
+        // 'location' is left out so the cage trigger derives it, exercising the same path production entry takes.
         log("Inserting values in cage");
         InsertRowsCommand cageCmd = new InsertRowsCommand("ehr_lookups", "cage");
-        cageCmd.addRow(Map.of("location", "L1", "cage", "C1", "room", "R1"));
-        cageCmd.addRow(Map.of("location", "L2", "cage", "C2", "room", "R1"));
-        cageCmd.addRow(Map.of("location", "L3", "cage", "C3", "room", "R2"));
-        cageCmd.addRow(Map.of("location", "L4", "cage", "C4", "room", "R3"));
+        cageCmd.addRow(Map.of("cage", "C1", "room", roomKey("R1")));
+        cageCmd.addRow(Map.of("cage", "C2", "room", roomKey("R1")));
+        cageCmd.addRow(Map.of("cage", "C3", "room", roomKey("R2")));
+        cageCmd.addRow(Map.of("cage", "C4", "room", roomKey("R3")));
         cageCmd.execute(getApiHelper().getConnection(), getContainerPath());
     }
 
@@ -363,13 +433,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     @Override
     protected String getMale()
     {
-        return "3";
+        return "M";
     }
 
     @Override
     protected String getFemale()
     {
-        return "2";
+        return "F";
     }
 
     @Test
@@ -407,13 +477,15 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         //insert into demographics
         log("Creating test subjects");
+        // demographics.species holds an ehr_lookups.species_codes code, and ehr_lookups.weight_ranges is keyed
+        // on that same code, so weight validation only fires for animals given a real code here.
         fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
         data = new Object[][]{
-                {SUBJECTS[0], "Rhesus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {SUBJECTS[1], "Cynomolgus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {SUBJECTS[2], "Marmoset", (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {SUBJECTS[3], "Cynomolgus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {SUBJECTS[4], "Cynomolgus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
+                {SUBJECTS[0], "MMU", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {SUBJECTS[1], "MNE", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {SUBJECTS[2], "CAE", (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {SUBJECTS[3], "MNE", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {SUBJECTS[4], "MNE", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
         };
         insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
         getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", StringUtils.join(SUBJECTS, ";"), Filter.Operator.IN));
@@ -421,11 +493,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         //for simplicity, also create the animals from MORE_ANIMAL_IDS right now
         data = new Object[][]{
-                {MORE_ANIMAL_IDS[0], "Rhesus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {MORE_ANIMAL_IDS[1], "Cynomolgus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {MORE_ANIMAL_IDS[2], "Marmoset", (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {MORE_ANIMAL_IDS[3], "Cynomolgus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {MORE_ANIMAL_IDS[4], "Cynomolgus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
+                {MORE_ANIMAL_IDS[0], "MMU", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {MORE_ANIMAL_IDS[1], "MNE", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {MORE_ANIMAL_IDS[2], "CAE", (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {MORE_ANIMAL_IDS[3], "MNE", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {MORE_ANIMAL_IDS[4], "MNE", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
         };
         insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
         getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", StringUtils.join(MORE_ANIMAL_IDS, ";"), Filter.Operator.IN));
@@ -439,10 +511,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         log("Creating initial housing records");
         fields = new String[]{"Id", "date", "enddate", "room", "cage", "performedby"};
         data = new Object[][]{
-                {SUBJECTS[0], pastDate1, pastDate2, getRooms()[0], CAGES[0], 1004},
-                {SUBJECTS[0], pastDate2, null, getRooms()[0], CAGES[0], 1004},
-                {SUBJECTS[1], pastDate1, pastDate2, getRooms()[0], CAGES[0], 1004},
-                {SUBJECTS[1], pastDate2, null, getRooms()[2], CAGES[2], 1004}
+                {SUBJECTS[0], pastDate1, pastDate2, getRooms()[0], CAGE_IN_R1, 1004},
+                {SUBJECTS[0], pastDate2, null, getRooms()[0], CAGE_IN_R1, 1004},
+                {SUBJECTS[1], pastDate1, pastDate2, getRooms()[0], CAGE_IN_R1, 1004},
+                {SUBJECTS[1], pastDate2, null, getRooms()[2], CAGE_IN_R3, 1004}
         };
         insertCommand = getApiHelper().prepareInsertCommand("study", "Housing", "lsid", fields, data);
         getApiHelper().deleteAllRecords("study", "Housing", new Filter("Id", StringUtils.join(SUBJECTS, ";"), Filter.Operator.IN));
@@ -478,7 +550,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         log("Creating task grouping test subject");
         fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
         data = new Object[][]{
-                {taskGroupAnimalId, "Rhesus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
+                {taskGroupAnimalId, "MMU", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
         };
         insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
         getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", taskGroupAnimalId));
@@ -486,7 +558,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         fields = new String[]{"Id", "date", "enddate", "room", "cage", "performedby"};
         data = new Object[][]{
-                {taskGroupAnimalId, pastDate1, null, getRooms()[0], CAGES[0], 1004}
+                {taskGroupAnimalId, pastDate1, null, getRooms()[0], CAGE_IN_R1, 1004}
         };
         insertCommand = getApiHelper().prepareInsertCommand("study", "Housing", "lsid", fields, data);
         getApiHelper().deleteAllRecords("study", "Housing", new Filter("Id", taskGroupAnimalId));
@@ -535,7 +607,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         };
         Map<String, List<String>> expected = new HashMap<>();
         expected.put("weight", Arrays.asList(
-                "WARN: Weight above the allowable value of 20.0 kg for Cynomolgus",
+                "WARN: Weight above the allowable value of 30.0 kg for MNE",
                 "INFO: Weight gain of >10%. Last weight 12 kg")
         );
         getApiHelper().testValidationMessage(DATA_ADMIN.getEmail(), "study", "weight", getWeightFields(), data, expected);
@@ -576,13 +648,24 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         arrivals.setGridCell(1, "acquisitionType", "Lab Transfer (Wild Born)");
         arrivals.setGridCell(1, "Id", arrivedAnimal);
         arrivals.setGridCell(1, "cage", "C1");
-        arrivals.setGridCell(1, "project", "640991");
-        arrivals.setGridCell(1, "arrivalProtocol", "dummyprotocol");
-        arrivals.setGridCell(1, "Id/demographics/gender", "female");
+        arrivals.setGridCell(1, "Id/demographics/gender", "Female");
         arrivals.setGridCell(1, "Id/demographics/geographic_origin", "BRAZIL");
-        arrivals.setGridCell(1, "Id/demographics/species", "Macaca nemestrina PIG");
+        arrivals.setGridCell(1, "Id/demographics/species", "Pig-Tailed Macaque");
         arrivals.setGridCellJS(1, "Id/demographics/birth", now.minusDays(7).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
-        arrivals.setGridCell(1, "sourceFacility", "BIOQUAL, Inc.");
+        arrivals.setGridCell(1, "sourceFacility", "Bioqual, Incorporated");
+
+        Ext4GridRef protocolAssignments = _helper.getExt4GridForFormSection("Protocol Assignment");
+        _helper.addRecordToGrid(protocolAssignments);
+        protocolAssignments.setGridCell(1, "Id", arrivedAnimal);
+        protocolAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        protocolAssignments.setGridCell(1, "protocol", "dummyprotocol");
+
+        Ext4GridRef projectAssignments = _helper.getExt4GridForFormSection("Project Assignment");
+        _helper.addRecordToGrid(projectAssignments);
+        projectAssignments.setGridCell(1, "Id", arrivedAnimal);
+        projectAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        projectAssignments.setGridCell(1, "project", "640991");
+
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -590,13 +673,19 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table.setFilter("Id", "Equals", arrivedAnimal);
         CustomizeView view = table.openCustomizeGrid();
         view.addColumn("cage");
-        view.addColumn("project");
-        view.addColumn("arrivalProtocol");
         view.applyCustomView();
         Assert.assertEquals("Invalid Arrival record", Arrays.asList(arrivedAnimal), table.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid Arrival record", Arrays.asList("C1"), table.getRowDataAsText(0, "cage"));
-        Assert.assertEquals("Invalid Arrival record", Arrays.asList("640991"), table.getRowDataAsText(0, "project"));
-        Assert.assertEquals("Invalid Arrival record", Arrays.asList("dummyprotocol"), table.getRowDataAsText(0, "arrivalProtocol"));
+
+        goToSchemaBrowser();
+        table = viewQueryData("study", "assignment");
+        table.setFilter("Id", "Equals", arrivedAnimal);
+        Assert.assertEquals("Invalid project assignment", Arrays.asList("640991"), table.getRowDataAsText(0, "project"));
+
+        goToSchemaBrowser();
+        table = viewQueryData("study", "protocolAssignment");
+        table.setFilter("Id", "Equals", arrivedAnimal);
+        Assert.assertEquals("Invalid protocol assignment", Arrays.asList("dummyprotocol"), table.getRowDataAsText(0, "protocol"));
 
         verifyRowCreated("study", "birth", arrivedAnimal, 1);
         verifyRowCreated("study", "assignment", arrivedAnimal, 1);
@@ -606,15 +695,24 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     }
 
     @Test
-    public void testBirthForm() throws IOException, CommandException
+    public void testBirthForm() throws Exception
     {
         String bornAnimal = "80801";
+        String damId = "TESTDAM01";
+        String sireId = "TESTSIRE01";
+        // demographics.species holds an ehr_lookups.species_codes code; the grids display its common name
+        String damSpeciesCode = "CAP";
+        String damSpecies = "Brown-Tufted Capuchin";
         String conceptId = "TESTCONCEPT1";
+        String breedingType = "Time-Mated";
         LocalDateTime now = LocalDateTime.now();
+
+        log("Creating the dam and sire of the conception");
+        createBreedingPair(damId, sireId, damSpeciesCode);
 
         log("Creating conception record");
         InsertRowsCommand conception = new InsertRowsCommand("nbri_ehr", "Conception");
-        conception.addRow(Map.of("ConceptId", conceptId, "ConceptDate", now.minusDays(160), "Dam", "TEST4551032"));
+        conception.addRow(Map.of("ConceptId", conceptId, "ConceptDate", now.minusDays(160), "Dam", damId, "Sire", sireId));
         conception.execute(getApiHelper().getConnection(), getContainerPath());
 
         gotoEnterData();
@@ -622,15 +720,47 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         lockForm();
 
         Ext4GridRef births = _helper.getExt4GridForFormSection("Births");
-        _helper.addRecordToGrid(births);
+        verifyBirthColumnOrder(births);
+
+        log("Starting a birth record from the conception");
+        births.clickTbarButton("Start with Conception");
+        Window<?> conceptionWindow = new Window.WindowFinder(getDriver()).withTitle("Start with Conception").waitFor();
+        Ext4ComboRef conceptionCombo = _ext4Helper.queryOne("window #conceptionField", Ext4ComboRef.class);
+        Assert.assertNotNull("Conception Id field not found in the Start with Conception window", conceptionCombo);
+        conceptionCombo.waitForStoreLoad();
+        conceptionCombo.setComboByDisplayValue(conceptId);
+        conceptionWindow.clickButton("Submit", 0);
+        births.waitForRowCount(1);
+
+        log("Verifying the conception populated the new birth record");
+        assertEquals("Conception Id was not copied from the conception", conceptId, births.getFieldValue(1, "conceptId"));
+        assertEquals("Dam was not copied from the conception", damId, births.getFieldValue(1, "Id/demographics/dam"));
+        assertEquals("Sire was not copied from the conception", sireId, births.getFieldValue(1, "Id/demographics/sire"));
+        assertEquals("Species was not copied from the dam of the conception", damSpeciesCode, births.getFieldValue(1, "Id/demographics/species"));
+
+        log("Verifying Conception Id is required");
+        births.setGridCellJS(1, "conceptId", null);
+        waitForFormError("The field: Conception Id is required");
+        births.setGridCellJS(1, "conceptId", conceptId);
+
         births.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         births.setGridCell(1, "Id", bornAnimal);
         births.setGridCell(1, "cage", "C3");
-        births.setGridCell(1, "Id/demographics/species", "Cebus apella CAP");
-        births.setGridCell(1, "Id/demographics/gender", "female");
-        births.setGridCell(1, "project", "795644");
-        births.setGridCell(1, "birthProtocol", "protocol101");
-        births.setGridCell(1, "conceptId", conceptId);
+        births.setGridCell(1, "Id/demographics/gender", "Female");
+        births.setGridCell(1, "breedingType", breedingType);
+
+        Ext4GridRef protocolAssignments = _helper.getExt4GridForFormSection("Protocol Assignment");
+        _helper.addRecordToGrid(protocolAssignments);
+        protocolAssignments.setGridCell(1, "Id", bornAnimal);
+        protocolAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        protocolAssignments.setGridCell(1, "protocol", "protocol101");
+
+        Ext4GridRef projectAssignments = _helper.getExt4GridForFormSection("Project Assignment");
+        _helper.addRecordToGrid(projectAssignments);
+        projectAssignments.setGridCell(1, "Id", bornAnimal);
+        projectAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        projectAssignments.setGridCell(1, "project", "795644");
+
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -638,20 +768,39 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table.setFilter("Id", "Equals", bornAnimal);
         Assert.assertEquals("Invalid Birth record", Arrays.asList(bornAnimal), table.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList("C3"), table.getRowDataAsText(0, "cage"));
-        Assert.assertEquals("Invalid Birth record", Arrays.asList("795644"), table.getRowDataAsText(0, "project"));
-        Assert.assertEquals("Invalid Birth record", Arrays.asList("protocol101"), table.getRowDataAsText(0, "birthProtocol"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
+        Assert.assertEquals("Invalid Birth record", Arrays.asList(breedingType), table.getRowDataAsText(0, "breedingType"));
+
+        log("Verifying the dam and sire of the conception reached demographics");
+        goToSchemaBrowser();
+        table = viewQueryData("study", "demographics");
+        table.setFilter("Id", "Equals", bornAnimal);
+        Assert.assertEquals("Invalid demographics record", Arrays.asList(damId), table.getRowDataAsText(0, "dam"));
+        Assert.assertEquals("Invalid demographics record", Arrays.asList(sireId), table.getRowDataAsText(0, "sire"));
+        Assert.assertEquals("Invalid demographics record", Arrays.asList(damSpecies), table.getRowDataAsText(0, "species"));
+
+        goToSchemaBrowser();
+        table = viewQueryData("study", "assignment");
+        table.setFilter("Id", "Equals", bornAnimal);
+        Assert.assertEquals("Invalid project assignment", Arrays.asList("795644"), table.getRowDataAsText(0, "project"));
+
+        goToSchemaBrowser();
+        table = viewQueryData("study", "protocolAssignment");
+        table.setFilter("Id", "Equals", bornAnimal);
+        Assert.assertEquals("Invalid protocol assignment", Arrays.asList("protocol101"), table.getRowDataAsText(0, "protocol"));
 
         verifyRowCreated("study", "assignment", bornAnimal, 1);
         verifyRowCreated("study", "protocolAssignment", bornAnimal, 1);
         verifyRowCreated("study", "housing", bornAnimal, 1);
         verifyRowCreated("study", "demographics", bornAnimal, 1);
 
-        log("Verifying conception outcome in ConceptionsByDam");
+        log("Verifying conception outcome and offspring in ConceptionsByDam");
         goToSchemaBrowser();
         DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
         report.setFilter("ConceptId", "Equals", conceptId);
+        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(damId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Live Birth"), report.getRowDataAsText(0, "conceptionOutcome"));
+        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(bornAnimal), report.getRowDataAsText(0, "offspring"));
     }
 
     @Test
@@ -659,6 +808,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     {
         String animalId = "TEST4551032";
         String conceptId = "TESTCONCEPT2";
+        // a non-live outcome, so ConceptionsByDam reports it rather than falling through to 'Live Birth'
+        String result = "Fetal Death";
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating conception record");
@@ -674,7 +825,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         _helper.addRecordToGrid(outcomes);
         outcomes.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         outcomes.setGridCell(1, "Id", animalId);
-        outcomes.setGridCell(1, "result", "Stillborn");
+        outcomes.setGridCell(1, "result", result);
         outcomes.setGridCell(1, "conceptId", conceptId);
         submitForm("Submit Final", "Finalize");
 
@@ -682,7 +833,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         DataRegionTable table = viewQueryData("study", "pregnancy");
         table.setFilter("Id", "Equals", animalId);
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(animalId), table.getRowDataAsText(0, "Id"));
-        Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList("Stillborn"), table.getRowDataAsText(0, "result"));
+        Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(result), table.getRowDataAsText(0, "result"));
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
 
         log("Verifying conception outcome in ConceptionsByDam");
@@ -690,7 +841,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
         report.setFilter("ConceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(animalId), report.getRowDataAsText(0, "Id"));
-        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Stillborn"), report.getRowDataAsText(0, "conceptionOutcome"));
+        Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(result), report.getRowDataAsText(0, "conceptionOutcome"));
     }
 
     @Test
@@ -706,13 +857,20 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         lockForm();
 
         Ext4GridRef conceptions = _helper.getExt4GridForFormSection("Conception");
+        Assert.assertFalse("Breeding Type describes the birth and should no longer appear on the Conception form",
+                conceptions.isColumnPresent("breedingType", false));
+
         _helper.addRecordToGrid(conceptions);
         conceptions.setGridCell(1, "ConceptId", conceptId);
         conceptions.setGridCellJS(1, "ConceptDate", now.minusDays(30).format(_dateFormat));
         conceptions.setGridCellJS(1, "ConceptTermDate", now.plusDays(135).format(_dateFormat));
+        conceptions.setGridCellJS(1, "Estimated", true);
         conceptions.setGridCell(1, "Dam", damId);
         conceptions.setGridCell(1, "Sire", sireId);
-        conceptions.setGridCell(1, "Remark", "Conception entry test");
+        // Remark renders as a textarea, which Ext4GridRef's cell editor helpers cannot drive: they only recognize
+        // an <input> as the active editor, so the click that opens the textarea is followed by a retry click that
+        // the open textarea intercepts. Set it through the store instead.
+        conceptions.setGridCellJS(1, "Remark", "Conception entry test");
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -720,6 +878,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table.setFilter("ConceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid Conception record", Arrays.asList(damId), table.getRowDataAsText(0, "Dam"));
         Assert.assertEquals("Invalid Conception record", Arrays.asList(sireId), table.getRowDataAsText(0, "Sire"));
+        Assert.assertEquals("Invalid Conception record", Arrays.asList("true"), table.getRowDataAsText(0, "Estimated"));
         Assert.assertEquals("Invalid Conception record", Arrays.asList("Conception entry test"), table.getRowDataAsText(0, "Remark"));
 
         log("Verifying unmatched conception appears as Unknown in ConceptionsByDam");
@@ -1130,9 +1289,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "birth", "lsid",
                 new String[]{"Id", "Date", "gender", "QCStateLabel", "performedby"},
                 new Object[][]{
-                        {aliveAnimalId, LocalDateTime.now().minusDays(30), "f", "Completed", 1004},
-                        {deadAnimalId, LocalDateTime.now().minusDays(30), "m", "Completed", 1004},
-                        {departedAnimalId, LocalDateTime.now().minusDays(30), "m", "Completed", 1004},
+                        {aliveAnimalId, LocalDateTime.now().minusDays(30), getFemale(), "Completed", 1004},
+                        {deadAnimalId, LocalDateTime.now().minusDays(30), getMale(), "Completed", 1004},
+                        {departedAnimalId, LocalDateTime.now().minusDays(30), getMale(), "Completed", 1004},
                 }
         ), getExtraContext());
 
@@ -1146,7 +1305,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         project.execute(getApiHelper().getConnection(), getContainerPath());
 
         InsertRowsCommand housing = new InsertRowsCommand("study", "housing");
-        housing.addRow(Map.of("Id", aliveAnimalId, "date", LocalDateTime.now().minusDays(10), "cage", "C4", "QCStateLabel", "Completed", "performedby", 1004));
+        housing.addRow(Map.of("Id", aliveAnimalId, "date", LocalDateTime.now().minusDays(10), "room", getRooms()[2], "cage", CAGE_IN_R3, "QCStateLabel", "Completed", "performedby", 1004));
         housing.execute(getApiHelper().getConnection(), getContainerPath());
 
         log("Marking an animal dead");
@@ -1156,7 +1315,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Marking an animal departed");
         InsertRowsCommand departure = new InsertRowsCommand("study", "departure");
-        departure.addRow(Map.of("Id", departedAnimalId, "date", LocalDateTime.now().minusDays(1), "destination", "Oregon NPRC", "performedby", 1004));
+        // destination stores an ehr_lookups.source code; the facility name is only the display value
+        departure.addRow(Map.of("Id", departedAnimalId, "date", LocalDateTime.now().minusDays(1), "destination", "ORPRC", "performedby", 1004));
         departure.execute(getApiHelper().getConnection(), getContainerPath());
     }
 
@@ -1184,7 +1344,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         setFormElement(Locator.name("Id"), departedAnimalId);
         waitForText("Id: ERROR: Animal is not at the center.");
 
+        setFormElement(Locator.name("Id"), unknownAnimalId);
+        waitForText("Id: ERROR: Id not found in the demographics table.");
+
+        setFormElement(Locator.name("Id"), deadAnimalId);
+        waitForText("Id: ERROR: Death record already exists for this animal.");
+
         setFormElement(Locator.name("Id"), aliveAnimalId);
+        _ext4Helper.selectComboBoxItem("Death Type:", "Spontaneous/Normal");
         _ext4Helper.selectComboBoxItem("Disposition:", "Euthaniasia (project)");
         waitForElement(Locator.name("deathWeight"));
         setFormElement(Locator.name("deathWeight"), "23");
@@ -1192,6 +1359,15 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Assert.assertFalse(isElementPresent(Locator.linkWithText("Submit Final")));
         submitForm("Submit Death", "Confirm");
         stopImpersonating();
+
+        log("Verify a second death insert is rejected with a validation error, not a unique constraint violation");
+        SimplePostCommand duplicateDeath = getApiHelper().prepareInsertCommand("study", "deaths", "lsid",
+                new String[]{"Id", "date", "reason", "performedby"},
+                new Object[][]{{aliveAnimalId, LocalDateTime.now(), "4", 1004}});
+        CommandException duplicateError = getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), duplicateDeath, getExtraContext());
+        Map<String, List<String>> duplicateErrors = getApiHelper().extractErrors(duplicateError.getProperties());
+        Assert.assertTrue("Expected duplicate death validation error, got: " + duplicateErrors,
+                duplicateErrors.getOrDefault("Id", List.of()).contains("ERROR: A death record already exists for this animal (Request: Pending)."));
 
         log("Trigger notifications");
         goToEHRFolder();
@@ -1449,6 +1625,159 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     }
 
     @Test
+    public void testRoomKeyDerivation() throws Exception
+    {
+        log("Verifying a room derives its key from its building and name");
+        SelectRowsCommand selectCmd = new SelectRowsCommand("ehr_lookups", "rooms");
+        selectCmd.setColumns(List.of("room", "name", "building"));
+        selectCmd.addFilter(new Filter("name", "R1"));
+        SelectRowsResponse response = selectCmd.execute(getApiHelper().getConnection(), getContainerPath());
+
+        Assert.assertEquals("Expected exactly one room named R1", 1, response.getRows().size());
+        Map<String, Object> room = response.getRows().get(0);
+        Assert.assertEquals("Room key should combine the building and the name", roomKey("R1"), room.get("room"));
+        Assert.assertEquals("Room should belong to the seeded building", BUILDING_ID, room.get("building"));
+    }
+
+    @Test
+    public void testRoomRequiresBuilding()
+    {
+        log("Verifying a room cannot be created without a building");
+        InsertRowsCommand insertCmd = new InsertRowsCommand("ehr_lookups", "rooms");
+        insertCmd.addRow(Map.of("name", "NOBUILDING"));
+
+        try
+        {
+            insertCmd.execute(getApiHelper().getConnection(), getContainerPath());
+            Assert.fail("Room insert should have been rejected when no building was supplied");
+        }
+        catch (IOException | CommandException e)
+        {
+            Assert.assertTrue("Unexpected failure inserting a room without a building: " + e.getMessage(),
+                    e.getMessage() != null && e.getMessage().contains("Building is required"));
+        }
+    }
+
+    @Test
+    public void testDuplicateBuildingRejected()
+    {
+        log("Verifying a second building cannot reuse an existing description");
+        // The description alone is the building key now, so reusing the seeded building's description would collide.
+        InsertRowsCommand insertCmd = new InsertRowsCommand("ehr_lookups", "buildings");
+        insertCmd.addRow(Map.of("description", BUILDING_ID, "area", BUILDING_AREA));
+
+        try
+        {
+            insertCmd.execute(getApiHelper().getConnection(), getContainerPath());
+            Assert.fail("Building insert should have been rejected when the description was already in use");
+        }
+        catch (IOException | CommandException e)
+        {
+            Assert.assertTrue("Unexpected failure inserting a duplicate building: " + e.getMessage(),
+                    e.getMessage() != null && e.getMessage().contains("already exists"));
+        }
+    }
+
+    @Test
+    public void testGroupPenCagemates() throws Exception
+    {
+        String penRoom = roomKey(PEN_ROOM_NAME);
+
+        log("Creating a group pen, whose location is the room with no cage");
+        InsertRowsCommand roomCmd = new InsertRowsCommand("ehr_lookups", "rooms");
+        roomCmd.addRow(Map.of("name", PEN_ROOM_NAME, "building", BUILDING_ID));
+        roomCmd.execute(getApiHelper().getConnection(), getContainerPath());
+
+        // With no cage supplied the trigger derives the location as the room key alone.
+        InsertRowsCommand penCmd = new InsertRowsCommand("ehr_lookups", "cage");
+        penCmd.addRow(Map.of("room", penRoom));
+        penCmd.execute(getApiHelper().getConnection(), getContainerPath());
+
+        createAliveAnimals(PEN_ANIMALS);
+
+        // The cage is deliberately left null: a penned animal is housed against the room, which is the case the
+        // cagemates query has to bound by room rather than by cage.
+        log("Housing two animals in the pen, with no cage");
+        houseAnimals(PEN_ANIMALS, penRoom, null);
+
+        log("Verifying penned animals resolve as each other's cagemates");
+        assertCagemates(PEN_ANIMALS[0], 2, PEN_ANIMALS[1]);
+    }
+
+    @Test
+    public void testCagematesWithoutRoom() throws Exception
+    {
+        log("Creating an unoccupied cage");
+        InsertRowsCommand cageCmd = new InsertRowsCommand("ehr_lookups", "cage");
+        cageCmd.addRow(Map.of("cage", ROOMLESS_CAGE_NAME, "room", roomKey("R1")));
+        cageCmd.execute(getApiHelper().getConnection(), getContainerPath());
+
+        createAliveAnimals(ROOMLESS_ANIMALS);
+
+        // The cage is a location key that already names its room, so the room is redundant here and nothing requires
+        // it. Cagemates must still resolve when it is absent.
+        log("Housing two animals in the same cage, with no room");
+        houseAnimals(ROOMLESS_ANIMALS, null, ROOMLESS_CAGE);
+
+        log("Verifying caged animals resolve as each other's cagemates without a room");
+        assertCagemates(ROOMLESS_ANIMALS[0], 2, ROOMLESS_ANIMALS[1]);
+    }
+
+    /**
+     * Creates living demographics records for the given animals, replacing any left behind by an earlier run.
+     */
+    private void createAliveAnimals(String[] animalIds) throws Exception
+    {
+        log("Creating animals " + StringUtils.join(animalIds, ", "));
+        String[] fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
+        Object[][] data = new Object[animalIds.length][];
+        for (int i = 0; i < animalIds.length; i++)
+        {
+            data[i] = new Object[]{animalIds[i], "Rhesus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004};
+        }
+
+        SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
+        getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", StringUtils.join(animalIds, ";"), Filter.Operator.IN));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+    }
+
+    /**
+     * Opens a completed housing record for each animal at the given location, replacing any left behind by an earlier
+     * run. Either the room or the cage may be null, which is how records entered against one alone land.
+     */
+    private void houseAnimals(String[] animalIds, String room, String cage) throws Exception
+    {
+        String[] fields = new String[]{"Id", "date", "enddate", "room", "cage", "QCStateLabel", "performedby"};
+        Object[][] data = new Object[animalIds.length][];
+        for (int i = 0; i < animalIds.length; i++)
+        {
+            data[i] = new Object[]{animalIds[i], new Date(), null, room, cage, EHRQCState.COMPLETED.label, 1004};
+        }
+
+        SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "Housing", "lsid", fields, data);
+        getApiHelper().deleteAllRecords("study", "Housing", new Filter("Id", StringUtils.join(animalIds, ";"), Filter.Operator.IN));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+    }
+
+    /**
+     * Asserts the cagemates report resolves the expected companions for an animal. A null total means the join matched
+     * nothing at all, which is reported as its own failure rather than as an unexpected count.
+     */
+    private void assertCagemates(String animalId, int expectedTotal, String expectedCompanion) throws Exception
+    {
+        SelectRowsCommand selectCmd = new SelectRowsCommand("study", "demographicsCagemates");
+        selectCmd.addFilter(new Filter("Id", animalId));
+        SelectRowsResponse response = selectCmd.execute(getApiHelper().getConnection(), getContainerPath());
+
+        Assert.assertEquals("Expected one cagemates row for " + animalId, 1, response.getRows().size());
+        Map<String, Object> cagemates = response.getRows().get(0);
+        Assert.assertNotNull("Cagemates resolved no location for " + animalId, cagemates.get("total"));
+        Assert.assertEquals("Unexpected cagemate count for " + animalId, expectedTotal, ((Number) cagemates.get("total")).intValue());
+        Assert.assertTrue("Cagemate list should name " + expectedCompanion + ", was: " + cagemates.get("animals"),
+                String.valueOf(cagemates.get("animals")).contains(expectedCompanion));
+    }
+
+    @Test
     public void testLookupPage() throws Exception
     {
         goToEHRFolder();
@@ -1613,6 +1942,43 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
             }
             return count;
         }
+    }
+
+    // Creates the parents of a conception. They need an ehr_lookups.species_codes code because the Start with
+    // Conception window copies the dam's species onto the newborn, and the test asserts the resulting record.
+    private void createBreedingPair(String damId, String sireId, String species) throws Exception
+    {
+        String[] fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
+        Object[][] data = new Object[][]{
+                {damId, species, (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
+                {sireId, species, (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
+        };
+        SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
+        getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", damId + ";" + sireId, Filter.Operator.IN));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+    }
+
+    // Asserts the Births columns appear in the expected left to right order. Relative position is checked rather
+    // than absolute index so that hidden and system columns can come and go without breaking the test.
+    private void verifyBirthColumnOrder(Ext4GridRef births)
+    {
+        List<String> expectedOrder = List.of("Id", "date", "conceptId", "Id/demographics/species", "Id/demographics/gender",
+                "Id/demographics/dam", "Id/demographics/sire", "cage", "type", "cond", "breedingType", "remark", "performedby");
+
+        int previousIdx = 0;
+        String previousCol = null;
+        for (String col : expectedOrder)
+        {
+            int idx = births.getIndexOfColumn(col, true);
+            Assert.assertTrue("Births column '" + col + "' should appear to the right of '" + previousCol + "'", idx > previousIdx);
+            previousIdx = idx;
+            previousCol = col;
+        }
+    }
+
+    private void waitForFormError(String message)
+    {
+        waitFor(() -> isTextPresent(message), "Form did not report: " + message, WAIT_FOR_JAVASCRIPT);
     }
 
     private void verifyRowCreated(String schema, String query, String animalId, int rowCount)

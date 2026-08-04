@@ -1,3 +1,5 @@
 Species	Min Weight	Max Weight
-Cynomolgus	0.0	20.0
-Rhesus	0.0	35.0
+CMO	0.04	2.2
+MCY	0.2	16.0
+MMU	0.2	30.0
+MNE	0.2	30.0

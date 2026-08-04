@@ -23,8 +23,8 @@
                         <fk>
                             <fkDbSchema>ehr_lookups</fkDbSchema>
                             <fkTable>flag_values</fkTable>
-                            <fkColumnName>objectid</fkColumnName>
-                            <fkDisplayColumnName>value</fkDisplayColumnName>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>Description</fkDisplayColumnName>
                         </fk>
                     </column>
                     <column columnName="value">

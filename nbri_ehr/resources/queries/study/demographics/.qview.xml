@@ -4,7 +4,7 @@
     </sorts>
     <columns>
         <column name="Id"/>
-        <column name="Id/curLocation/cage/room/floor/building"/>
+        <column name="Id/curLocation/cage/room/building"/>
         <column name="Id/curLocation/cage"/>
         <column name="gender"/>
         <column name="birth"/>
@@ -12,7 +12,6 @@
         <column name="species"/>
         <column name="dam"/>
         <column name="sire"/>
-        <column name="source"/>
         <column name="disposition"/>
         <column name="termination"/>
         <column name="implantNumber"/>

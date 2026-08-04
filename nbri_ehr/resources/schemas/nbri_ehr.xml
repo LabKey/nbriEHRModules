@@ -581,6 +581,7 @@
             <column columnName="ConceptTermDate">
                 <formatString>Date</formatString>
             </column>
+            <column columnName="Estimated"/>
             <column columnName="Remark"/>
             <column columnName="Dam"/>
             <column columnName="Sire"/>
