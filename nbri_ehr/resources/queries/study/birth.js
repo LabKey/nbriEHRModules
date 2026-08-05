@@ -38,7 +38,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         //when updating a record that already carries this conception id, the existing row accounts for one match
         var conceptIdThreshold = (oldRow && oldRow.conceptId === row.conceptId) ? 1 : 0;
         if (triggerHelper.totalRecords('study', 'birth', 'conceptId', row.conceptId) > conceptIdThreshold) {
-            EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id is already used by another birth record', 'INFO');
+            EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id is already used by another birth record', 'WARN');
         }
 
         if (triggerHelper.totalRecords('study', 'pregnancy', 'conceptId', row.conceptId) > 0) {

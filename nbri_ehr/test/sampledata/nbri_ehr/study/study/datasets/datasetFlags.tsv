@@ -1,11 +1,11 @@
 objectId	Id	date	enddate	flag	QCStateLabel	performedby
-1	TEST3804589	-2187d	-2178d	1	Completed	1004
-2	TEST4551032	-2243d	-2213d	2	Completed	1004
-3	TEST5904521	-2215d	-2186d	3	Completed	1004
-4	TEST1112911	-2215d		4	Completed	1004
-5	TEST1112911	-2215d		5	Completed	1004
-6	44444	-1423d	-560d	3	Completed	1004
-7	44444	-1423d	-560d	1	Completed	1004
-10	44444	-1208d		3	Completed	1004
-8	44446	-1208d		3	Completed	1004
-9	TSTCP	-1423d	-560d	3	Completed	1004
+1	TEST3804589	-2187d	-2178d	Behavioral FLAG 1	Completed	1004
+2	TEST4551032	-2243d	-2213d	Capture FLAG 1	Completed	1004
+3	TEST5904521	-2215d	-2186d	Clinical FLAG 1	Completed	1004
+4	TEST1112911	-2215d		Experimental FLAG 1	Completed	1004
+5	TEST1112911	-2215d		Genetics FLAG 1	Completed	1004
+6	44444	-1423d	-560d	Clinical FLAG 1	Completed	1004
+7	44444	-1423d	-560d	Behavioral FLAG 1	Completed	1004
+10	44444	-1208d		Clinical FLAG 1	Completed	1004
+8	44446	-1208d		Clinical FLAG 1	Completed	1004
+9	TSTCP	-1423d	-560d	Clinical FLAG 1	Completed	1004

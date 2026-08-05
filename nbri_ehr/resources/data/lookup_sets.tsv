@@ -16,8 +16,10 @@ bcs_score	BCS Store	value	title
 behavior_abnormality	Behavior Abnormality	value
 behavior_mgmt_codes	Behavior Management Codes	value
 behavior_types	Behavior Types	value
+birth_condition	Birth Condition	value	title
 blood_draw_reason	Blood Draw Reason	value
 blood_sample_type	Blood Sample Types	value
+breeding_type	Breeding Type	value	title
 cage_type	Cage Type	value	title
 capillary_refill_time	Capillary Refill Time	value
 card_format	Card Format	value	title
@@ -31,6 +33,8 @@ country_category	Country Category	value	title
 daily_enrich_codes	Daily Enrichment Codes	value
 data_category	Data Category Field Values	value
 death_reason	Death Reason	value
+death_type	Death Type	value	title
+delivery_mode	Delivery Mode	value	title
 delivery_state	Delivery State	value	title
 dental_obs	Dental Observations	value
 derm_obs	Dermatologic Observations	value
@@ -98,6 +102,7 @@ req_order_type	Req Order Type	value	title
 respiratory_observations	Respiratory Observations	value	title
 sib_score	SIB Score	value
 skin_problem	Skin Problem	value
+status_codes	Status Code Field Values	value	title
 stool_score	Stool Score	value
 stool_types	Stool Types	value
 tb_obs_score	TB Obs Score	value

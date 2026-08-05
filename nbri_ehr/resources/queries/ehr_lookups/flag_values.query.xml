@@ -1,10 +1,10 @@
 <query xmlns="http://labkey.org/data/xml/query">
     <metadata>
         <tables xmlns="http://labkey.org/data/xml">
-            <table tableName="historicalOther" tableDbType="TABLE">
+            <table tableName="flag_values" tableDbType="TABLE">
                 <columns>
-                    <column columnName="type">
-                        <columnTitle>Type</columnTitle>
+                    <column columnName="value">
+                        <columnTitle>Value</columnTitle>
                     </column>
                 </columns>
             </table>

@@ -2,12 +2,12 @@
     <columns>
         <column name="Id"/>
         <column name="Id/Demographics/species"/>
-        <column name="Id/curLocation/cage/room/floor/building"/>
+        <column name="Id/curLocation/cage/room/building"/>
         <column name="Id/curLocation/cage"/>
         <column name="date"/>
         <column name="enddate"/>
         <column name="flag/category"/>
-        <column name="flag/value"/>
+        <column name="flag"/>
         <column name="remark"/>
         <column name="performedby"/>
         <column name="taskid"/>

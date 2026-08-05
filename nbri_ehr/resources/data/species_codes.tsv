@@ -1,7 +1,15 @@
 Code	Scientific Name	Common Name	Description	Genus	Species	Date Disabled
-1	Chlorocebus aethiops AGM	African Green Monkey			3
-10	Macaca mulatta RHM	Rhesus Macaque			3
-18		Marmoset			3
-4	Cebus apella CAP	Brown-Tufted Capuchin			3
-7	Macaca fascicularis CYN	Cynomolgus Macaque			3
-9	Macaca nemestrina PIG	Pig-Tailed Macaque			3
+MMU	Macaca Mulatta	Rhesus Macaque
+MNE	Macaca Nemestrina	Pig-Tailed Macaque
+MRA	Macaca Radiata	Bonnet Macaque
+PAN	Papio Anubis	Olive Baboon
+PCY	Papio Cynocephalus	Yellow Baboon
+SSC	Saimiri Sciureus	Squirrel Monkey
+CAE	Chlorocebus Aethiops	African Green / Vervet
+DOG	Canis Familiaris	Domestic Dog
+MCY	Macaca Cyclopis	Formosan Rock Macaque
+MFU	Macaca Fuscata	Japanese Macaque
+CTA	Cercopithecus Talapoin	Talapoin Monkey
+CMA	Cercopithecus M Albogulari	Sykes' Monkey
+CMO	Callicebus Moloch	Dusky Titi Monkey
+CAP	Cebus Apella	Brown-Tufted Capuchin

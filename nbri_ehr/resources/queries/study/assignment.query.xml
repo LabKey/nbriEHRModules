@@ -21,6 +21,18 @@
                     <column columnName="taskid">
                         <isHidden>true</isHidden>
                     </column>
+                    <!-- Re-declared from ehr/queries/study/assignment.query.xml; this file
+                         replaces ehr's rather than merging with it. See weight.query.xml. -->
+                    <column columnName="CoAssignments" wrappedColumnName="lsid">
+                        <columnTitle>CoAssignments</columnTitle>
+                        <isHidden>false</isHidden>
+                        <isUnselectable>true</isUnselectable>
+                        <fk>
+                            <fkDbSchema>study</fkDbSchema>
+                            <fkTable>assignmentTotalCoAssigned</fkTable>
+                            <fkColumnName>lsid</fkColumnName>
+                        </fk>
+                    </column>
                 </columns>
             </table>
         </tables>

@@ -1,0 +1,11 @@
+Category	Description	Enforce Single Flag Per Animal?	Omit When Displaying Default Flags?	Highlight Flags of This Category?	Date Disabled
+Behavioral	Behavioral observations, abnormal-behavior designations and enrichment provided to the animal.	false	false	false	
+Capture	Restraint and handling limitations.	false	false	true	
+Clinical	Clinical conditions, procedures and veterinary designations.	false	false	false	
+Experimental	Experimental treatments, inoculations and implants.	false	false	true	
+Genetics	Genetic background, ancestry, inbreeding and genomic characterization.	false	true	false	
+Hold	Animal held or reserved for a specific project, investigator or shipment.	false	false	false	
+Reproduction	Breeding, contraception, pregnancy, fostering and rearing designations.	false	false	false	
+Socially housed	Social rank, pairing, group-formation and social-housing-exemption designations.	false	false	false	
+Status	Administrative status and availability designations.	false	false	true	
+Training	Training program participation and progress.	false	false	false	
