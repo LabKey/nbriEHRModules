@@ -9,6 +9,15 @@
                 <dat:column columnName="inactiveDate">
                     <dat:rangeURI>dateTime</dat:rangeURI>
                 </dat:column>
+                <dat:column columnName="exemptFood">
+                    <dat:rangeURI>boolean</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="exemptHousing">
+                    <dat:rangeURI>boolean</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="exemptPairing">
+                    <dat:rangeURI>boolean</dat:rangeURI>
+                </dat:column>
             </dat:columns>
         </table>
     </template>

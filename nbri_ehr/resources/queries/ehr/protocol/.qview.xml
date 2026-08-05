@@ -35,6 +35,9 @@
         <column name="isInVivo"/>
         <column name="isStock"/>
         <column name="isHonorReset"/>
+        <column name="exemptFood"/>
+        <column name="exemptHousing"/>
+        <column name="exemptPairing"/>
         <column name="displayName"/>
         <column name="isActive"/>
     </columns>
