@@ -36,6 +36,8 @@ import org.labkey.api.ehr.security.EHRClinicalEntryPermission;
 import org.labkey.api.ehr.security.EHRDataEntryPermission;
 import org.labkey.api.ehr.security.EHRVeterinarianPermission;
 import org.labkey.api.ehr.table.FixedWidthDisplayColumn;
+import org.labkey.api.ehr.table.TreatmentLinkConfig;
+import org.labkey.api.ehr.table.TreatmentLinkDisplayColumnFactory;
 import org.labkey.api.exp.api.StorageProvisioner;
 import org.labkey.api.exp.property.Domain;
 import org.labkey.api.gwt.client.FacetingBehaviorType;
@@ -67,6 +69,10 @@ import java.util.Set;
 
 public class NBRI_EHRCustomizer extends AbstractTableCustomizer
 {
+    private static final TreatmentLinkConfig RECORD_TREATMENT = TreatmentLinkConfig.builder()
+            .formTypes("Behavior", "Behavioral Rounds", "Bulk Behavior Entry")
+            .build();
+
     public UserSchema getEHRUserSchema(AbstractTableInfo ds, String name)
     {
         Container ehrContainer = EHRService.get().getEHRStudyContainer(ds.getUserSchema().getContainer());
@@ -1008,7 +1014,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         {
             WrappedColumn col = new WrappedColumn(ti.getColumn("objectid"), "treatmentRecord");
             col.setLabel("Record Treatment");
-            col.setDisplayColumnFactory(new TreatmentDisplayColumnFactory(false));
+            col.setDisplayColumnFactory(TreatmentLinkDisplayColumnFactory.forOrder(RECORD_TREATMENT));
             ti.addColumn(col);
         }
     }
@@ -1019,7 +1025,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         {
             WrappedColumn col = new WrappedColumn(ti.getColumn("objectid"), "treatmentRecord");
             col.setLabel("Record Treatment");
-            col.setDisplayColumnFactory(new TreatmentDisplayColumnFactory(true));
+            col.setDisplayColumnFactory(TreatmentLinkDisplayColumnFactory.forSchedule(RECORD_TREATMENT));
             ti.addColumn(col);
         }
     }
