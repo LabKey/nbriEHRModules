@@ -1,0 +1,19 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="demographicsActiveAnimalGroups" tableDbType="NOT_IN_DB">
+                <tableTitle>Active Animal Groups</tableTitle>
+                <columns>
+                    <column columnName="Id"/>
+                    <column columnName="totalGroups">
+                        <facetingBehavior>ALWAYS_OFF</facetingBehavior>
+                        <columnTitle>Total Groups</columnTitle>
+                    </column>
+                    <column columnName="groups">
+                        <columnTitle>Groups</columnTitle>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

@@ -932,6 +932,21 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             prjAssignment.setDescription("Shows all project to which the animal is actively assigned on the current date");
             ds.addColumn(prjAssignment);
         }
+        if (ds.getColumn("activeAnimalGroups") == null)
+        {
+            var activeGroups = getWrappedCol(us, ds, "activeAnimalGroups", "demographicsActiveAnimalGroups", "Id", "Id");
+            activeGroups.setLabel("Animal Groups - Active");
+            activeGroups.setDescription("Displays the animal groups to which this animal currently belongs");
+            ds.addColumn(activeGroups);
+        }
+        if (ds.getColumn("animalGroupsPivoted") == null)
+        {
+            var groupsPivoted = getWrappedCol(us, ds, "animalGroupsPivoted", "animalGroupsPivoted", "Id", "Id");
+            groupsPivoted.setLabel("Active Group Summary");
+            groupsPivoted.setHidden(true);
+            groupsPivoted.setDescription("Displays the active groups for each animal");
+            ds.addColumn(groupsPivoted);
+        }
         if (ds.getColumn("alias") == null)
         {
             var col = getWrappedCol(us, ds, "alias", "demographicsAliases", "Id", "Id");

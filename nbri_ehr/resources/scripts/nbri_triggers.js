@@ -27,7 +27,7 @@ exports.init = function (EHR) {
         EHR.Server.TriggerManager.unregisterAllHandlersForQueryNameAndEvent('study', 'cases', EHR.Server.TriggerManager.Events.AFTER_DELETE);
 
         helper.setScriptOptions({
-            datasetsToClose: ['assignment', 'protocolAssignment' , 'housing', 'treatment_order', 'observation_order', 'cases', 'pairings', 'exemptions', 'flags']
+            datasetsToClose: ['assignment', 'protocolAssignment' , 'housing', 'treatment_order', 'observation_order', 'cases', 'pairings', 'exemptions', 'flags', 'animal_group_members']
         });
     });
 
@@ -49,6 +49,14 @@ exports.init = function (EHR) {
     EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'protocolAssignment', function(event, helper) {
         helper.setScriptOptions({
             allowAnyId: isAllowAnyIdRequested(helper),
+            requiresStatusRecalc: false,
+            allowDatesInDistantPast: true
+        });
+    });
+
+    EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'animal_group_members', function(event, helper) {
+        // group memberships are routinely backdated, so historical dates must not raise a warning
+        helper.setScriptOptions({
             requiresStatusRecalc: false,
             allowDatesInDistantPast: true
         });
@@ -136,7 +144,7 @@ exports.init = function (EHR) {
     EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'deaths', function(event, helper) {
 
         helper.setScriptOptions({
-            datasetsToClose: ['assignment', 'protocolAssignment' , 'housing', 'treatment_order', 'observation_order', 'cases', 'pairings', 'exemptions', 'flags'],
+            datasetsToClose: ['assignment', 'protocolAssignment' , 'housing', 'treatment_order', 'observation_order', 'cases', 'pairings', 'exemptions', 'flags', 'animal_group_members'],
             allowShippedIds: false,
             allowDeadIds: false,
             requiresStatusRecalc: true,
