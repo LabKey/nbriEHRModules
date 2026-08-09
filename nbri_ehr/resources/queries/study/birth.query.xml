@@ -42,15 +42,6 @@
                             <fkDisplayColumnName>title</fkDisplayColumnName>
                         </fk>
                     </column>
-                    <column columnName="cond">
-                        <columnTitle>Birth Condition</columnTitle>
-                        <fk>
-                            <fkDbSchema>ehr_lookups</fkDbSchema>
-                            <fkTable>birth_condition</fkTable>
-                            <fkColumnName>value</fkColumnName>
-                            <fkDisplayColumnName>title</fkDisplayColumnName>
-                        </fk>
-                    </column>
                     <column columnName="project">
                         <columnTitle>Project</columnTitle>
                         <fk>

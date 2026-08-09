@@ -863,7 +863,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         _helper.addRecordToGrid(conceptions);
         conceptions.setGridCell(1, "ConceptId", conceptId);
         conceptions.setGridCellJS(1, "ConceptDate", now.minusDays(30).format(_dateFormat));
-        conceptions.setGridCellJS(1, "ConceptTermDate", now.plusDays(135).format(_dateFormat));
         conceptions.setGridCellJS(1, "Estimated", true);
         conceptions.setGridCell(1, "Dam", damId);
         conceptions.setGridCell(1, "Sire", sireId);
@@ -1963,7 +1962,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private void verifyBirthColumnOrder(Ext4GridRef births)
     {
         List<String> expectedOrder = List.of("Id", "date", "conceptId", "Id/demographics/species", "Id/demographics/gender",
-                "Id/demographics/dam", "Id/demographics/sire", "cage", "type", "cond", "breedingType", "remark", "performedby");
+                "Id/demographics/dam", "Id/demographics/sire", "cage", "type", "breedingType", "remark", "performedby");
 
         int previousIdx = 0;
         String previousCol = null;

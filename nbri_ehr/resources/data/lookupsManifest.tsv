@@ -18,7 +18,6 @@ bcs_score
 behavior_abnormality
 behavior_mgmt_codes
 behavior_types
-birth_condition
 blood_draw_reason
 blood_draw_tube_type
 blood_sample_type
@@ -56,7 +55,6 @@ fecal_score
 fecal_smear_score
 feed_assess_types
 flag_categories
-flag_values
 gastro_types
 gender_codes
 general_obs
@@ -66,7 +64,6 @@ geographic_origins
 hernia_types
 housing_reason
 hyd_score
-id_history_type
 incision_score
 indoor_outdoor
 lameness

@@ -82,14 +82,6 @@
                     <column columnName="calculated_status">
                         <columnTitle>Animal Status</columnTitle>
                     </column>
-                    <column columnName="lotId">
-                        <columnTitle>Lot</columnTitle>
-                        <fk>
-                            <fkDbSchema>nbri_ehr</fkDbSchema>
-                            <fkTable>Lot</fkTable>
-                            <fkColumnName>LotId</fkColumnName>
-                        </fk>
-                    </column>
                     <column columnName="geographic_origin">
                         <columnTitle>Origin</columnTitle>
                         <fk>

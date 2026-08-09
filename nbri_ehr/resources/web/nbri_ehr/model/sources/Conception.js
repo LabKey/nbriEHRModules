@@ -24,13 +24,8 @@ EHR.model.DataModelManager.registerMetadata('Conception', {
             ConceptDate: {
                 xtype: 'datefield',
                 extFormat: LABKEY.extDefaultDateFormat,
-                columnConfig: {
-                    width: 200
-                },
-            },
-            ConceptTermDate: {
-                xtype: 'datefield',
-                extFormat: LABKEY.extDefaultDateFormat,
+                allowBlank: false,
+                nullable: false,
                 columnConfig: {
                     width: 200
                 },
