@@ -71,6 +71,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -632,7 +633,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     }
 
     @Test
-    public void testArrivalForm()
+    public void testArrivalForm() throws IOException, CommandException
     {
         String arrivedAnimal = "30905";
         LocalDateTime now = LocalDateTime.now();
@@ -692,6 +693,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         verifyRowCreated("study", "protocolAssignment", arrivedAnimal, 1);
         verifyRowCreated("study", "demographics", arrivedAnimal, 1);
         verifyRowCreated("study", "housing", arrivedAnimal, 1);
+
+        log("Verifying the birth date reached demographics and agrees with the birth record");
+        String arrivalBirthDay = now.minusDays(7).format(_dateFormat);
+        assertEquals("Birth record does not carry the birth date entered on the arrival form",
+                arrivalBirthDay, getDatasetDay("birth", arrivedAnimal, "date"));
+        assertEquals("Demographics birth date does not match the birth record",
+                arrivalBirthDay, getDatasetDay("demographics", arrivedAnimal, "birth"));
     }
 
     @Test
@@ -793,6 +801,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         verifyRowCreated("study", "protocolAssignment", bornAnimal, 1);
         verifyRowCreated("study", "housing", bornAnimal, 1);
         verifyRowCreated("study", "demographics", bornAnimal, 1);
+
+        log("Verifying the birth date reached demographics and agrees with the birth record");
+        String bornBirthDay = now.minusDays(1).format(_dateFormat);
+        assertEquals("Birth record does not carry the date entered on the birth form",
+                bornBirthDay, getDatasetDay("birth", bornAnimal, "date"));
+        assertEquals("Demographics birth date does not match the birth record",
+                bornBirthDay, getDatasetDay("demographics", bornAnimal, "birth"));
 
         log("Verifying conception outcome and offspring in ConceptionsByDam");
         goToSchemaBrowser();
@@ -1453,6 +1468,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         goToEHRFolder();
         verifyRowCreated("study", "weight", aliveAnimalId, 1);
 
+        log("Verify the death date reached demographics and agrees with the death record");
+        String finalizedDeathDay = getDatasetDay("deaths", aliveAnimalId, "date");
+        Assert.assertNotNull("Death record has no date", finalizedDeathDay);
+        assertEquals("Demographics death date does not match the death record",
+                finalizedDeathDay, getDatasetDay("demographics", aliveAnimalId, "death"));
+        // the waitForText below is a weak check: the necropsy diagnosis on this page is also the text "Dead"
+        assertEquals("Animal should be Dead once the death is finalized", "Dead", getCalculatedStatus(aliveAnimalId));
+
         log("Verify animal is marked as dead");
         AnimalHistoryPage<?> historyPage = AnimalHistoryPage.beginAt(this);
         historyPage.searchSingleAnimal(aliveAnimalId);
@@ -1476,6 +1499,48 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table.setFilter("Id", "Equals", aliveAnimalId);
         Assert.assertTrue("End date is not updated for study.protocolAssignment", table.getDataAsText(0, "endDate").contains(LocalDateTime.now().format(_dateFormat)));
 
+    }
+
+    /**
+     * Deleting a death record has to hand the status back to the shared recalc rather than assume the animal is alive:
+     * an animal that also has a departure is Shipped, not Alive. Also covers demographics.death being cleared.
+     */
+    @Test
+    public void testDeathDeleteRestoresDepartedStatus() throws Exception
+    {
+        String animalId = "DD9001";
+        LocalDateTime now = LocalDateTime.now();
+
+        log("Creating an animal via a birth record");
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "birth", "lsid",
+                new String[]{"Id", "Date", "gender", "QCStateLabel", "performedby"},
+                new Object[][]{{animalId, now.minusDays(30), getMale(), "Completed", 1004}}
+        ), getExtraContext());
+
+        // the death has to be recorded before the departure: the deaths trigger rejects an animal that has shipped
+        log("Recording the death");
+        InsertRowsCommand deaths = new InsertRowsCommand("study", "deaths");
+        deaths.addRow(Map.of("Id", animalId, "date", now.minusDays(10), "reason", "4", "QCStateLabel", "Completed", "performedby", 1004));
+        deaths.execute(getApiHelper().getConnection(), getContainerPath());
+
+        assertEquals("Demographics death date does not match the death record",
+                now.minusDays(10).format(_dateFormat), getDatasetDay("demographics", animalId, "death"));
+        assertEquals("Animal should be Dead while the death record exists", "Dead", getCalculatedStatus(animalId));
+
+        log("Departing the animal, so the deleted death has a departure to fall back to");
+        InsertRowsCommand departure = new InsertRowsCommand("study", "departure");
+        departure.addRow(Map.of("Id", animalId, "date", now.minusDays(5), "destination", "ORPRC", "QCStateLabel", "Completed", "performedby", 1004));
+        departure.execute(getApiHelper().getConnection(), getContainerPath());
+
+        assertEquals("A death outranks a departure", "Dead", getCalculatedStatus(animalId));
+
+        log("Deleting the death record");
+        getApiHelper().deleteAllRecords("study", "deaths", new Filter("Id", animalId));
+
+        Assert.assertNull("Demographics death date should be cleared when the death record is deleted",
+                getDatasetDay("demographics", animalId, "death"));
+        assertEquals("Deleting the death should fall back to the departure, not to Alive",
+                "Shipped", getCalculatedStatus(animalId));
     }
 
     @Test
@@ -1978,6 +2043,42 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private void waitForFormError(String message)
     {
         waitFor(() -> isTextPresent(message), "Form did not report: " + message, WAIT_FOR_JAVASCRIPT);
+    }
+
+    /**
+     * Reads a date field for one animal through the API rather than off a grid, so assertions compare stored values
+     * instead of formatted display text, and normalizes to the day: event dates are entered with the time stripped,
+     * but values reaching demographics by other paths can carry a time component.
+     *
+     * @return the date as yyyy-MM-dd, or null when the field is empty
+     */
+    private String getDatasetDay(String queryName, String animalId, String column) throws IOException, CommandException
+    {
+        Object value = getSingleRowForAnimal(queryName, animalId, List.of("Id", column)).get(column);
+        if (value == null)
+            return null;
+
+        if (value instanceof Date)
+            return _dateFormat.format(((Date)value).toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
+
+        String text = String.valueOf(value);
+        return text.length() >= 10 ? text.substring(0, 10) : text;
+    }
+
+    private String getCalculatedStatus(String animalId) throws IOException, CommandException
+    {
+        return (String)getSingleRowForAnimal("demographics", animalId, List.of("Id", "calculated_status")).get("calculated_status");
+    }
+
+    private Map<String, Object> getSingleRowForAnimal(String queryName, String animalId, List<String> columns) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("study", queryName);
+        select.setColumns(columns);
+        select.addFilter(new Filter("Id", animalId));
+        SelectRowsResponse response = select.execute(getApiHelper().getConnection(), getContainerPath());
+
+        Assert.assertEquals("Expected exactly one study." + queryName + " row for " + animalId, 1, response.getRows().size());
+        return response.getRows().get(0);
     }
 
     private void verifyRowCreated(String schema, String query, String animalId, int rowCount)
