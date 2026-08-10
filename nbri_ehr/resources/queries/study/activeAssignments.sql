@@ -6,7 +6,7 @@
 SELECT pa.Id,
        pa.protocol.title AS protocolTitle,
        pa.protocol.InvestigatorId AS investigatorId,
-       pa.protocol.InvestigatorId.DisplayName AS investigatorName,
+       initcap(pa.protocol.InvestigatorId.FirstName) || ' ' || initcap(pa.protocol.InvestigatorId.LastName) AS investigatorName,
        pa.protocol.InvestigatorId.LastName AS investigatorLastName,
        a.project.name AS project,
        a.isActive AS isActiveAssignment,

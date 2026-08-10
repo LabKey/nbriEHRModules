@@ -58,6 +58,32 @@
             </column>
         </columns>
     </table>
+    <table tableName="animal_group_members" tableDbType="TABLE">
+        <tableTitle>Animal Group Members</tableTitle>
+        <description>Records membership of individual primates in named animal groups, with the date the animal joined and the date it was removed.</description>
+        <columns>
+            <column columnName="Id">
+                <datatype>varchar</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#ParticipantId</propertyURI>
+                <importAliases>
+                    <importAlias>ptid</importAlias>
+                </importAliases>
+            </column>
+            <column columnName="date">
+                <datatype>timestamp</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
+                <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
+            </column>
+            <column columnName="enddate">
+                <datatype>timestamp</datatype>
+                <propertyURI>urn:ehr.labkey.org/#EndDate</propertyURI>
+            </column>
+            <column columnName="groupId">
+                <columnTitle>Group</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+        </columns>
+    </table>
     <table tableName="arrival" tableDbType="TABLE">
         <tableTitle>Arrival</tableTitle>
         <description>Tracks the arrival of primates into the research facility, including source, acquisition type, and associated documentation.</description>

@@ -45,6 +45,7 @@
                             <fkDbSchema>ehr_lookups</fkDbSchema>
                             <fkTable>pairing_formation_types</fkTable>
                             <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
                         </fk>
                     </column>
                     <column columnName="remark">
