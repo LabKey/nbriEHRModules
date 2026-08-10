@@ -220,6 +220,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIMedicationTreatmentFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProjectFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProtocolFormType.class, this));
+        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIInvestigatorsFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIPregnancyFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIWeightFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIFlagsFormType.class, this));
