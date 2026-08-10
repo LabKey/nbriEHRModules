@@ -136,6 +136,8 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         ehrService.registerDemographicsProvider(new SourceDemographicsProvider(this));
         ehrService.registerDemographicsProvider(new NecropsyStatusDemographicsProvider(this));
 
+        EHRService.get().registerHistoryDataSource(new AnimalGroupsDataSource(this));
+        EHRService.get().registerHistoryDataSource(new AnimalGroupsEndDataSource(this));
         EHRService.get().registerHistoryDataSource(new ArrivalDataSource(this));
         EHRService.get().registerHistoryDataSource(new BiopsyDataSource(this));
         EHRService.get().registerHistoryDataSource(new BirthDataSource(this));
@@ -177,7 +179,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         ehrService.registerActionOverride("participantView", this, "views/participantView.html");
         ehrService.registerActionOverride("enterData", this, "views/enterData.html");
 
-        ehrService.registerTriggerScriptOption("datasetsToCloseOnNewEntry", List.of("assignment", "protocolAssignment"));
+        ehrService.registerTriggerScriptOption("datasetsToCloseOnNewEntry", List.of("assignment", "protocolAssignment", "animal_group_members"));
         RoleManager.registerRole(new NBRIEHRVetTechRole());
 
         EHRService.get().registerMoreActionsButton(new ShowEditUIButton(this, "ehr", "observation_types", EHRDataAdminPermission.class), "ehr", "observation_types");
@@ -207,6 +209,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
     {
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIAliasFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIAssignmentFormType.class, this));
+        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIGroupAssignmentFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIArrivalFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIBirthFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIBulkClinicalFormType.class, this));
