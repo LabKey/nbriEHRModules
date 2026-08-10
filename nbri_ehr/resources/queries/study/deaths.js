@@ -8,8 +8,12 @@ require("ehr/triggers").initScript(this);
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 var idMap = {};
 var deathIdMap = {};
+var idsToSync = [];
 
 function onInit(event, helper){
+
+    // the script scope can outlive a single save, so never inherit ids from a prior one
+    idsToSync = [];
 
     helper.decodeExtraContextProperty('deathsInTransaction');
 
@@ -59,7 +63,6 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
     demographicsUpdates.push({
         Id: row.Id,
         death: null,
-        calculated_status: 'Alive',
         QCState: helper.getJavaHelper().getQCStateForLabel('Completed').getRowId(),
     });
 
@@ -68,8 +71,6 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 });
 
 function onUpsert(helper, scriptErrors, row, oldRow) {
-
-    var demographicsUpdates = [];
 
     if (!helper.isETL()) {
 
@@ -130,21 +131,6 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
                 EHR.Server.Utils.addError(scriptErrors, 'Id', errorMsg, 'ERROR');
             }
             else {
-                if (!helper.isValidateOnly() && row.Id && row.date && rowQCState === 'COMPLETED') {
-
-                    // update demographics
-                    demographicsUpdates.push({
-                        Id: row.Id,
-                        death: row.date,
-                        calculated_status: 'Dead',
-                        QCState: helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId()
-                    });
-
-                    console.log('updating demographics death date for animal: ' + row.Id);
-                    helper.getJavaHelper().updateDemographicsRecord(demographicsUpdates);
-                    console.log('updated demographics death date for animal: ' + row.Id);
-                }
-
                 if (!helper.isValidateOnly() && row.date && row.QCStateLabel && EHR.Server.Security.getQCStateByLabel(row.QCStateLabel).PublicData) {
                     var qcstate = helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId();
 
@@ -177,9 +163,31 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.AFTER_INSERT, 'study', 'deaths', function(helper, scriptErrors, row, oldRow) {
     helper.registerDeath(row.Id, row.date);
     triggerHelper.reportDataChange("study", "deaths", [row.Id]);
+
+    if (row.Id && idsToSync.indexOf(row.Id) === -1) {
+        idsToSync.push(row.Id);
+    }
+});
+
+EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.AFTER_UPDATE, 'study', 'deaths', function(helper, scriptErrors, row, oldRow) {
+    if (row.Id && idsToSync.indexOf(row.Id) === -1) {
+        idsToSync.push(row.Id);
+    }
 });
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.COMPLETE, 'study', 'Deaths', function(event, errors, helper){
+
+    // Single writer for the denormalized demographics death date. Runs once per save, after the death rows are saved,
+    // and derives the value from the stored record rather than from the incoming row. calculated_status is left to the
+    // shared status recalc, which owns the death/departure/re-arrival precedence.
+    if (!helper.isETL() && idsToSync.length) {
+        var demographicsUpdates = triggerHelper.computeDemographicsSync(idsToSync);
+        if (demographicsUpdates.size() > 0) {
+            helper.getJavaHelper().updateDemographicsRecord(demographicsUpdates);
+        }
+        idsToSync = [];
+    }
+
     var rows = helper.getRows() || [];
     for (var i = 0; i < rows.length; i++) {
         var row = rows[i].row;

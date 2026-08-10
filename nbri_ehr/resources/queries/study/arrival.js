@@ -6,6 +6,13 @@
 require("ehr/triggers").initScript(this);
 
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
+var idsToSync = [];
+
+EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'Arrival', function(event, helper){
+
+    // the script scope can outlive a single save, so never inherit ids from a prior one
+    idsToSync = [];
+});
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'study', 'Arrival', function(helper, scriptErrors, row, oldRow) {
 
@@ -132,12 +139,6 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 hasUpdates = true;
             }
 
-            if (row.birth && row.birth !== data.birth)
-            {
-                obj.birth = row.birth;
-                hasUpdates = true;
-            }
-
             if (row.sire && row.sire !== data.sire)
             {
                 obj.sire = row.sire;
@@ -171,5 +172,22 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 helper.cacheDemographics(row.Id, row);
             }
         }
+
+        if (row.Id && idsToSync.indexOf(row.Id) === -1) {
+            idsToSync.push(row.Id);
+        }
+    }
+});
+
+EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.COMPLETE, 'study', 'Arrival', function(event, errors, helper){
+
+    // Single writer for the denormalized demographics birth date. saveBirthRecord() above wrote the birth record;
+    // this reads it back so demographics and the event record cannot disagree.
+    if (!helper.isETL() && idsToSync.length) {
+        var demographicsUpdates = triggerHelper.computeDemographicsSync(idsToSync);
+        if (demographicsUpdates.size() > 0) {
+            helper.getJavaHelper().updateDemographicsRecord(demographicsUpdates);
+        }
+        idsToSync = [];
     }
 });

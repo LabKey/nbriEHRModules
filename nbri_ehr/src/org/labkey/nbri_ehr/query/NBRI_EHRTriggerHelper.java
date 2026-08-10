@@ -323,6 +323,103 @@ public class NBRI_EHRTriggerHelper
         return false;
     }
 
+    /**
+     * Derives the denormalized birth/death values on study.demographics from the birth and deaths event records, which
+     * are authoritative, and returns only the animals whose stored values disagree. The result is intended to be handed
+     * straight to the shared trigger helper's updateDemographicsRecord(), so that lsid resolution and the demographics
+     * cache recache stay in the single place that already handles them.
+     * <p>
+     * Only public (Completed) event records count, so a record still in data entry never overwrites a saved value.
+     * <p>
+     * calculated_status is deliberately absent from the result. It belongs to the shared status recalc, which owns the
+     * death/departure/re-arrival precedence.
+     * <p>
+     * Every lookup is set-based - one query per event dataset for the whole id list, not one per animal - because a
+     * bulk save can pass hundreds of ids and per-animal SQL in a trigger exhausts the script's wall-clock budget.
+     *
+     * @param ids animals touched by the current save
+     * @return rows ready for updateDemographicsRecord(); empty when nothing has drifted
+     */
+    public List<Map<String, Object>> computeDemographicsSync(List<String> ids)
+    {
+        if (ids == null || ids.isEmpty())
+            return Collections.emptyList();
+
+        Set<String> idSet = new HashSet<>(ids);
+
+        Map<String, Date> births = getPublicEventDates("birth", idSet);
+        Map<String, Date> deaths = getPublicEventDates("deaths", idSet);
+
+        List<Map<String, Object>> updates = new ArrayList<>();
+
+        TableInfo demographics = getTableInfo("study", "demographics");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), idSet, CompareType.IN);
+        TableSelector ts = new TableSelector(demographics, PageFlowUtil.set("Id", "birth", "death"), filter, null);
+
+        for (Map<String, Object> current : ts.getMapCollection())
+        {
+            String id = (String)current.get("Id");
+            Map<String, Object> update = new CaseInsensitiveHashMap<>();
+
+            // A public event record always wins - the same rule createDemographicsRecord() already applies to death on
+            // insert, extended to updates and to birth. The absence of an event record is NOT evidence the stored value
+            // is wrong: animals loaded by ETL, or acquired before these datasets were in use, legitimately carry a date
+            // with no event row, so a missing record leaves the value alone. Clearing a value is only ever driven by an
+            // explicit delete of the event record.
+            Date birth = births.get(id);
+            if (birth != null && differsByDay(birth, (Date)current.get("birth")))
+                update.put("birth", birth);
+
+            Date death = deaths.get(id);
+            if (death != null && differsByDay(death, (Date)current.get("death")))
+                update.put("death", death);
+
+            if (!update.isEmpty())
+            {
+                update.put("Id", id);
+                updates.add(update);
+            }
+        }
+
+        if (!updates.isEmpty())
+            _log.info("Demographics birth/death out of sync with event records for {} animal(s); updating", updates.size());
+
+        return updates;
+    }
+
+    /** Most recent public event date per animal for a demographic event dataset, in a single query. */
+    private Map<String, Date> getPublicEventDates(String queryName, Set<String> ids)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), ids, CompareType.IN);
+        filter.addCondition(FieldKey.fromString("qcstate/publicdata"), true);
+
+        Map<String, Date> ret = new HashMap<>();
+        new TableSelector(getTableInfo("study", queryName), PageFlowUtil.set("Id", "date"), filter, null)
+                .forEachMap(row -> {
+                    String id = (String)row.get("Id");
+                    Date date = ConvertHelper.convert(row.get("date"), Date.class);
+                    // birth and deaths are demographic datasets (one row per animal), but tolerate duplicates from a
+                    // legacy load by keeping the latest rather than picking arbitrarily.
+                    if (date != null && (ret.get(id) == null || date.after(ret.get(id))))
+                        ret.put(id, date);
+                });
+
+        return ret;
+    }
+
+    /**
+     * Compares to day precision. Event dates are entered with the time stripped, but values that arrived by ETL or
+     * predate that behavior can carry a time component; treating those as drift would rewrite the whole colony on the
+     * first save.
+     */
+    private boolean differsByDay(Date a, Date b)
+    {
+        if (a == null || b == null)
+            return a != b;
+
+        return !DateUtils.isSameDay(a, b);
+    }
+
     public boolean upsertWeightRecord(Map<String, Object> row) throws QueryUpdateServiceException, DuplicateKeyException, SQLException, BatchValidationException, InvalidKeyException
     {
         return upsertWeightRecord(row, true);
