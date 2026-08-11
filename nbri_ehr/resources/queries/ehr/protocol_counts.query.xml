@@ -14,15 +14,6 @@
                             <fkDisplayColumnName>scientific_name</fkDisplayColumnName>
                         </fk>
                     </column>
-                    <column columnName="euthanasia">
-                        <columnTitle>Euthanasia</columnTitle>
-                        <fk>
-                            <fkDbSchema>ehr_lookups</fkDbSchema>
-                            <fkTable>euthanasia_type</fkTable>
-                            <fkColumnName>value</fkColumnName>
-                            <fkDisplayColumnName>title</fkDisplayColumnName>
-                        </fk>
-                    </column>
                 </columns>
             </table>
         </tables>

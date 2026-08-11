@@ -5,13 +5,12 @@
  */
 
 EHR.model.DataModelManager.registerMetadata('Assignment', {
-    allQueries: {
-        endDate: {
-            hidden: true
-        }
-    },
     byQuery: {
         'study.assignment': {
+            // the dataset column is hidden by default; project assignments are ended by entering an end date
+            'enddate': {
+                hidden: false
+            },
             'project': {
                 xtype: 'combo',
                 nullable: false,
@@ -27,6 +26,9 @@ EHR.model.DataModelManager.registerMetadata('Assignment', {
             }
         },
         'study.protocolAssignment': {
+            'enddate': {
+                hidden: true
+            },
             'project': {
               hidden: true
             },
