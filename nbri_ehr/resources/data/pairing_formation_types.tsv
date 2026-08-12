@@ -1,7 +1,11 @@
-value
-Full Contact Pair
-Group Formation
-Introduction
-Limited Contact Pair
-Pair Formation
-Other
+value	title	date_disabled
+C	Compatible	2026-08-06
+CF	CF
+CP	Continuous pair
+F	Fought	2026-08-06
+FC	Full Contact
+IC	Intermittent Contact
+IG	Indoor Group Housing
+PC	Protected Contact
+S	Single Housing
+U	Unsuccessful

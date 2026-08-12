@@ -1,0 +1,26 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="investigators" tableDbType="TABLE">
+                <tableTitle>Investigators</tableTitle>
+                <insertUrl />
+                <importUrl />
+                <updateUrl />
+                <deleteUrl />
+                <columns>
+                    <column columnName="lastName">
+                        <columnTitle>Last Name</columnTitle>
+                        <required>true</required>
+                    </column>
+                    <column columnName="firstName">
+                        <columnTitle>First Name</columnTitle>
+                    </column>
+                    <column columnName="userid">
+                        <columnTitle>User</columnTitle>
+                        <conceptURI>http://www.labkey.org/types#userId</conceptURI>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>
