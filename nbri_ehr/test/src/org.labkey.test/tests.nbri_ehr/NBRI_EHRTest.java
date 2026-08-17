@@ -638,6 +638,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         String arrivedAnimal = "30905";
         // demographics.socialCode holds an ehr_lookups.social_code code; the grids display its title
         String socialCode = "Acquired";
+        // animal_group_members.groupId holds an ehr_lookups.breeding_type code; the grids display its title
+        String animalGroup = "Assigned Breeding Protocol";
         LocalDateTime now = LocalDateTime.now();
 
         gotoEnterData();
@@ -675,6 +677,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         projectAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         projectAssignments.setGridCell(1, "project", "640991");
 
+        Ext4GridRef groupAssignments = _helper.getExt4GridForFormSection("Group Assignments");
+        _helper.addRecordToGrid(groupAssignments);
+        groupAssignments.setGridCell(1, "Id", arrivedAnimal);
+        groupAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        groupAssignments.setGridCell(1, "groupId", animalGroup);
+
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -696,9 +704,15 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table.setFilter("Id", "Equals", arrivedAnimal);
         Assert.assertEquals("Invalid protocol assignment", Arrays.asList("dummyprotocol"), table.getRowDataAsText(0, "protocol"));
 
+        goToSchemaBrowser();
+        table = viewQueryData("study", "animal_group_members");
+        table.setFilter("Id", "Equals", arrivedAnimal);
+        Assert.assertEquals("Invalid group assignment", Arrays.asList(animalGroup), table.getRowDataAsText(0, "groupId"));
+
         verifyRowCreated("study", "birth", arrivedAnimal, 1);
         verifyRowCreated("study", "assignment", arrivedAnimal, 1);
         verifyRowCreated("study", "protocolAssignment", arrivedAnimal, 1);
+        verifyRowCreated("study", "animal_group_members", arrivedAnimal, 1);
         verifyRowCreated("study", "demographics", arrivedAnimal, 1);
         verifyRowCreated("study", "housing", arrivedAnimal, 1);
 
@@ -730,6 +744,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         String breedingType = "Time-Mated";
         // demographics.socialCode holds an ehr_lookups.social_code code; the grids display its title
         String socialCode = "Mother-rearing (for indoors)";
+        // animal_group_members.groupId holds an ehr_lookups.breeding_type code; the grids display its title
+        String animalGroup = "Project Breeding";
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating the dam and sire of the conception");
@@ -792,6 +808,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         projectAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         projectAssignments.setGridCell(1, "project", "795644");
 
+        Ext4GridRef groupAssignments = _helper.getExt4GridForFormSection("Group Assignments");
+        _helper.addRecordToGrid(groupAssignments);
+        groupAssignments.setGridCell(1, "Id", bornAnimal);
+        groupAssignments.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
+        groupAssignments.setGridCell(1, "groupId", animalGroup);
+
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -822,8 +844,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table.setFilter("Id", "Equals", bornAnimal);
         Assert.assertEquals("Invalid protocol assignment", Arrays.asList("protocol101"), table.getRowDataAsText(0, "protocol"));
 
+        goToSchemaBrowser();
+        table = viewQueryData("study", "animal_group_members");
+        table.setFilter("Id", "Equals", bornAnimal);
+        Assert.assertEquals("Invalid group assignment", Arrays.asList(animalGroup), table.getRowDataAsText(0, "groupId"));
+
         verifyRowCreated("study", "assignment", bornAnimal, 1);
         verifyRowCreated("study", "protocolAssignment", bornAnimal, 1);
+        verifyRowCreated("study", "animal_group_members", bornAnimal, 1);
         verifyRowCreated("study", "housing", bornAnimal, 1);
         verifyRowCreated("study", "demographics", bornAnimal, 1);
 
