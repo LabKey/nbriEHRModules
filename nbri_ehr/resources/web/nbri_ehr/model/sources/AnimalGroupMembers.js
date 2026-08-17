@@ -35,6 +35,10 @@ EHR.model.DataModelManager.registerMetadata('AnimalGroupMembers', {
                     return curDate;
                 }
             },
+            enddate: {
+                shownInGrid: false,
+                hidden: true
+            },
             groupId: {
                 allowBlank: false,
                 nullable: false,
