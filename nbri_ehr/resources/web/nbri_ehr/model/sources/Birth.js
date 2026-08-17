@@ -18,7 +18,9 @@ Ext4.onReady(function() {
 
 EHR.model.DataModelManager.registerMetadata('Birth', {
     allQueries: {
-        'endDate': {
+        // lowercase to match the key Default.js and Assignment.js use; a differently-cased key shadows theirs entirely
+        // rather than merging with it
+        'enddate': {
             hidden: true
         }
     },
