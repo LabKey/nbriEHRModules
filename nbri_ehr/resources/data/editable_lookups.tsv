@@ -115,6 +115,7 @@ ehr_lookups	respiratory_observations	Clinical	Respiratory Observations	Used in c
 ehr_lookups	routes	Clinical	Treatment Routes	Used in drug and treatment datasets.
 ehr_lookups	sib_score	Behavior	SIB Score	Behavior observation fixed values.
 ehr_lookups	skin_problem	Clinical	Skin Problems	Clinical observation fixed values.
+ehr_lookups	social_code	Colony Management	Social Code	Rearing and acquisition codes recorded once per animal at birth or arrival.
 ehr_lookups	source	Colony Management	Source	
 ehr_lookups	species	Colony Management	Species	
 ehr_lookups	snomed	Research	Treatments	List of animal treatments.

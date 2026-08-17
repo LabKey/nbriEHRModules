@@ -47,6 +47,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         row.birth = row['Id/demographics/birth'] || null;
         row.gender = row['Id/demographics/gender'] || null;
         row.geographic_origin = row['Id/demographics/geographic_origin'] || null;
+        row.socialCode = row['Id/demographics/socialCode'] || null;
 
         if (row.QCStateLabel) {
             row.qcstate = helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId();
@@ -136,6 +137,12 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
             if (row.geographic_origin && row.geographic_origin !== data.geographic_origin )
             {
                 obj.geographic_origin = row.geographic_origin;
+                hasUpdates = true;
+            }
+
+            if (row.socialCode && row.socialCode !== data.socialCode)
+            {
+                obj.socialCode = row.socialCode;
                 hasUpdates = true;
             }
 

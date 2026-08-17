@@ -636,6 +636,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     public void testArrivalForm() throws IOException, CommandException
     {
         String arrivedAnimal = "30905";
+        // demographics.socialCode holds an ehr_lookups.social_code code; the grids display its title
+        String socialCode = "Acquired";
         LocalDateTime now = LocalDateTime.now();
 
         gotoEnterData();
@@ -654,6 +656,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         arrivals.setGridCell(1, "Id/demographics/species", "Pig-Tailed Macaque");
         arrivals.setGridCellJS(1, "Id/demographics/birth", now.minusDays(7).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         arrivals.setGridCell(1, "sourceFacility", "Bioqual, Incorporated");
+        arrivals.setGridCell(1, "Id/demographics/socialCode", socialCode);
+
+        log("Verifying Social Code is required");
+        arrivals.setGridCellJS(1, "Id/demographics/socialCode", null);
+        waitForFormError("The field: Social Code is required");
+        arrivals.setGridCell(1, "Id/demographics/socialCode", socialCode);
 
         Ext4GridRef protocolAssignments = _helper.getExt4GridForFormSection("Protocol Assignment");
         _helper.addRecordToGrid(protocolAssignments);
@@ -694,6 +702,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         verifyRowCreated("study", "demographics", arrivedAnimal, 1);
         verifyRowCreated("study", "housing", arrivedAnimal, 1);
 
+        log("Verifying the social code reached demographics");
+        goToSchemaBrowser();
+        table = viewQueryData("study", "demographics");
+        table.setFilter("Id", "Equals", arrivedAnimal);
+        Assert.assertEquals("Social code entered on the arrival form did not reach demographics",
+                Arrays.asList(socialCode), table.getRowDataAsText(0, "socialCode"));
+
         log("Verifying the birth date reached demographics and agrees with the birth record");
         String arrivalBirthDay = now.minusDays(7).format(_dateFormat);
         assertEquals("Birth record does not carry the birth date entered on the arrival form",
@@ -713,6 +728,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         String damSpecies = "Brown-Tufted Capuchin";
         String conceptId = "TESTCONCEPT1";
         String breedingType = "Time-Mated";
+        // demographics.socialCode holds an ehr_lookups.social_code code; the grids display its title
+        String socialCode = "Mother-rearing (for indoors)";
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating the dam and sire of the conception");
@@ -756,6 +773,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         births.setGridCell(1, "cage", "C3");
         births.setGridCell(1, "Id/demographics/gender", "Female");
         births.setGridCell(1, "breedingType", breedingType);
+        births.setGridCell(1, "Id/demographics/socialCode", socialCode);
+
+        log("Verifying Social Code is required");
+        births.setGridCellJS(1, "Id/demographics/socialCode", null);
+        waitForFormError("The field: Social Code is required");
+        births.setGridCell(1, "Id/demographics/socialCode", socialCode);
 
         Ext4GridRef protocolAssignments = _helper.getExt4GridForFormSection("Protocol Assignment");
         _helper.addRecordToGrid(protocolAssignments);
@@ -786,6 +809,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Assert.assertEquals("Invalid demographics record", Arrays.asList(damId), table.getRowDataAsText(0, "dam"));
         Assert.assertEquals("Invalid demographics record", Arrays.asList(sireId), table.getRowDataAsText(0, "sire"));
         Assert.assertEquals("Invalid demographics record", Arrays.asList(damSpecies), table.getRowDataAsText(0, "species"));
+        Assert.assertEquals("Social code entered on the birth form did not reach demographics",
+                Arrays.asList(socialCode), table.getRowDataAsText(0, "socialCode"));
 
         goToSchemaBrowser();
         table = viewQueryData("study", "assignment");
@@ -2027,7 +2052,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private void verifyBirthColumnOrder(Ext4GridRef births)
     {
         List<String> expectedOrder = List.of("Id", "date", "conceptId", "Id/demographics/species", "Id/demographics/gender",
-                "Id/demographics/dam", "Id/demographics/sire", "cage", "type", "breedingType", "remark", "performedby");
+                "Id/demographics/dam", "Id/demographics/sire", "cage", "Id/demographics/socialCode", "type",
+                "breedingType", "remark", "performedby");
 
         int previousIdx = 0;
         String previousCol = null;

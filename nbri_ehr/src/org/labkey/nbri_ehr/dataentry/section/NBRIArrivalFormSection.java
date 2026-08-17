@@ -49,6 +49,9 @@ public class NBRIArrivalFormSection extends BaseFormSection
         keys.add(10, FieldKey.fromString("Id/demographics/gender"));
         keys.add(12, FieldKey.fromString("Id/demographics/geographic_origin"));
 
+        // the social code sits beside Initial Location, whose index the inserts above have shifted, so find it
+        keys.add(keys.indexOf(FieldKey.fromString("cage")) + 1, FieldKey.fromString("Id/demographics/socialCode"));
+
         return keys;
     }
 }

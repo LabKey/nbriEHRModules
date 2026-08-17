@@ -51,6 +51,15 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
                     width: 200
                 }
             },
+            // the social code is recorded once per animal, at birth or arrival, and lives on demographics
+            'Id/demographics/socialCode': {
+                allowBlank: false,
+                nullable: false,
+                columnConfig: {
+                    fixed: true,
+                    width: 200
+                }
+            },
             // project and protocol are entered through the Project Assignment and Protocol Assignment sections
             project: {
                 allowBlank: true,

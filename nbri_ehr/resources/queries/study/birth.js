@@ -126,6 +126,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 species: row['Id/demographics/species'] || null,
                 birth: row.date || null,
                 gender: row['Id/demographics/gender'] || null,
+                socialCode: row['Id/demographics/socialCode'] || null,
                 taskid: row.taskid,
                 remark: row.remark,
                 QCStateLabel: row.QCStateLabel,
@@ -170,6 +171,11 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
                 if (obj.dam && obj.dam !== data.dam) {
                     record.dam = obj.dam;
+                    hasUpdates = true;
+                }
+
+                if (obj.socialCode && obj.socialCode !== data.socialCode) {
+                    record.socialCode = obj.socialCode;
                     hasUpdates = true;
                 }
 

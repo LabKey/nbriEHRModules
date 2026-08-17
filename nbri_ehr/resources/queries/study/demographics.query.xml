@@ -91,6 +91,15 @@
                             <fkDisplayColumnName>meaning</fkDisplayColumnName>
                         </fk>
                     </column>
+                    <column columnName="socialCode">
+                        <columnTitle>Social Code</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>social_code</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
                     <column columnName="cites">
                         <columnTitle>CITES</columnTitle>
                     </column>

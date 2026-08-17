@@ -109,6 +109,14 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                 columnConfig: {
                     width: 200
                 }
+            },
+            // the social code is recorded once per animal, at birth or arrival, and lives on demographics
+            'Id/demographics/socialCode': {
+                allowBlank: false,
+                nullable: false,
+                columnConfig: {
+                    width: 200
+                }
             }
         }
     }
