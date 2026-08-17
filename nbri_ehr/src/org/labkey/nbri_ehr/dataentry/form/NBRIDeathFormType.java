@@ -18,9 +18,7 @@ package org.labkey.nbri_ehr.dataentry.form;
 import org.labkey.api.ehr.EHRService;
 import org.labkey.api.ehr.dataentry.DataEntryFormContext;
 import org.labkey.api.ehr.dataentry.FormSection;
-import org.labkey.api.ehr.security.EHRCompletedInsertPermission;
 import org.labkey.api.module.Module;
-import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.view.template.ClientDependency;
 import org.labkey.nbri_ehr.dataentry.section.BaseFormSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRIAnimalDetailsFormSection;
@@ -29,14 +27,14 @@ import org.labkey.nbri_ehr.dataentry.section.NBRITaskFormSection;
 import java.util.Arrays;
 
 /**
- * Admin-only form that records deaths only, as a grid so several animals can be entered at once.
+ * Records deaths only, as a grid so several animals can be entered at once.
  */
-public class NBRIBulkDeathFormType extends NBRIBaseTaskFormType
+public class NBRIDeathFormType extends NBRIBaseTaskFormType
 {
-    public static final String NAME = "BulkDeaths";
-    public static final String LABEL = "Bulk Deaths";
+    public static final String NAME = "Deaths";
+    public static final String LABEL = "Deaths";
 
-    public NBRIBulkDeathFormType(DataEntryFormContext ctx, Module owner)
+    public NBRIDeathFormType(DataEntryFormContext ctx, Module owner)
     {
         super(ctx, owner, NAME, LABEL, "Colony Management", Arrays.asList(
                 new NBRITaskFormSection(),
@@ -50,17 +48,5 @@ public class NBRIBulkDeathFormType extends NBRIBaseTaskFormType
         {
             s.addConfigSource("Death");
         }
-    }
-
-    @Override
-    public boolean isAvailable()
-    {
-        return super.isAvailable() && getCtx().getContainer().hasPermission(getCtx().getUser(), AdminPermission.class);
-    }
-
-    @Override
-    protected boolean canInsert()
-    {
-        return EHRService.get().hasPermission("study", "deaths", getCtx().getContainer(), getCtx().getUser(), EHRCompletedInsertPermission.class);
     }
 }
