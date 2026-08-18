@@ -47,9 +47,13 @@ EHR.model.DataModelManager.registerMetadata('AnimalGroupMembers', {
                     filterArray: []
                 }
             },
+            // hidden here but still recorded, so seed it rather than relying on the shared default surviving the merge
             performedby: {
                 shownInGrid: false,
-                hidden: true
+                hidden: true,
+                getInitialValue: function(v){
+                    return v || LABKEY.Security.currentUser.id;
+                }
             }
         }
     }
