@@ -102,9 +102,9 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
             else if (status === 'SHIPPED') {
                 errorMsg = 'Animal is not at the center.';
             }
-            // An in-progress demographics record is provisional; completing it here would publish unreviewed arrival
-            // or birth data. Admins can override. A null state is not evidence of anything - ETL rows carry one.
-            else if (demographicsQCState && demographicsQCState !== 'COMPLETED' && !LABKEY.Security.currentUser.isAdmin) {
+            // An in-progress demographics record is provisional; completing it would publish unreviewed arrival or
+            // birth data. Insert only, so an in-flight death is not trapped. Admins override. Null is not evidence.
+            else if (oldRow === undefined && demographicsQCState && demographicsQCState !== 'COMPLETED' && !LABKEY.Security.currentUser.isAdmin) {
                 errorMsg = 'Demographics record for this animal is not final (' + idMap[row.Id].QCStateLabel + '). Complete the arrival or birth record before submitting a death.';
             }
             else if (deathsInTransaction[row.Id]) {
