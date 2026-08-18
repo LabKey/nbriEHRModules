@@ -30,7 +30,8 @@ function onInit(event, helper){
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.COMPLETE, 'study', 'birth', function(event, errors, helper){
 
-    // Single writer for the denormalized demographics birth date, derived from the saved birth records.
+    // Owns updates to the denormalized demographics birth date, derived from the saved birth records.
+    // createDemographicsRecord() in the shared ehr script seeds it but never overwrites an existing row.
     if (!helper.isETL() && idsToSync.length) {
         var demographicsUpdates = triggerHelper.computeDemographicsSync(idsToSync);
         if (demographicsUpdates.size() > 0) {
