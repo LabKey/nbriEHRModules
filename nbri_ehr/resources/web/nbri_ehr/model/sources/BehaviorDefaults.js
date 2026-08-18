@@ -46,7 +46,7 @@ EHR.model.DataModelManager.registerMetadata('BehaviorDefaults', {
             dateFinalized: {
                 hidden: true
             },
-            qcstate: {
+            QCState: {
                 hidden: true
             },
             performedby: {

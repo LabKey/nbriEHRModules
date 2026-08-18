@@ -8,7 +8,7 @@ EHR.model.DataModelManager.registerMetadata('DeathNecropsy', {
     },
     byQuery: {
         'study.deaths': {
-            qcstate: {
+            QCState: {
                 hidden: true
             },
             date: {
@@ -90,7 +90,7 @@ EHR.model.DataModelManager.registerMetadata('DeathNecropsy', {
             category: {
                 hidden: true
             },
-            qcstate: {
+            QCState: {
                 hidden: true
             }
         },

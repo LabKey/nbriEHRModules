@@ -47,7 +47,7 @@ EHR.model.DataModelManager.registerMetadata('AnimalGroupMembers', {
                     filterArray: []
                 }
             },
-            performedBy: {
+            performedby: {
                 shownInGrid: false,
                 hidden: true
             }

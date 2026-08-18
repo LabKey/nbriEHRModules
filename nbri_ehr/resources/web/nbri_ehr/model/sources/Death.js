@@ -12,7 +12,7 @@ EHR.model.DataModelManager.registerMetadata('Death', {
     },
     byQuery: {
         'study.deaths': {
-            qcstate: {
+            QCState: {
                 hidden: true
             },
             date: {
