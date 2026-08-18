@@ -334,6 +334,10 @@ public class NBRI_EHRTriggerHelper
      * calculated_status is deliberately absent from the result. It belongs to the shared status recalc, which owns the
      * death/departure/re-arrival precedence.
      * <p>
+     * Note that a stored value is only ever cleared for death, by the AFTER_DELETE handler on study.deaths. There is no
+     * equivalent handler on study.birth, so deleting a birth record leaves demographics.birth at its last known value
+     * and this method will not heal it - a missing event record deliberately leaves the stored value alone.
+     * <p>
      * Every lookup is set-based - one query per event dataset for the whole id list, not one per animal - because a
      * bulk save can pass hundreds of ids and per-animal SQL in a trigger exhausts the script's wall-clock budget.
      *
@@ -342,7 +346,9 @@ public class NBRI_EHRTriggerHelper
      */
     public List<Map<String, Object>> computeDemographicsSync(List<String> ids)
     {
-        if (ids == null || ids.isEmpty())
+        // a JS array arrives as a Rhino NativeArray, whose inherited isEmpty() is always true; use size() instead
+        //noinspection SizeReplaceableByIsEmpty
+        if (ids == null || ids.size() == 0)
             return Collections.emptyList();
 
         Set<String> idSet = new HashSet<>(ids);
@@ -361,11 +367,8 @@ public class NBRI_EHRTriggerHelper
             String id = (String)current.get("Id");
             Map<String, Object> update = new CaseInsensitiveHashMap<>();
 
-            // A public event record always wins - the same rule createDemographicsRecord() already applies to death on
-            // insert, extended to updates and to birth. The absence of an event record is NOT evidence the stored value
-            // is wrong: animals loaded by ETL, or acquired before these datasets were in use, legitimately carry a date
-            // with no event row, so a missing record leaves the value alone. Clearing a value is only ever driven by an
-            // explicit delete of the event record.
+            // A public event record always wins. A missing one is NOT evidence the stored value is wrong - ETL-loaded
+            // and pre-dataset animals legitimately carry a date with no event row - so it leaves the value alone.
             Date birth = births.get(id);
             if (birth != null && differsByDay(birth, (Date)current.get("birth")))
                 update.put("birth", birth);
@@ -415,7 +418,7 @@ public class NBRI_EHRTriggerHelper
     private boolean differsByDay(Date a, Date b)
     {
         if (a == null || b == null)
-            return a != b;
+            return !(a == null && b == null);
 
         return !DateUtils.isSameDay(a, b);
     }
