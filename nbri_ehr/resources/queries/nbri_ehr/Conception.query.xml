@@ -13,9 +13,7 @@
                     </column>
                     <column columnName="ConceptDate">
                         <columnTitle>Conception Date</columnTitle>
-                    </column>
-                    <column columnName="ConceptTermDate">
-                        <columnTitle>Conception Term Date</columnTitle>
+                        <required>true</required>
                     </column>
                     <column columnName="Estimated">
                         <columnTitle>Estimated</columnTitle>

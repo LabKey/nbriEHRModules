@@ -16,7 +16,6 @@ bcs_score	BCS Store	value	title
 behavior_abnormality	Behavior Abnormality	value
 behavior_mgmt_codes	Behavior Management Codes	value
 behavior_types	Behavior Types	value
-birth_condition	Birth Condition	value	title
 blood_draw_reason	Blood Draw Reason	value
 blood_sample_type	Blood Sample Types	value
 breeding_type	Breeding Type	value	title
@@ -55,7 +54,6 @@ genitourinary_obs	Genitourinary Observations	value
 hernia_types	Hernia Types	value
 housing_reason	Housing Reason	value
 hyd_score	Hyd Score	value
-id_history_type	Id History Type	value	title
 incision_score	Incision Status	value
 indoor_outdoor	Indoor/Outdoor	value
 keyword	Keyword	value	title
@@ -102,6 +100,7 @@ req_order_type	Req Order Type	value	title
 respiratory_observations	Respiratory Observations	value	title
 sib_score	SIB Score	value
 skin_problem	Skin Problem	value
+social_code	Social Code	value	title
 status_codes	Status Code Field Values	value	title
 stool_score	Stool Score	value
 stool_types	Stool Types	value

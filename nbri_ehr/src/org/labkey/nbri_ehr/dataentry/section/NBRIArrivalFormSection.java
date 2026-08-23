@@ -20,6 +20,7 @@ import org.labkey.api.data.TableInfo;
 import org.labkey.api.ehr.dataentry.DataEntryFormContext;
 import org.labkey.api.query.FieldKey;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class NBRIArrivalFormSection extends BaseFormSection
@@ -40,15 +41,32 @@ public class NBRIArrivalFormSection extends BaseFormSection
     @Override
     protected List<FieldKey> getFieldKeys(TableInfo ti)
     {
-        List<FieldKey> keys = super.getFieldKeys(ti);
+        // super hands back the list registered for study.arrival when there is one, so copy before inserting
+        List<FieldKey> keys = new ArrayList<>(super.getFieldKeys(ti));
 
-        keys.add(6, FieldKey.fromString("Id/demographics/dam"));
-        keys.add(7, FieldKey.fromString("Id/demographics/sire"));
-        keys.add(8, FieldKey.fromString("Id/demographics/species"));
-        keys.add(9, FieldKey.fromString("Id/demographics/birth"));
-        keys.add(10, FieldKey.fromString("Id/demographics/gender"));
-        keys.add(12, FieldKey.fromString("Id/demographics/geographic_origin"));
+        // anchor each insert to a named neighbour - which columns the metadata shows in the insert view decides
+        // the index of everything after them
+        keys.addAll(indexOf(keys, "project"), List.of(
+                FieldKey.fromString("Id/demographics/species"),
+                FieldKey.fromString("Id/demographics/gender"),
+                FieldKey.fromString("Id/demographics/birth"),
+                FieldKey.fromString("Id/demographics/dam"),
+                FieldKey.fromString("Id/demographics/sire")));
+
+        keys.add(indexOf(keys, "project") + 1, FieldKey.fromString("Id/demographics/geographic_origin"));
+
+        // the social code sits beside Initial Location
+        keys.add(indexOf(keys, "cage") + 1, FieldKey.fromString("Id/demographics/socialCode"));
 
         return keys;
+    }
+
+    private int indexOf(List<FieldKey> keys, String name)
+    {
+        int index = keys.indexOf(FieldKey.fromString(name));
+        if (index < 0)
+            throw new IllegalStateException("Cannot position the arrival form fields: study.arrival has no '" + name + "' field");
+
+        return index;
     }
 }

@@ -46,7 +46,7 @@ EHR.model.DataModelManager.registerMetadata('BulkBehavior', {
             dateFinalized: {
                 hidden: true
             },
-            qcstate: {
+            QCState: {
                 hidden: true
             }
         },

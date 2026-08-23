@@ -119,7 +119,7 @@ EHR.model.DataModelManager.registerMetadata('ClinicalDefaults', {
             closeRemark: {
                 height: 120
             },
-            qcstate: {
+            QCState: {
                 hidden: true
             },
             attachmentFile: {
@@ -167,7 +167,7 @@ EHR.model.DataModelManager.registerMetadata('ClinicalDefaults', {
             dateFinalized: {
                 hidden: true
             },
-            qcstate: {
+            QCState: {
                 hidden: true
             },
         },
