@@ -127,7 +127,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String PEN_ROOM_NAME = "PEN1";
     private static final String[] PEN_ANIMALS = {"PEN0001", "PEN0002"};
 
-    // Housed with a cage but no room, which is how a record entered against a cage alone lands. Every cage seeded by
+    // Housed against a cage-level location id, as opposed to a pen's room-level one. Every cage seeded by
     // populateLocations already has occupants from datasetHousing.tsv, so testCagematesWithoutRoom creates its own to
     // keep the expected cagemate count exact.
     private static final String ROOMLESS_CAGE_NAME = "C9";
@@ -1812,10 +1812,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         createAliveAnimals(PEN_ANIMALS);
 
-        // The cage is deliberately left null: a penned animal is housed against the room, which is the case the
-        // cagemates query has to bound by room rather than by cage.
-        log("Housing two animals in the pen, with no cage");
-        houseAnimals(PEN_ANIMALS, penRoom, null);
+        // A pen has no cage name, so the location the cage trigger derived for it is the room key alone. That key is
+        // the location id the animals are housed against, and sharing it is what makes them cagemates.
+        log("Housing two animals against the pen's location");
+        houseAnimals(PEN_ANIMALS, penRoom);
 
         log("Verifying penned animals resolve as each other's cagemates");
         assertCagemates(PEN_ANIMALS[0], 2, PEN_ANIMALS[1]);
@@ -1831,12 +1831,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         createAliveAnimals(ROOMLESS_ANIMALS);
 
-        // The cage is a location key that already names its room, so the room is redundant here and nothing requires
-        // it. Cagemates must still resolve when it is absent.
-        log("Housing two animals in the same cage, with no room");
-        houseAnimals(ROOMLESS_ANIMALS, null, ROOMLESS_CAGE);
+        // This location id names a cage within a room, the other shape a location takes. Cagemates must resolve for it
+        // the same way they do for a pen's room-level id.
+        log("Housing two animals against the same cage location");
+        houseAnimals(ROOMLESS_ANIMALS, ROOMLESS_CAGE);
 
-        log("Verifying caged animals resolve as each other's cagemates without a room");
+        log("Verifying animals sharing a cage location resolve as each other's cagemates");
         assertCagemates(ROOMLESS_ANIMALS[0], 2, ROOMLESS_ANIMALS[1]);
     }
 
@@ -1860,15 +1860,16 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
     /**
      * Opens a completed housing record for each animal at the given location, replacing any left behind by an earlier
-     * run. Either the room or the cage may be null, which is how records entered against one alone land.
+     * run. The location id in 'cage' is the only location housing stores: 'room' is derived from it, is read-only, and
+     * would be discarded if it were posted here.
      */
-    private void houseAnimals(String[] animalIds, String room, String cage) throws Exception
+    private void houseAnimals(String[] animalIds, String cage) throws Exception
     {
-        String[] fields = new String[]{"Id", "date", "enddate", "room", "cage", "QCStateLabel", "performedby"};
+        String[] fields = new String[]{"Id", "date", "enddate", "cage", "QCStateLabel", "performedby"};
         Object[][] data = new Object[animalIds.length][];
         for (int i = 0; i < animalIds.length; i++)
         {
-            data[i] = new Object[]{animalIds[i], new Date(), null, room, cage, EHRQCState.COMPLETED.label, 1004};
+            data[i] = new Object[]{animalIds[i], new Date(), null, cage, EHRQCState.COMPLETED.label, 1004};
         }
 
         SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "Housing", "lsid", fields, data);
