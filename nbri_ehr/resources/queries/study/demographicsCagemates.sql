@@ -5,7 +5,6 @@
  */
 SELECT
   d.id,
---   t.room,
   t.cage,
   t.total,
   cast(t.animals as varchar(4000)) as animals
@@ -14,7 +13,6 @@ FROM study.demographics d
 LEFT JOIN (
 SELECT
   h.id,
---   h.room,
   h.cage,
   count(distinct h2.id) as total,
   group_concat(distinct h2.id, ', ') as animals
@@ -22,16 +20,17 @@ SELECT
 FROM study.housing h
 
 JOIN study.housing h2
--- cage holds a location key that already encodes the room, so caged animals match on cage alone. Group/pen rooms have
--- no cage, so those fall back to the room, which is only consulted when neither side has a cage.
-ON ((h.cage = h2.cage OR (h.cage IS NULL AND h2.cage IS NULL AND h.room = h2.room))
+-- cage is the location id, and it is the only location housing stores: for a caged animal it is the room-and-cage key,
+-- for a group pen it is the room key alone. Animals sharing that id are in the same place, which is what makes them
+-- cagemates. Room is not consulted, since it is derived from this same id and so can never distinguish two rows.
+ON (h.cage = h2.cage
         AND h2.Id.demographics.calculated_status = 'Alive'
         AND h2.enddateTimeCoalesced >= now()
         AND h2.qcstate.publicdata = true)
 
 WHERE h.enddateTimeCoalesced >= now()
 AND h.qcstate.publicdata = true
-GROUP BY h.id, h.room, h.cage
+GROUP BY h.id, h.cage
 
 ) t ON (t.id = d.id)
 
