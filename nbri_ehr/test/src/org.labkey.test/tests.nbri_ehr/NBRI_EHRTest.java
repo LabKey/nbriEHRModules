@@ -57,7 +57,6 @@ import org.labkey.test.util.DataRegionTable;
 import org.labkey.test.util.Ext4Helper;
 import org.labkey.test.util.LogMethod;
 import org.labkey.test.util.PortalHelper;
-import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.ehr.EHRClientAPIHelper;
 import org.labkey.test.util.ext4cmp.Ext4ComboRef;
 import org.labkey.test.util.ext4cmp.Ext4FieldRef;
@@ -87,7 +86,7 @@ import static org.junit.Assert.assertEquals;
 import static org.labkey.test.components.html.Input.Input;
 
 @Category({EHR.class})
-public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnlyTest
+public class NBRI_EHRTest extends AbstractGenericEHRTest
 {
     private static final String PROJECT_NAME = "NBRI";
     private static final String PROJECT_TYPE = "NBRI EHR";
