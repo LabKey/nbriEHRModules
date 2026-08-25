@@ -7,9 +7,9 @@
 EHR.model.DataModelManager.registerMetadata('Assignment', {
     byQuery: {
         'study.assignment': {
-            // the dataset column is hidden by default; project assignments are ended by entering an end date
+            // a new project assignment ends the open one automatically, so the end date is never entered here
             'enddate': {
-                hidden: false
+                hidden: true
             },
             'project': {
                 xtype: 'combo',

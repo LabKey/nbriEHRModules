@@ -80,7 +80,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 26.001;
+        return 26.002;
     }
 
     @Override
@@ -215,7 +215,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIBulkClinicalFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIDepartureFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIDeathNecropsyFormType.class, this));
-        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIBulkDeathFormType.class, this));
+        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIDeathFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIHousingFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIMedicationTreatmentFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProjectFormType.class, this));

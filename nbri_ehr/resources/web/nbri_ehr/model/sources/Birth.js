@@ -18,7 +18,9 @@ Ext4.onReady(function() {
 
 EHR.model.DataModelManager.registerMetadata('Birth', {
     allQueries: {
-        'endDate': {
+        // lowercase to match the key Default.js and Assignment.js use; a differently-cased key shadows theirs entirely
+        // rather than merging with it
+        'enddate': {
             hidden: true
         }
     },
@@ -32,12 +34,35 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                 allowBlank: false,
                 nullable: false
             },
+            // conception Id, species, dam and sire all come from the conception picked in the Start with Conception
+            // window, so they are shown but not entered by hand.  That window writes to the store directly, which is
+            // unaffected by these read-only editor settings.
             'Id/demographics/species': {
                 allowBlank: false,
                 nullable: false,
                 columnConfig: {
                     fixed: true,
-                    width: 250
+                    width: 250,
+                    editable: false
+                },
+                formEditorConfig: {
+                    readOnly: true
+                }
+            },
+            'Id/demographics/dam': {
+                columnConfig: {
+                    editable: false
+                },
+                formEditorConfig: {
+                    readOnly: true
+                }
+            },
+            'Id/demographics/sire': {
+                columnConfig: {
+                    editable: false
+                },
+                formEditorConfig: {
+                    readOnly: true
                 }
             },
             'cage': {
@@ -48,11 +73,6 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                 },
             },
             type: {
-                columnConfig: {
-                    width: 200
-                },
-            },
-            cond: {
                 columnConfig: {
                     width: 200
                 },
@@ -75,14 +95,27 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                 allowBlank: false,
                 nullable: false
             },
+            // see the note above on the fields the Start with Conception window populates
             conceptId: {
                 allowBlank: false,
                 nullable: false,
                 columnConfig: {
-                    width: 150
+                    width: 150,
+                    editable: false
+                },
+                formEditorConfig: {
+                    readOnly: true
                 }
             },
             breedingType: {
+                columnConfig: {
+                    width: 200
+                }
+            },
+            // the social code is recorded once per animal, at birth or arrival, and lives on demographics
+            'Id/demographics/socialCode': {
+                allowBlank: false,
+                nullable: false,
                 columnConfig: {
                     width: 200
                 }

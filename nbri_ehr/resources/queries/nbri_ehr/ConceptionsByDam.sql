@@ -7,7 +7,6 @@ SELECT
     c.Dam AS Id,
     c.ConceptId,
     c.ConceptDate,
-    c.ConceptTermDate,
     c.Estimated,
     c.Sire,
     CASE

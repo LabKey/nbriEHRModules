@@ -7,6 +7,7 @@ require("ehr/triggers").initScript(this);
 EHR.Server.Utils = require("ehr/utils").EHR.Server.Utils;
 
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
+var idsToSync = [];
 
 function onInit(event, helper){
     helper.setScriptOptions({
@@ -21,8 +22,24 @@ function onInit(event, helper){
         skipAssignmentCheck: true,
     });
 
+    // the script scope can outlive a single save, so never inherit ids from a prior one
+    idsToSync = [];
+
     helper.decodeExtraContextProperty('birthsInTransaction');
 }
+
+EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.COMPLETE, 'study', 'birth', function(event, errors, helper){
+
+    // Owns updates to the denormalized demographics birth date, derived from the saved birth records.
+    // createDemographicsRecord() in the shared ehr script seeds it but never overwrites an existing row.
+    if (!helper.isETL() && idsToSync.length) {
+        var demographicsUpdates = triggerHelper.computeDemographicsSync(idsToSync);
+        if (demographicsUpdates.size() > 0) {
+            helper.getJavaHelper().updateDemographicsRecord(demographicsUpdates);
+        }
+        idsToSync = [];
+    }
+});
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'study', 'birth', function(helper, scriptErrors, row, oldRow) {
 
@@ -110,6 +127,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 species: row['Id/demographics/species'] || null,
                 birth: row.date || null,
                 gender: row['Id/demographics/gender'] || null,
+                socialCode: row['Id/demographics/socialCode'] || null,
                 taskid: row.taskid,
                 remark: row.remark,
                 QCStateLabel: row.QCStateLabel,
@@ -147,11 +165,6 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                     hasUpdates = true;
                 }
 
-                if (obj.birth && obj.birth !== data.birth) {
-                    record.birth = obj.birth;
-                    hasUpdates = true;
-                }
-
                 if (obj.sire && obj.sire !== data.sire) {
                     record.sire = obj.sire;
                     hasUpdates = true;
@@ -159,6 +172,11 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
                 if (obj.dam && obj.dam !== data.dam) {
                     record.dam = obj.dam;
+                    hasUpdates = true;
+                }
+
+                if (obj.socialCode && obj.socialCode !== data.socialCode) {
+                    record.socialCode = obj.socialCode;
                     hasUpdates = true;
                 }
 
@@ -179,6 +197,10 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                     helper.getJavaHelper().updateDemographicsRecord(demographicsUpdates);
                     helper.cacheDemographics(row.Id, row);
                 }
+            }
+
+            if (row.Id && idsToSync.indexOf(row.Id) === -1) {
+                idsToSync.push(row.Id);
             }
         }
     }

@@ -35,6 +35,10 @@ EHR.model.DataModelManager.registerMetadata('AnimalGroupMembers', {
                     return curDate;
                 }
             },
+            enddate: {
+                shownInGrid: false,
+                hidden: true
+            },
             groupId: {
                 allowBlank: false,
                 nullable: false,
@@ -43,9 +47,13 @@ EHR.model.DataModelManager.registerMetadata('AnimalGroupMembers', {
                     filterArray: []
                 }
             },
-            performedBy: {
+            // hidden here but still recorded, so seed it rather than relying on the shared default surviving the merge
+            performedby: {
                 shownInGrid: false,
-                hidden: true
+                hidden: true,
+                getInitialValue: function(v){
+                    return v || LABKEY.Security.currentUser.id;
+                }
             }
         }
     }

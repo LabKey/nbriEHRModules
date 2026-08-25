@@ -253,9 +253,6 @@
             <column columnName="breedingType">
                 <datatype>varchar</datatype>
             </column>
-            <column columnName="cond">
-                <datatype>varchar</datatype>
-            </column>
             <column columnName="type">
                 <datatype>varchar</datatype>
             </column>
@@ -498,10 +495,10 @@
             <column columnName="calculated_status">
                 <datatype>varchar</datatype>
             </column>
-            <column columnName="lotId">
-                <datatype>integer</datatype>
-            </column>
             <column columnName="geographic_origin">
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="socialCode">
                 <datatype>varchar</datatype>
             </column>
             <column columnName="CITES">

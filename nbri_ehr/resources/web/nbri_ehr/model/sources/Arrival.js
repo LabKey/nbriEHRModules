@@ -18,7 +18,9 @@ Ext4.onReady(function() {
 
 EHR.model.DataModelManager.registerMetadata('Arrival', {
     allQueries: {
-        'endDate': {
+        // lowercase to match the key Default.js and Assignment.js use; a differently-cased key shadows theirs entirely
+        // rather than merging with it
+        'enddate': {
             hidden: true
         }
     },
@@ -46,6 +48,15 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
             },
             'Id/demographics/geographic_origin': {
                 // allowBlank: false,
+                columnConfig: {
+                    fixed: true,
+                    width: 200
+                }
+            },
+            // the social code is recorded once per animal, at birth or arrival, and lives on demographics
+            'Id/demographics/socialCode': {
+                allowBlank: false,
+                nullable: false,
                 columnConfig: {
                     fixed: true,
                     width: 200

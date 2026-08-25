@@ -23,6 +23,7 @@ import org.labkey.api.view.template.ClientDependency;
 import org.labkey.nbri_ehr.dataentry.section.NBRIAnimalDetailsFormSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRIArrivalFormSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRIArrivalInstructionsFormSection;
+import org.labkey.nbri_ehr.dataentry.section.NBRIGroupAssignmentFormSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRIProjectAssignmentFormSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRIProtocolAssignmentFormSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRITaskFormSection;
@@ -44,15 +45,18 @@ public class NBRIArrivalFormType extends NBRIBaseTaskFormType
                 new NBRIArrivalFormSection(),
                 new NBRIProtocolAssignmentFormSection(true, true, true),
                 new NBRIProjectAssignmentFormSection(true, true, true),
+                new NBRIGroupAssignmentFormSection(true, true, true),
                 new NBRIWeightFormSection(true, true)
                 ));
 
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/model/sources/Assignment.js"));
+        addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/model/sources/AnimalGroupMembers.js"));
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/model/sources/Arrival.js"));
 
         for (FormSection s : getFormSections())
         {
             s.addConfigSource("Assignment");
+            s.addConfigSource("AnimalGroupMembers");
             s.addConfigSource("Arrival");
         }
 

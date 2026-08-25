@@ -31,10 +31,7 @@
                     <column columnName="project">
                         <isHidden>true</isHidden>
                     </column>
-                    <column columnName="performedBy">
-                        <shownInUpdateView>false</shownInUpdateView>
-                        <shownInInsertView>false</shownInInsertView>
-                    </column>
+                    <column columnName="performedBy" />
                 </columns>
             </table>
         </tables>

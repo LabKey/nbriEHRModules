@@ -93,7 +93,7 @@ EHR.model.DataModelManager.registerMetadata('ClinicalCase', {
             closeRemark: {
                 height: 120
             },
-            qcstate: {
+            QCState: {
                 hidden: true
             },
             attachmentFile: {
@@ -150,7 +150,7 @@ EHR.model.DataModelManager.registerMetadata('ClinicalCase', {
             dateFinalized: {
                 hidden: true
             },
-            qcstate: {
+            QCState: {
                 hidden: true
             },
         },

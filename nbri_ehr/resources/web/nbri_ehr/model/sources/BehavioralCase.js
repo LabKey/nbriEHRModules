@@ -93,7 +93,7 @@ EHR.model.DataModelManager.registerMetadata('BehavioralCase', {
             closeRemark: {
                 height: 120
             },
-            qcstate: {
+            QCState: {
                 hidden: true
             },
             attachmentFile: {

@@ -6,6 +6,13 @@
 require("ehr/triggers").initScript(this);
 
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
+var idsToSync = [];
+
+EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'Arrival', function(event, helper){
+
+    // the script scope can outlive a single save, so never inherit ids from a prior one
+    idsToSync = [];
+});
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'study', 'Arrival', function(helper, scriptErrors, row, oldRow) {
 
@@ -40,6 +47,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         row.birth = row['Id/demographics/birth'] || null;
         row.gender = row['Id/demographics/gender'] || null;
         row.geographic_origin = row['Id/demographics/geographic_origin'] || null;
+        row.socialCode = row['Id/demographics/socialCode'] || null;
 
         if (row.QCStateLabel) {
             row.qcstate = helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId();
@@ -132,9 +140,9 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 hasUpdates = true;
             }
 
-            if (row.birth && row.birth !== data.birth)
+            if (row.socialCode && row.socialCode !== data.socialCode)
             {
-                obj.birth = row.birth;
+                obj.socialCode = row.socialCode;
                 hasUpdates = true;
             }
 
@@ -171,5 +179,22 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 helper.cacheDemographics(row.Id, row);
             }
         }
+
+        if (row.Id && idsToSync.indexOf(row.Id) === -1) {
+            idsToSync.push(row.Id);
+        }
+    }
+});
+
+EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.COMPLETE, 'study', 'Arrival', function(event, errors, helper){
+
+    // Owns updates to the denormalized demographics birth date, read back from the birth record saveBirthRecord()
+    // just wrote. createDemographicsRecord() seeds it on insert but never overwrites an existing row.
+    if (!helper.isETL() && idsToSync.length) {
+        var demographicsUpdates = triggerHelper.computeDemographicsSync(idsToSync);
+        if (demographicsUpdates.size() > 0) {
+            helper.getJavaHelper().updateDemographicsRecord(demographicsUpdates);
+        }
+        idsToSync = [];
     }
 });

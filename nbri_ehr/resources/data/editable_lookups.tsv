@@ -18,7 +18,6 @@ ehr_lookups	bcs_score	Clinical	Body Condition Score	Clinical observation fixed v
 ehr_lookups	behavior_abnormality	Clinical	Behavior Abnormality	Clinical observation fixed values.
 ehr_lookups	behavior_mgmt_codes	Behavior	Behavior Management Codes	Behavior observation fixed values.
 ehr_lookups	behavior_types	Behavior	Behavior Types	Behavior observation fixed values.
-ehr_lookups	birth_condition	Colony Management	Birth Condition	Birth condition values.
 ehr_lookups	blood_draw_reason	Clinical	Blood Draw Reason	Used in blood draw datasets.
 ehr_lookups	blood_draw_tube_type	Clinical	Blood Draw Tube Type	Used in blood draw datasets.
 ehr_lookups	blood_sample_type	Clinical	Blood Sample Types	Used in blood draw datasets.
@@ -68,7 +67,6 @@ ehr_lookups	geographic_origins	Colony Management	Geographic Origins	Used in demo
 ehr_lookups	hernia_types	Clinical	Hernia Types	Clinical observation fixed values.
 ehr_lookups	housing_reason	Housing	Housing Move Reason	Used in housing dataset for location transfers.
 ehr_lookups	hyd_score	Clinical	Hydration Score	Clinical observation fixed values.
-ehr_lookups	id_history_type	Colony Management	Id History Type	
 ehr_lookups	incision_score	Clinical	Incision Status	Clinical observation fixed values.
 ehr_lookups	indoor_outdoor	Colony Management	Indoor/Outdoor	Cage details
 ehr_lookups	keyword	Clinical	Keyword	Clinical observation fixed values.
@@ -117,6 +115,7 @@ ehr_lookups	respiratory_observations	Clinical	Respiratory Observations	Used in c
 ehr_lookups	routes	Clinical	Treatment Routes	Used in drug and treatment datasets.
 ehr_lookups	sib_score	Behavior	SIB Score	Behavior observation fixed values.
 ehr_lookups	skin_problem	Clinical	Skin Problems	Clinical observation fixed values.
+ehr_lookups	social_code	Colony Management	Social Code	Rearing and acquisition codes recorded once per animal at birth or arrival.
 ehr_lookups	source	Colony Management	Source	
 ehr_lookups	species	Colony Management	Species	
 ehr_lookups	snomed	Research	Treatments	List of animal treatments.

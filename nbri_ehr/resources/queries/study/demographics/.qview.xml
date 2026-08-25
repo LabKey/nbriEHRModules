@@ -12,6 +12,7 @@
         <column name="species"/>
         <column name="dam"/>
         <column name="sire"/>
+        <column name="socialCode"/>
         <column name="disposition"/>
         <column name="termination"/>
         <column name="implantNumber"/>

@@ -8,8 +8,12 @@ require("ehr/triggers").initScript(this);
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 var idMap = {};
 var deathIdMap = {};
+var idsToSync = [];
 
 function onInit(event, helper){
+
+    // the script scope can outlive a single save, so never inherit ids from a prior one
+    idsToSync = [];
 
     helper.decodeExtraContextProperty('deathsInTransaction');
 
@@ -59,7 +63,6 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
     demographicsUpdates.push({
         Id: row.Id,
         death: null,
-        calculated_status: 'Alive',
         QCState: helper.getJavaHelper().getQCStateForLabel('Completed').getRowId(),
     });
 
@@ -68,8 +71,6 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 });
 
 function onUpsert(helper, scriptErrors, row, oldRow) {
-
-    var demographicsUpdates = [];
 
     if (!helper.isETL()) {
 
@@ -85,6 +86,7 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
             var status = idMap[row.Id].calculated_status ? idMap[row.Id].calculated_status.toUpperCase() : null;
             var priorDeathQCState = deathIdMap[row.Id] && deathIdMap[row.Id].QCStateLabel ? deathIdMap[row.Id].QCStateLabel.toUpperCase() : null;
             var rowQCState = row.QCStateLabel ? row.QCStateLabel.toUpperCase() : null;
+            var demographicsQCState = idMap[row.Id].QCStateLabel ? idMap[row.Id].QCStateLabel.toUpperCase() : null;
 
             // deathIdMap is a snapshot taken before any row was processed, so it cannot see earlier rows of this same
             // save. Track them separately: study.deaths is demographic, so a second row for one animal cannot be saved.
@@ -100,28 +102,25 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
             else if (status === 'SHIPPED') {
                 errorMsg = 'Animal is not at the center.';
             }
+            // An in-progress demographics record is provisional; completing it would publish unreviewed arrival or
+            // birth data. Insert only, so an in-flight death is not trapped. Admins override. Null is not evidence.
+            else if (oldRow === undefined && demographicsQCState && demographicsQCState !== 'COMPLETED' && !LABKEY.Security.currentUser.isAdmin) {
+                errorMsg = 'Demographics record for this animal is not final (' + idMap[row.Id].QCStateLabel + '). Complete the arrival or birth record before submitting a death.';
+            }
             else if (deathsInTransaction[row.Id]) {
                 errorMsg = 'This animal is entered more than once. Only one death record per animal can be saved.';
             }
-            // Check if an animal that's being entered is pending any request/review.
-            // Note 1: When trying to enter a new record for an animal, the QCState = 'IN PROGRESS'.
-            // Note 2: Upon 'Submit Death', the QCState will get set to 'REQUEST: PENDING', and upon 'Submit Necropsy for Review',
-            // the QCState will get set to 'Review Required' - this way we can distinguish between the two states in the Death/Necropsy workflow.
-            // If a user tries to submit a new Death record (identified by QCState = 'IN PROGRESS') for an animal that
-            // already has a pending request/review status in study.deaths, then below error message will be displayed.
+            // A new entry starts at 'IN PROGRESS'; 'Submit Death' sets 'REQUEST: PENDING' and 'Submit Necropsy for
+            // Review' sets 'Review Required', so either prior state means the animal is already in the workflow.
             else if (rowQCState === 'IN PROGRESS' &&
                     (priorDeathQCState === 'REQUEST: PENDING' || priorDeathQCState === 'REVIEW REQUIRED')) {
                 errorMsg = 'Death record is pending review for this animal';
             }
-            // if 'Save Draft' record already exists, it doesn't allow to 'Save Draft' or 'Submit Death'
-            // on the same animal again - throws an error "duplicate key value violates unique constraint"
-            // So, added this check to allow 'Save Draft' record to be saved only once.
+            // A second draft for the same animal would fail on the unique constraint, so catch it here.
             else if (oldRow === undefined && rowQCState === 'IN PROGRESS' && priorDeathQCState === 'IN PROGRESS') {
                 errorMsg = 'Death/Necropsy data entry is in progress for this animal';
             }
-            // study.deaths is demographic (one row per animal), so any other new row for an animal with an existing
-            // record would fail on the unique constraint; report it as a validation error instead. Test record
-            // existence, not QC state: ETL/import-sourced rows can carry a null QCState.
+            // Catch-all for that constraint. Test existence, not QC state: ETL rows can carry a null QCState.
             else if (oldRow === undefined && deathIdMap[row.Id]) {
                 errorMsg = 'A death record already exists for this animal (' + (deathIdMap[row.Id].QCStateLabel || 'unknown state') + ').';
             }
@@ -130,21 +129,6 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
                 EHR.Server.Utils.addError(scriptErrors, 'Id', errorMsg, 'ERROR');
             }
             else {
-                if (!helper.isValidateOnly() && row.Id && row.date && rowQCState === 'COMPLETED') {
-
-                    // update demographics
-                    demographicsUpdates.push({
-                        Id: row.Id,
-                        death: row.date,
-                        calculated_status: 'Dead',
-                        QCState: helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId()
-                    });
-
-                    console.log('updating demographics death date for animal: ' + row.Id);
-                    helper.getJavaHelper().updateDemographicsRecord(demographicsUpdates);
-                    console.log('updated demographics death date for animal: ' + row.Id);
-                }
-
                 if (!helper.isValidateOnly() && row.date && row.QCStateLabel && EHR.Server.Security.getQCStateByLabel(row.QCStateLabel).PublicData) {
                     var qcstate = helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId();
 
@@ -177,9 +161,30 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.AFTER_INSERT, 'study', 'deaths', function(helper, scriptErrors, row, oldRow) {
     helper.registerDeath(row.Id, row.date);
     triggerHelper.reportDataChange("study", "deaths", [row.Id]);
+
+    if (row.Id && idsToSync.indexOf(row.Id) === -1) {
+        idsToSync.push(row.Id);
+    }
+});
+
+EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.AFTER_UPDATE, 'study', 'deaths', function(helper, scriptErrors, row, oldRow) {
+    if (row.Id && idsToSync.indexOf(row.Id) === -1) {
+        idsToSync.push(row.Id);
+    }
 });
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.COMPLETE, 'study', 'Deaths', function(event, errors, helper){
+
+    // The shared ehr script writes demographics.death from the incoming row; this runs after and re-derives it from
+    // the stored record, so the event record wins. calculated_status is left to the shared status recalc.
+    if (!helper.isETL() && idsToSync.length) {
+        var demographicsUpdates = triggerHelper.computeDemographicsSync(idsToSync);
+        if (demographicsUpdates.size() > 0) {
+            helper.getJavaHelper().updateDemographicsRecord(demographicsUpdates);
+        }
+        idsToSync = [];
+    }
+
     var rows = helper.getRows() || [];
     for (var i = 0; i < rows.length; i++) {
         var row = rows[i].row;
