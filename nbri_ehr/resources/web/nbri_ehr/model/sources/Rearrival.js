@@ -57,6 +57,12 @@ EHR.model.DataModelManager.registerMetadata('Rearrival', {
                 hidden: true,
                 showInGrid: false
             },
+            // a rearriving animal keeps the assignments it already had; new ones are made on the Assignment forms
+            groupId: {
+                allowBlank: true,
+                hidden: true,
+                showInGrid: false
+            },
         }
     }
 });

@@ -3,12 +3,29 @@
            xmlns:dat="http://labkey.org/data/xml"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
+    <!-- The shared EHR schema gives areas and rooms a dateDisabled column but not buildings, floors, or
+         cages, so those three can only be deleted, never retired. Provisioned here so the whole housing
+         hierarchy can be disabled the same way. -->
     <template xsi:type="EHRLookupsTemplateType">
         <table tableName="buildings" tableDbType="TABLE">
             <dat:tableTitle>Buildings</dat:tableTitle>
             <dat:columns>
                 <dat:column columnName="area">
                     <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="dateDisabled">
+                    <dat:rangeURI>dateTime</dat:rangeURI>
+                </dat:column>
+            </dat:columns>
+        </table>
+    </template>
+
+    <template xsi:type="EHRLookupsTemplateType">
+        <table tableName="floors" tableDbType="TABLE">
+            <dat:tableTitle>Floors</dat:tableTitle>
+            <dat:columns>
+                <dat:column columnName="dateDisabled">
+                    <dat:rangeURI>dateTime</dat:rangeURI>
                 </dat:column>
             </dat:columns>
         </table>
@@ -34,6 +51,9 @@
             <dat:columns>
                 <dat:column columnName="indoor_outdoor">
                     <dat:rangeURI>string</dat:rangeURI>
+                </dat:column>
+                <dat:column columnName="dateDisabled">
+                    <dat:rangeURI>dateTime</dat:rangeURI>
                 </dat:column>
             </dat:columns>
         </table>
