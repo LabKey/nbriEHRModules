@@ -708,28 +708,28 @@ public class NBRI_EHRTriggerHelper
         BatchValidationException errors = new BatchValidationException();
         Date date = ConvertHelper.convert(row.get("date"), Date.class);
         if (id == null || date == null)
-            return "Attempting to create a project assignment record with no id or date";
+            return "Attempting to create an assignment record with no id or date";
 
         TableInfo ti = getTableInfo("study", dataset);
 
         String taskId = ConvertHelper.convert(row.get("taskid"), String.class);
         if (taskId == null) {
-            return "Attempting to create a project assignment record with no taskid";
+            return "Attempting to create an assignment record with no taskid";
         }
 
         String qcstate = ConvertHelper.convert(row.get("qcstate"), String.class);
         if (qcstate == null) {
-            return "Attempting to create a project assignment record with no qcstate";
+            return "Attempting to create an assignment record with no qcstate";
         }
 
         String performedby = ConvertHelper.convert(row.get("performedby"), String.class);
         if (performedby == null) {
-            return "Attempting to create a project assignment record with no performedby";
+            return "Attempting to create an assignment record with no performedby";
         }
 
         boolean updateRecord = false;
 
-        // If there is already a project assignment record for this task, update that record
+        // If there is already an assignment record of this kind for this task, update that record
         SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
         filter.addCondition(FieldKey.fromString("taskid"), taskId);
         TableSelector ts = new TableSelector(ti, PageFlowUtil.set("lsid", "objectid"), filter, null);
@@ -771,6 +771,16 @@ public class NBRI_EHRTriggerHelper
         else if (dataset.equalsIgnoreCase("protocolAssignment"))
         {
             return "Attempting to create a protocol assignment record with no protocol";
+        }
+
+        String groupId = ConvertHelper.convert(row.get("groupId"), String.class);
+        if (groupId != null)
+        {
+            saveRow.put("groupId", groupId);
+        }
+        else if (dataset.equalsIgnoreCase("animal_group_members"))
+        {
+            return "Attempting to create a group assignment record with no group";
         }
 
         List<Map<String, Object>> rows = new ArrayList<>();

@@ -9,6 +9,31 @@ EHR.Server.Utils = require("ehr/utils").EHR.Server.Utils;
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 var idsToSync = [];
 
+// conception ids claimed by the rows of this save that have already been validated.  Rows entered together are not in
+// study.birth yet when each one is checked, so this is the only way the one-birth-per-conception rule can see them.
+var conceptIdsInSave = [];
+
+// opens one assignment record against the animal being entered; each dataset carries the assignment under its own field
+function createAssignment(scriptErrors, dataset, fieldName, value, row) {
+    if (!value)
+        return;
+
+    var assignmentRec = {
+        Id: row.Id,
+        date: row.date,
+        taskid: row.taskid,
+        remark: row.remark,
+        qcstate: row.qcstate,
+        performedby: row.performedby
+    };
+    assignmentRec[fieldName] = value;
+
+    var error = triggerHelper.createAssignmentRecord(dataset, row.Id, assignmentRec);
+    if (error) {
+        EHR.Server.Utils.addError(scriptErrors, 'Id', error, 'ERROR');
+    }
+}
+
 function onInit(event, helper){
     helper.setScriptOptions({
         allowAnyId: true,
@@ -24,6 +49,7 @@ function onInit(event, helper){
 
     // the script scope can outlive a single save, so never inherit ids from a prior one
     idsToSync = [];
+    conceptIdsInSave = [];
 
     helper.decodeExtraContextProperty('birthsInTransaction');
 }
@@ -54,12 +80,19 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
         //when updating a record that already carries this conception id, the existing row accounts for one match
         var conceptIdThreshold = (oldRow && oldRow.conceptId === row.conceptId) ? 1 : 0;
-        if (triggerHelper.totalRecords('study', 'birth', 'conceptId', row.conceptId) > conceptIdThreshold) {
-            EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id is already used by another birth record', 'WARN');
+        var claimedBySavedRow = triggerHelper.totalRecords('study', 'birth', 'conceptId', row.conceptId) > conceptIdThreshold;
+
+        // rows are validated one at a time and collected below, so this list holds the earlier rows of this save only
+        var claimedByEarlierRow = conceptIdsInSave.indexOf(row.conceptId) > -1;
+
+        if (claimedBySavedRow || claimedByEarlierRow) {
+            EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id is already used by another birth record', 'ERROR');
         }
 
+        conceptIdsInSave.push(row.conceptId);
+
         if (triggerHelper.totalRecords('study', 'pregnancy', 'conceptId', row.conceptId) > 0) {
-            EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id is already used by a pregnancy outcome record', 'INFO');
+            EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id is already used by a pregnancy outcome record', 'WARN');
         }
     }
 
@@ -69,29 +102,14 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
             row.qcstate = helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId();
         }
 
-        if (row.Id && row.date) {
-
-            let assignmentRec = {
-                Id: row.Id,
-                date: row.date,
-                taskid: row.taskid,
-                remark: row.remark,
-                qcstate: row.qcstate,
-                performedby: row.performedby
-            }
-
-            if (row.project) {
-                assignmentRec['project'] = row.project;
-                triggerHelper.createAssignmentRecord("assignment", row.Id, assignmentRec);
-            }
-
-            if (row.birthProtocol) {
-                assignmentRec['protocol'] = row.birthProtocol;
-                triggerHelper.createAssignmentRecord("protocolAssignment", row.Id, assignmentRec);
-            }
-        }
-
         if (!helper.isGeneratedByServer() && !helper.isValidateOnly()) {
+
+            // an animal is born already assigned to a project, a protocol and a group, all entered on the birth row
+            if (row.Id && row.date) {
+                createAssignment(scriptErrors, 'assignment', 'project', row.project, row);
+                createAssignment(scriptErrors, 'protocolAssignment', 'protocol', row.birthProtocol, row);
+                createAssignment(scriptErrors, 'animal_group_members', 'groupId', row.groupId, row);
+            }
 
             // if 'cage', labeled as "Birth Location" is provided, then insert into housing.
             if (row.cage && row.Id && row.date) {

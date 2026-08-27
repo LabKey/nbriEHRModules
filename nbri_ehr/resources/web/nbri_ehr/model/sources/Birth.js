@@ -17,13 +17,6 @@ Ext4.onReady(function() {
 });
 
 EHR.model.DataModelManager.registerMetadata('Birth', {
-    allQueries: {
-        // lowercase to match the key Default.js and Assignment.js use; a differently-cased key shadows theirs entirely
-        // rather than merging with it
-        'enddate': {
-            hidden: true
-        }
-    },
     byQuery: {
         'study.birth': {
             Id: {
@@ -77,16 +70,51 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                     width: 200
                 },
             },
-            // project and protocol are entered through the Project Assignment and Protocol Assignment sections
+            // an animal joins the colony already assigned to a project, a protocol and a group; the trigger script
+            // opens the matching assignment record for each one
             project: {
-                allowBlank: true,
-                hidden: true,
-                showInGrid: false
+                xtype: 'combo',
+                allowBlank: false,
+                nullable: false,
+                columnConfig: {
+                    width: 150
+                },
+                lookup: {
+                    schemaName: 'ehr',
+                    queryName: 'project',
+                    keyColumn: 'project',
+                    columns: 'project,name',
+                    filterArray: [
+                        LABKEY.Filter.create('isActive', true, LABKEY.Filter.Types.EQUAL),
+                    ]
+                }
             },
             birthProtocol: {
-                allowBlank: true,
-                hidden: true,
-                showInGrid: false
+                xtype: 'combo',
+                allowBlank: false,
+                nullable: false,
+                columnConfig: {
+                    width: 150
+                },
+                // set displayColumn: ehr.protocol's title column (displayName) is not returned by this query
+                lookup: {
+                    schemaName: 'ehr',
+                    queryName: 'activeProtocols',
+                    keyColumn: 'protocol',
+                    displayColumn: 'protocol',
+                    columns: 'protocol,title'
+                }
+            },
+            groupId: {
+                allowBlank: false,
+                nullable: false,
+                columnConfig: {
+                    width: 200
+                },
+                lookup: {
+                    // the shared default filters on a date column that the breeding type lookup does not have
+                    filterArray: []
+                }
             },
             'Id/demographics/birth': {
                 allowBlank: false
@@ -95,16 +123,14 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                 allowBlank: false,
                 nullable: false
             },
-            // see the note above on the fields the Start with Conception window populates
+            // the conception is picked rather than typed: clicking the field, in the grid or in the row editor, opens
+            // the same window the Start with Conception button uses and copies that conception onto the row
             conceptId: {
+                xtype: 'nbri_ehr-conceptionField',
                 allowBlank: false,
                 nullable: false,
                 columnConfig: {
-                    width: 150,
-                    editable: false
-                },
-                formEditorConfig: {
-                    readOnly: true
+                    width: 150
                 }
             },
             breedingType: {

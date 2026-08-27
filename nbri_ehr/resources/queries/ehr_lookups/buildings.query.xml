@@ -16,6 +16,12 @@
                             <fkTable>areas</fkTable>
                             <fkColumnName>area</fkColumnName>
                             <fkDisplayColumnName>description</fkDisplayColumnName>
+                            <filters>
+                                <filterGroup>
+                                    <!-- Insert and update only, so a building whose area was retired afterward still displays it. -->
+                                    <filter column="dateDisabled" operator="isblank" value=""/>
+                                </filterGroup>
+                            </filters>
                         </fk>
                     </column>
                     <column columnName="name">

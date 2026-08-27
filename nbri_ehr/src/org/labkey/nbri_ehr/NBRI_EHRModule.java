@@ -218,9 +218,6 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIDeathFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIHousingFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIMedicationTreatmentFormType.class, this));
-        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProjectFormType.class, this));
-        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProtocolFormType.class, this));
-        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIInvestigatorsFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIPregnancyFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIWeightFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIFlagsFormType.class, this));
@@ -228,10 +225,6 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRINotesFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRICasesFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIBehavioralCasesFormType.class, this));
-        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIBuildingFormType.class, this));
-        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIRoomFormType.class, this));
-        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIFloorFormType.class, this));
-        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRICageFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIClinicalObservationsFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIClinicalRoundsFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIAnimalTrainingFormType.class, this));

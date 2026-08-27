@@ -1,72 +1,155 @@
 code	meaning
+ACCULAB	Acculab Life Sciences
+ABL	Advanced Bioscience Laboratories
+AECOM	Albert Einstein College of Medicine
+ALLERGAN	Allergan, Inc
+ALPHAGEN	Alpha Genesis
+ASU	Arizona State University
+AFRRI	Armed Forces Radiobiological Res.
 AAI	Asiatic Animal Imports
+BATTELLE	Battelle Research
+BCM	Baylor College of Medicine
+BEDFORD-VA	Bedford VA Hospital
 BIOQUAL	Bioqual, Incorporated
+BIOTOX	Biotox Sciences
+BLACKPOOL	Blackpool Zoological Gardens
+BOBCROW	Bob Crow (USDA 58B142)
+BOSTONU	Boston University
 BRANDEIS	Brandeis University
+BWH	Brigham and Women's Hospital
+BRISTOL	Bristol-Myers Company
+BRONX-VA	Bronx VA Hospital
+BWEF	BWEF-Primegen
 CA-DPH	Calif Dept Public Health Facilities
+CIMR	Calif. Institute for Medical Research
+CALTECH	California Institute of Technology
 CA-DOH	California State Department of Health
 CPRC	Carribean Primate Center
 CWRU	Case Western Reserve University
+CDC-GL	Center for Disease Control - Garcia.Lema
 UCD-CNS	Center for Neuroscience, UCD
 CR-KL	Charles River - Key Lois
 CRL	Charles River Labs
 CRRP	Charles River Research Primates Inc
 BROOKFIELD	Chicago Zoological Park (Brookfield Zoo)
 CHILDRENS	Childrens Hospital
+CHOP	Childrens Hospital of Philadelphia
 CHIMR	Christ Hospital Inst. for Medical Res.
+CMC	Colorado Mountain College
 CSU	Colorado State University
+COLUMBIA	Columbia University
+CONNAUGHT	Connaught Laboratories
 CORNELL	Cornell University
 COULSTON	Coulston Foundation
 COVANCE	Covance Research Products, Inc.
 PRIMGEN	CSP-Primgen
 CUTTER	Cutter Lab
+DHMRI	David H. Murdock Res Institute
 DMT	Del Mundo Trading
+DENVER-ZOO	Denver Zoological Gardens
+DODGE-ZOO	Dodge City Zoo
+DOHENY	Doheny Eye Foundation
+DOWNSTATE	Downstate Medical Center
+DUKE	Duke University Medical Center
 EPZ	El Paso Zoological Gardens
 ENVIGO	Envigo
+FOLSOM-ZOO	Folsom Zoo
+GENENTECH	Genentech, Inc.
 HAHNEMANN	Hahnemann University
 HL	Hazelton Laboratories
 HLA	Hazelton Laboratories America Inc.
+HEMKER-ZOO	Hemker Park and Zoo
+INDY-ZOO	Indianapolis Zoo
 UNK	Institution Unknown
 ISU-VDL	Iowa State Univ, Vet Diagnostic Lab
+ISIS	Isis Services
 JVL	Jan Vacek Limited
 JHMC	Jewish Hospital & Medical Center
+JHU	Johns Hopkins University
 JRI	Johnson Research Institute
 KNLPC	Kunming National Laboratory Primate Ctr.
 LABS	Laboratory Animal Breeders and Services
 LABSINDO	Labsindo
+LEGACY	Legacy Research Institute
 LEMSIP	LEMSIP, New York Medical Center, RDI
 LAIR	Letterman Army Res Inst-Presidio
 LB	Litton Bionetics
 LLU	Loma Linda University
+LSU-SOM	Louisiana State Univ School of Medicine
+MADIGAN	Madigan Army Center
+MWRI	Magee Womens Research Institute
+MIT	Massachusetts Institute of Technology
+MCW-ARC	Med College of Wisconsin, Anim Res Ctr
+MCG	Medical College of Georgia
+MEDRI	Medical Research Institute
+METRO-ZOO	Metro Richmond Zoo
 MSU-MI	Michigan State University
+MICKE-ZOO	Micke Grove Zoo
+MPLS-VA	Minneapolis Veterans Hospital
+MONKEYJNGL	Monkey Jungle
 MSU-MT	Montana State University
+MONTG-ZOO	Montgomery Zoo
+MOORPRK-ZO	Moorpark Zoo
+MSSM	Mount Sinai School of Medicine
 MPI	MPI Research
 NASA-ARC	NASA-Ames Research Center
+NIH	National Institutes of Health
 NAMRL	Naval Aerospace Medical Research Lab
+NEURALINK	Neuralink
+NSI	Neurosciences Institute
 NEPRC	New England Primate Research Center
+NMSU-PRI	New Mex State Univ, Primate Research Inst
+NICHOLS	Nichols Exotics
 NIHAC	NIH Animal Center
+NEU	Northeastern University
+NWU	Northwestern University
+OAKLAND-ZO	Oakland Zoo
+OSU	Ohio State University
+OHSU	Oregon Health Sciences University
+OPR	Oregon Primate Rescue
 ORPRC	Oregon Regional Primate Research Center
+OSAGE	Osage Research Primates
+PALOALTO-V	Palo Alto Veteran's Administration
 PARC-SAF	Parc Safari African
+PENN-ZOO	Pennington Zoo
 PPC	Perrine Primate Center
 PPP	Peruvian Primatological Project
 PET-FARM	Pet Farm
+PTDEF-ZOO	Point Defiance Zoo
 PRIMLAB	Primate Laboratory
 PPI	Primate Products, Incorporated
+PRINCETON	Princeton University
 PRIVATE	Private Party
 RIEPT	Res. Inst. of Exp. Pathology & Therapy
+SCRIPPS	Research Institute of Scripps Clinic
+RTI	Research Triangle Institute
+ROCKEFELLR	Rockefeller University
 SALK	Salk Institute
 SFGH	San Francisco General Hospital
+SFMC	San Francisco Medical Center
+SANTANA-ZO	Santa Ana Zoo
+SCHERING	Schering, Inc.
+SCIENCEXYZ	Science XYZ
+SHARP-CAB	Sharp Cabrillo Hospital
 SNBL	Shin Nippon Biomedical Laboratories
 SICONBREC	Siconbrec
 SBM	Sierra Biomedical
+SINCLAIR	Sinclair Research Center, LLC
 SKB	Smith, Kline, Beecham
+SKERI	Smith-Kettlewell Eye Research Institute
+SDPC	Sonora Desert Primate Conservancy
+STPO	South Texas Primate Observatory
 SIU	Southern Illinois University
 SIU-SOM	Southern Illinois University Med School
 SORI	Southern Research Institute
 SFRE	Southwest Foundation for Res. & Educ.
+SNPRC	Southwest Nat. Primate Center
 SWRF	Southwest Research Foundation
 SWRI	Southwest Research Institute
 SOPF	Stanford Outdoor Primate Facility
 SRI	Stanford Research Institute
+SU-ARF	Stanford University Animal Res. Facility
+SUNY-B	State Univ of New York at Buffalo
 SUNY-SB	State Univ of New York at Stony Brook
 SXZ	Suzhou Xishan Zhongke Lab Animal Co.
 SYNTEX	Syntex (USA) Incorporated
@@ -74,6 +157,7 @@ TARPON	Tarpon Zoo
 TTUHSC	Texas Tech Health Science Center
 BROOKS-AFB	Texas, Brooks Air Force Base
 TPI	The Parkinson's Institute
+TJU	Thomas Jefferson University
 TNPRC	Tulane (Delta) Regional Primate Res Ctr
 UCB	UC Berkeley
 UCLA	UC Los Angeles
@@ -81,23 +165,61 @@ UCR	UC Riverside
 UCSD	UC San Diego
 UCSF	UC San Francisco Vivarium
 UC-ARS	Univ of Calif, Animal Resources Service
+UC-DBS	Univ of Calif, Dept Biological Sci.
 GPC	Univ of Gottingen Primate Center
 UH-RAF	Univ of Hawaii, Research Animal Facility
+UMASS-MS	Univ of Massachusetts, Med School
 OUHSC	Univ of Oklahoma Health Sci. Center
+UTMB-G	Univ of Texas Medical Branch, Galveston
 UTHSC-H	Univ of Texas, Health Sci Ctr, Houston
+UTHSC	Univ. Texas Health Science Center
+UMDNJ	University Med/Dental of New Jersey
+UAB	University of Alabama, Birmingham
+UAZ	University of Arizona
+UBC	University of British Columbia
+UCI	University of California, Irvine
+UCHICAGO	University of Chicago
 UCHSC	University of Colorado Health Sciences
 UCMC	University of Colorado Medical Center
+UFL	University of Florida
+UGA	University of Georgia
 UIC	University of Illinois at Chicago
+UIOWA-OAK	University of Iowa, Oakdale Facility
+KUMC	University of Kansas Medical Center
+ULOUISVL	University of Louisville
+UMD	University of Maryland
+UMIAMI	University of Miami
+UMICH	University of Michigan
+UMN	University of Minnesota
+UMMC	University of Mississippi Medical Center
+MIZZOU	University of Missouri, Columbia
+UNMC	University of Nebraska Medical Center
 UNV	University of Nevada
 UNM	University of New Mexico
+UOREGON	University of Oregon
+UPENN	University of Pennsylvania
+PITT-DLAR	University of Pittsburgh Lab Animal Rscs
+PITT-SOM	University of Pittsburgh Medical School
 UPR	University of Puerto Rico
+USC	University of Southern California
+UTENN	University of Tennessee
 UTSCC	University of Texas System Cancer Center
+UTEP	University of Texas, El Paso
+UUMC	University of Utah Medical Center
 UNK-CN	Unknown Institution, China
+USC-LA	USC Livingston Annex
+VA	V.A. Hospital
 VBS	Valley Biosystems
+VANDERBILT	Vanderbilt University
+VCU	Virginia Commonwealth University
 WFSM	Wake Forest School of Medicine
 WANPRC	Washington Regional Primate Research Ctr
+WUSTL	Washington University School of Medicine
+WHITTAKER	Whittaker Bioproducts
 WHMC	Wilford Hall Medical Center
 WRPRC	Wisconsin Regional Primate Research Ctr
 WAI	Woodward Asiatic Imports
 WWP	World Wide Primates, Inc.
+YALE	Yale University
 YPRC	Yemassee Primate Research Center
+YRPRC	Yerkes Regional Primate Research Ctr
