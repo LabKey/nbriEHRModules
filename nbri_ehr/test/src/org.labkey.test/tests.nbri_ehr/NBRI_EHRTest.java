@@ -118,9 +118,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String BUILDING_AREA = "SPF";
 
     // Cage locations seeded by populateLocations, named for the room each one sits in. The cage trigger derives these
-    // from the room and cage, and housing records key off the location, so these are what belongs in a housing row's
-    // 'cage' field. datasetHousing.tsv spells the same values out, since a TSV cannot call cageLocation.
+    // from the room and cage, and both housing records and the data entry cage pickers key off the location, so these
+    // are what belongs in a 'cage' field and what the pickers list. datasetHousing.tsv spells the same values out,
+    // since a TSV cannot call cageLocation.
     private static final String CAGE_IN_R1 = cageLocation("R1", "C1");
+    private static final String CAGE_IN_R2 = cageLocation("R2", "C3");
     private static final String CAGE_IN_R3 = cageLocation("R3", "C4");
 
     // A group pen has no cage, so its location is the room key alone. Created by testGroupPenCagemates.
@@ -652,7 +654,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         arrivals.setGridCell(1, "arrivalType", "Non-quarantine Arrival");
         arrivals.setGridCell(1, "acquisitionType", "Lab Transfer (Wild Born)");
         arrivals.setGridCell(1, "Id", arrivedAnimal);
-        arrivals.setGridCell(1, "cage", "C1");
+        arrivals.setGridCell(1, "cage", CAGE_IN_R1);
         arrivals.setGridCell(1, "Id/demographics/gender", "Female");
         arrivals.setGridCell(1, "Id/demographics/geographic_origin", "BRAZIL");
         arrivals.setGridCell(1, "Id/demographics/species", "Pig-Tailed Macaque");
@@ -693,7 +695,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         view.addColumn("cage");
         view.applyCustomView();
         Assert.assertEquals("Invalid Arrival record", Arrays.asList(arrivedAnimal), table.getRowDataAsText(0, "Id"));
-        Assert.assertEquals("Invalid Arrival record", Arrays.asList("C1"), table.getRowDataAsText(0, "cage"));
+        Assert.assertEquals("Invalid Arrival record", Arrays.asList(CAGE_IN_R1), table.getRowDataAsText(0, "cage"));
 
         goToSchemaBrowser();
         table = viewQueryData("study", "assignment");
@@ -780,7 +782,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         births.setGridCellJS(1, "date", now.minusDays(1).format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         births.setGridCell(1, "Id", bornAnimal);
-        births.setGridCell(1, "cage", "C3");
+        births.setGridCell(1, "cage", CAGE_IN_R2);
         births.setGridCell(1, "Id/demographics/gender", "Female");
         births.setGridCell(1, "breedingType", breedingType);
         births.setGridCell(1, "Id/demographics/socialCode", socialCode);
@@ -815,7 +817,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         DataRegionTable table = viewQueryData("study", "birth");
         table.setFilter("Id", "Equals", bornAnimal);
         Assert.assertEquals("Invalid Birth record", Arrays.asList(bornAnimal), table.getRowDataAsText(0, "Id"));
-        Assert.assertEquals("Invalid Birth record", Arrays.asList("C3"), table.getRowDataAsText(0, "cage"));
+        Assert.assertEquals("Invalid Birth record", Arrays.asList(CAGE_IN_R2), table.getRowDataAsText(0, "cage"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList(breedingType), table.getRowDataAsText(0, "breedingType"));
 
@@ -879,7 +881,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         String socialCode = "Mother-rearing (for indoors)";
         String animalGroup = "Project Breeding";
         // the severity prefix is part of the message the server sends, so asserting on it also pins the rule at
-        // ERROR, which is what disables Submit Final
+        // ERROR, which is what refuses the save
         String duplicateError = "ERROR: This conception Id is already used by another birth record";
         LocalDateTime now = LocalDateTime.now();
 
@@ -904,12 +906,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         startWithConception(births, firstConcept, 2);
         fillBirthRow(births, 2, secondAnimal, now.minusDays(1), socialCode, animalGroup);
 
-        // the rows of one form entry are not in study.birth yet when each is validated, so this only fails if the
-        // check looks at the other rows of the same save rather than the saved records alone
-        log("Verifying the second birth is rejected while it shares a conception with the first");
-        waitForFormError(duplicateError);
+        // Live validation only sends the row that just changed, so the rows of one form entry first reach the
+        // server together on submit. A rule that compares them therefore reports by refusing the save rather than
+        // while the form is being filled.
+        log("Verifying the save is refused while both births claim one conception");
+        submitFormExpectingError(duplicateError);
 
-        log("Verifying the second birth is accepted once it points at its own conception");
+        log("Verifying the save is accepted once the second birth points at its own conception");
         births.setGridCellJS(2, "conceptId", secondConcept);
         waitForNoFormError(duplicateError);
 
@@ -2385,6 +2388,17 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
             msgWindow = new Window.WindowFinder(this.getDriver()).withTitleContaining(windowTitle).waitFor();
         }
         msgWindow.clickButton("Yes");
+    }
+
+    /**
+     * Submits the form expecting the save to be refused, and asserts the given message is reported. Dismisses the
+     * alert the panel raises so the form can be corrected and submitted again.
+     */
+    private void submitFormExpectingError(String message)
+    {
+        submitForm("Submit Final", "Finalize");
+        waitForFormError(message);
+        new Window.WindowFinder(getDriver()).withTitle("Error").waitFor().clickButton("OK", 0);
     }
 
     private void gotoEnterData()
