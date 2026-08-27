@@ -931,6 +931,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Assert.assertEquals("The second conception should have exactly one birth", 1, table.getDataRowCount());
         Assert.assertEquals("Wrong birth recorded against the second conception",
                 Arrays.asList(secondAnimal), table.getRowDataAsText(0, "Id"));
+
+        // the refused save is logged server side, so account for it or the run's server error check fails the test
+        checkExpectedErrors(1);
     }
 
     @Test
@@ -2369,6 +2372,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
     private void submitForm(String buttonText, String windowTitle)
     {
+        submitForm(buttonText, windowTitle, true);
+    }
+
+    private void submitForm(String buttonText, String windowTitle, boolean expectNavigation)
+    {
         //Give time for errors to disappear after validation
         Locator.tagContainingText("div", "The form has the following errors and warnings:")
                 .waitForElementToDisappear(longWait());
@@ -2387,16 +2395,22 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
             submitFinalBtn.findElement(getDriver()).click();
             msgWindow = new Window.WindowFinder(this.getDriver()).withTitleContaining(windowTitle).waitFor();
         }
-        msgWindow.clickButton("Yes");
+        // a successful save navigates to the form's success URL, but a refused one leaves the browser on the form,
+        // so only the former can wait for a page load
+        if (expectNavigation)
+            msgWindow.clickButton("Yes");
+        else
+            msgWindow.clickButton("Yes", 0);
     }
 
     /**
      * Submits the form expecting the save to be refused, and asserts the given message is reported. Dismisses the
-     * alert the panel raises so the form can be corrected and submitted again.
+     * alert the panel raises so the form can be corrected and submitted again. A refused save is logged as a server
+     * error, which the caller has to account for through checkExpectedErrors.
      */
     private void submitFormExpectingError(String message)
     {
-        submitForm("Submit Final", "Finalize");
+        submitForm("Submit Final", "Finalize", false);
         waitForFormError(message);
         new Window.WindowFinder(getDriver()).withTitle("Error").waitFor().clickButton("OK", 0);
     }
