@@ -50,7 +50,7 @@ public class NBRIClinicalRoundsFormType extends NBRIBaseTaskFormType
                 new NBRICaseTemplateFormSection("Case Template", "Case Template", "nbri_ehr-casetemplatepanel", Arrays.asList(ClientDependency.supplierFromPath("nbri_ehr/panel/CaseTemplatePanel.js"))),
                 new NBRICasesFormPanelSection("Clinical Case", ctx, false),
                 new NBRIWeightFormSection(true, false, true, "cases"),
-                new NBRIClinicalObservationsFormSection(true, "cases"),
+                new NBRIClinicalObservationsFormSection("NBRI_DAILY_CLINICAL_OBS", true, "cases"),
                 new NBRIProcedureFormSection(true, "cases"),
                 new NBRITreatmentGivenFormSection(true, "cases"),
                 new NBRIVitalsFormSection(true, "cases"),

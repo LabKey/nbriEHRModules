@@ -80,6 +80,7 @@ public class NBRI_EHRTriggerHelper
     private User _user;
     private static final Logger _log = LogManager.getLogger(NBRI_EHRTriggerHelper.class);
     private final Map<String,Object> _cachedDrugFormulary = new HashMap<>();
+    private final Map<String,String> _cachedObservationTypeCategories = new HashMap<>();
 
     // Maps an originating observation order's taskid to the task its scheduled observations are grouped under,
     // for the duration of a single save batch (the same helper instance is reused across rows in the batch).
@@ -922,6 +923,26 @@ public class NBRI_EHRTriggerHelper
                 _log.error("Error adding daily clinical observation orders", e);
             }
         }
+    }
+
+    /**
+     * Returns the category of an observation type from ehr.observation_types, or null when the type has no
+     * category or is not found. Cached for the life of the save batch.
+     */
+    public String getObservationTypeCategory(String observationType)
+    {
+        if (observationType == null)
+            return null;
+
+        if (!_cachedObservationTypeCategories.containsKey(observationType))
+        {
+            TableInfo ti = getTableInfo("ehr", "observation_types");
+            SimpleFilter filter = new SimpleFilter(FieldKey.fromString("value"), observationType);
+            List<String> categories = new TableSelector(ti, Collections.singleton("category"), filter, null).getArrayList(String.class);
+            _cachedObservationTypeCategories.put(observationType, categories.isEmpty() ? null : categories.get(0));
+        }
+
+        return _cachedObservationTypeCategories.get(observationType);
     }
 
     // This helper function propagates clinical observations through clinical cases

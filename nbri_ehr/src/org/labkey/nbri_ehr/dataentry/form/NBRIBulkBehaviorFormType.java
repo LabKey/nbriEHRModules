@@ -45,8 +45,8 @@ public class NBRIBulkBehaviorFormType extends NBRIBaseTaskFormType
                 new NBRIClinicalRemarksFormSection("Behavior Assessment", ctx.getContainer().hasPermission(ctx.getUser(), NBRIEHRVetTechPermission.class),
                         ctx.getContainer().hasPermission(ctx.getUser(), EHRVeterinarianPermission.class),
                         ctx.getContainer().hasPermission(ctx.getUser(), AdminPermission.class)),
-                new NBRIClinicalObservationsFormSection(false, null),
-                new NBRIObservationOrdersFormSection("NBRI_DAILY_CLINICAL_OBS_ORDERS", false, null),
+                new NBRIClinicalObservationsFormSection(null, false, null),
+                new NBRIObservationOrdersFormSection(null, false, null),
                 new NBRITreatmentGivenFormSection(),
                 new NBRITreatmentOrderFormSection()
         ));

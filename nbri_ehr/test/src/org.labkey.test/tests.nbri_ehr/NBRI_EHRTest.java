@@ -111,6 +111,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     // Dedicated animal for testScheduledObservationTaskGrouping; provisioned (alive, housed, assigned) in
     // createTestSubjects so the clinical case form raises no warnings that would keep the validation banner up.
     private static final String taskGroupAnimalId = "TESTGRP9090";
+    // Dedicated animal for testObservationTypeDerivedFromCategory; provisioned the same way so the Observations
+    // form can be submitted final in one step.
+    private static final String obsTypeAnimalId = "TESTOBSTYPE9191";
 
     // Rooms are keyed by building and name, so every room fixture needs a building to hang off of.
     // 'buildings' derives its key from the description, and 'SPF' is one of the areas seeded with the ehr_lookups schema.
@@ -573,6 +576,32 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         };
         insertCommand = getApiHelper().prepareInsertCommand("study", "Assignment", "lsid", fields, data);
         getApiHelper().deleteAllRecords("study", "Assignment", new Filter("Id", taskGroupAnimalId));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+
+        // Fully provision the observation-type test animal for the same reason.
+        log("Creating observation type test subject");
+        fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
+        data = new Object[][]{
+                {obsTypeAnimalId, "MMU", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
+        };
+        insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
+        getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", obsTypeAnimalId));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+
+        fields = new String[]{"Id", "date", "enddate", "room", "cage", "performedby"};
+        data = new Object[][]{
+                {obsTypeAnimalId, pastDate1, null, getRooms()[0], CAGE_IN_R1, 1004}
+        };
+        insertCommand = getApiHelper().prepareInsertCommand("study", "Housing", "lsid", fields, data);
+        getApiHelper().deleteAllRecords("study", "Housing", new Filter("Id", obsTypeAnimalId));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+
+        fields = new String[]{"Id", "date", "enddate", "project", "performedby"};
+        data = new Object[][]{
+                {obsTypeAnimalId, pastDate1, null, PROJECTS[0], 1004}
+        };
+        insertCommand = getApiHelper().prepareInsertCommand("study", "Assignment", "lsid", fields, data);
+        getApiHelper().deleteAllRecords("study", "Assignment", new Filter("Id", obsTypeAnimalId));
         getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
 
         primeCaches();
@@ -1315,7 +1344,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         Map<String, Integer> entriesPerCategory = new HashMap<>();
         for (Map<String, Object> row : getClinicalObservations(animalId))
+        {
             entriesPerCategory.merge(String.valueOf(row.get("category")), 1, Integer::sum);
+            // A scheduled observation takes its type from the originating order, which the daily clinical
+            // observation orders create as Clinical.
+            Assert.assertEquals("Scheduled observation for category " + row.get("category") + " should be Clinical",
+                    "Clinical", String.valueOf(row.get("type")));
+        }
         Assert.assertEquals("Expected the six daily observation categories", NBRI_DAILY_OBS_VALUES.size(), entriesPerCategory.size());
         entriesPerCategory.forEach((category, count) ->
                 Assert.assertEquals("Expected two entries (one per matching order) for category " + category, Integer.valueOf(2), count));
@@ -1405,6 +1440,56 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private int countObservationsForTask(String taskId)
     {
         return executeSelectRowCommand("study", "clinical_observations", ContainerFilter.Current, "/" + getContainerPath(), List.of(new Filter("taskid", taskId))).getRowCount().intValue();
+    }
+
+    // Two ehr.observation_types values on either side of the derivation: the first has no category, the second
+    // is categorized as Behavior. Both use a free-text Observation/Score editor, so neither depends on an
+    // ehr_lookups value list being populated.
+    private static final String UNCATEGORIZED_OBS_TYPE = "Mass";
+    private static final String BEHAVIOR_OBS_TYPE = "General Behavior Observation";
+
+    @Test
+    public void testObservationTypeDerivedFromCategory()
+    {
+        String animalId = obsTypeAnimalId;
+
+        // The Observations form offers every observation type, so it cannot set the observation's type up
+        // front; the trigger script derives it from the selected type's category. A type categorized as
+        // Behavior must be stored as a Behavior observation and everything else as Clinical, otherwise the
+        // entry drops out of the behavior views (study.behaviorObservations filters on type = 'Behavior').
+        log("Entering an uncategorized and a Behavior-categorized observation type on the Observations form");
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Observations"));
+
+        Ext4GridRef observations = _helper.getExt4GridForFormSection("Observations");
+        addObservationRow(observations, animalId, UNCATEGORIZED_OBS_TYPE, "3 cm mass on left arm");
+        addObservationRow(observations, animalId, BEHAVIOR_OBS_TYPE, "Pacing observed");
+        submitForm("Submit Final", "Finalize");
+
+        Map<String, String> typeByCategory = new HashMap<>();
+        for (Map<String, Object> row : getClinicalObservations(animalId))
+            typeByCategory.put(String.valueOf(row.get("category")), String.valueOf(row.get("type")));
+
+        Assert.assertEquals("Expected exactly the two entered observations for " + animalId,
+                Set.of(UNCATEGORIZED_OBS_TYPE, BEHAVIOR_OBS_TYPE), typeByCategory.keySet());
+        Assert.assertEquals("An uncategorized observation type should be stored as a Clinical observation",
+                "Clinical", typeByCategory.get(UNCATEGORIZED_OBS_TYPE));
+        Assert.assertEquals("A Behavior-categorized observation type should be stored as a Behavior observation",
+                "Behavior", typeByCategory.get(BEHAVIOR_OBS_TYPE));
+    }
+
+    // Appends a row to an Observations grid and fills in the fields the trigger script needs to accept it: an
+    // animal, an observation type (the grid's "category"), and an Observation/Score plus remark, since an entry
+    // with neither raises a WARN that would disable Submit Final. The row index is read back from the grid
+    // rather than assumed, so this works whether or not the form starts with rows of its own.
+    private void addObservationRow(Ext4GridRef observations, String animalId, String category, String observation)
+    {
+        _helper.addRecordToGrid(observations);
+        int row = observations.getRowCount();
+        observations.setGridCell(row, "Id", animalId);
+        observations.setGridCell(row, "category", category);
+        observations.setGridCell(row, "observation", observation);
+        observations.setGridCellJS(row, "remark", "remark for " + category);
     }
 
     @Test

@@ -58,7 +58,7 @@ public class NBRICasesFormType extends NBRIBaseTaskFormType
                 new NBRICasesFormPanelSection("Clinical Case", ctx, false),
                 new NBRIClinicalRemarksFormPanelSection(true, "cases", "Clinical Remarks", ctx, false),
                 new NBRIWeightFormSection(true, false, true, "cases"),
-                new NBRIClinicalObservationsFormSection(true, "cases"),
+                new NBRIClinicalObservationsFormSection("NBRI_DAILY_CLINICAL_OBS", true, "cases"),
                 new NBRIObservationOrdersFormSection(null, true, "cases"),
                 new NBRIProcedureFormSection(true, "cases"),
                 new NBRIProcedureOrderFormSection(true, "cases"),
