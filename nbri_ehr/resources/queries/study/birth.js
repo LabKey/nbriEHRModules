@@ -43,7 +43,6 @@ function onInit(event, helper){
         skipHousingCheck: true,
         announceAllModifiedParticipants: true,
         allowDatesInDistantPast: true,
-        removeTimeFromDate: true,
         skipAssignmentCheck: true,
     });
 
