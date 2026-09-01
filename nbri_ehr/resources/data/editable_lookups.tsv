@@ -10,6 +10,7 @@ ehr_lookups	alopecia_type	Behavior	Alopecia Type	Behavior observation fixed valu
 ehr_lookups	alopecia_regrowth	Behavior	Alopecia Regrowth	Behavior observation fixed values.
 ehr_lookups	amount_units	Clinical	Amount Units	"Used in drugs, treatments given and treatments ordered datasets."
 ehr_lookups	app_score	Behavior	Appetite Score	Behavior observation fixed values.
+ehr_lookups	areas	Housing	Areas	Top level of the housing location hierarchy.
 ehr_lookups	arrival_type	Colony Management	Arrival Type	Types of arrivals.
 ehr_lookups	arthritis_types	Clinical	Arthritis Types	Clinical observation fixed values.
 ehr_lookups	att_score	Behavior	Attitude Score	Behavior observation fixed values.
@@ -23,6 +24,8 @@ ehr_lookups	blood_draw_tube_type	Clinical	Blood Draw Tube Type	Used in blood dra
 ehr_lookups	blood_sample_type	Clinical	Blood Sample Types	Used in blood draw datasets.
 ehr_lookups	blood_tube_volumes	Clinical	Blood Tube Volumes	Used in blood draw datasets.
 ehr_lookups	breeding_type	Colony Management	Breeding Type	Breeding group assignment codes.
+ehr_lookups	buildings	Housing	Buildings	Buildings within an area.
+ehr_lookups	cage	Housing	Cages	Cage locations within a room.
 ehr_lookups	cage_type	Colony Management	Cage Type	Used in cage details.
 ehr_lookups	calculated_status_codes	Colony Management	Calculated Status	Animal status values.
 ehr_lookups	capillary_refill_time	Clinical	Capillary Refill Times	Used clinical observations.
@@ -58,6 +61,7 @@ ehr_lookups	fecal_smear_score	Clinical	Fecal Smear Score	Clinical observation fi
 ehr_lookups	feed_assess_types	Behavior	Fecal Assessment Types	Behavior observation fixed values.
 ehr_lookups	flag_categories	Colony Management	Flag Categories	Used to specify flag behavior.
 ehr_lookups	flag_values	Colony Management	Flag Values	Animal flag values.
+ehr_lookups	floors	Housing	Floors	Floors within a building.
 ehr_lookups	gastro_types	Clinical	Gastrointestinal Types	Clinical observation fixed values.
 ehr_lookups	gender_codes	Colony Management	Sex Codes	Used in demographics dataset.
 ehr_lookups	general_obs	Clinical	General Observation Types	Clinical observation types.
@@ -69,6 +73,7 @@ ehr_lookups	housing_reason	Housing	Housing Move Reason	Used in housing dataset f
 ehr_lookups	hyd_score	Clinical	Hydration Score	Clinical observation fixed values.
 ehr_lookups	incision_score	Clinical	Incision Status	Clinical observation fixed values.
 ehr_lookups	indoor_outdoor	Colony Management	Indoor/Outdoor	Cage details
+ehr	investigators	Colony Management	Investigators	Investigators available for protocol and project assignment.
 ehr_lookups	keyword	Clinical	Keyword	Clinical observation fixed values.
 ehr_lookups	lameness	Clinical	Lameness	Clinical observation fixed values.
 ehr_lookups	mass_type	Clinical	Mass Type	Clinical observation fixed values.
@@ -102,6 +107,8 @@ ehr_lookups	procedure_category	Clinical	Procedure Category	Used in procedures to
 ehr_lookups	procedures	Clinical	Procedures	List of animal procedures.F
 ehr_lookups	problem_list_category	Clinical	Problem List Category	Used in problem list dataset. Set when opening a case.
 ehr_lookups	problem_list_subcategory	Clinical	Problem List Subcategory	Used in problem list to categorize problems.
+ehr	project	Colony Management	Projects	Projects animals can be assigned to.
+ehr	protocol	Colony Management	Protocols	IACUC protocols animals can be assigned to.
 ehr_lookups	protocol_category	Colony Management	Protocol Category	
 ehr_lookups	protocol_state	Colony Management	Protocol State	
 ehr_lookups	protocol_type	Colony Management	Protocol Type	
@@ -112,6 +119,7 @@ ehr_lookups	regulatory_stress_levels	Colony Management	Regulatory Stress Levels
 ehr_lookups	req_order_state	Colony Management	Request Order State	
 ehr_lookups	req_order_type	Colony Management	Request Order Type	
 ehr_lookups	respiratory_observations	Clinical	Respiratory Observations	Used in clinical observations.
+ehr_lookups	rooms	Housing	Rooms	Rooms within a building and floor.
 ehr_lookups	routes	Clinical	Treatment Routes	Used in drug and treatment datasets.
 ehr_lookups	sib_score	Behavior	SIB Score	Behavior observation fixed values.
 ehr_lookups	skin_problem	Clinical	Skin Problems	Clinical observation fixed values.

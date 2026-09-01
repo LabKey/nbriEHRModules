@@ -255,17 +255,13 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
         let paRecords = results.getData()['protocolAssignments'];
         let values = [];
 
-        let val;
         if (Ext4.isArray(paRecords) && paRecords.length > 0) {
             Ext4.each(paRecords, function(record) {
-                val = record['protocol/displayName'];
+                let val = LABKEY.Utils.encodeHtml(record['protocol']);
                 if (record['protocol/InvestigatorId/lastName']) {
-                    val += " - " + LABKEY.Utils.encodeHtml(record['protocol/InvestigatorId/lastName']);
+                    val += ' - ' + LABKEY.Utils.encodeHtml(record['protocol/InvestigatorId/lastName']);
                 }
-                if (record['protocol/InvestigatorId/firstName']) {
-                    val += ", " + LABKEY.Utils.encodeHtml(record['protocol/InvestigatorId/firstName']);
-                }
-                values.push(LABKEY.Utils.encodeHtml(val));
+                values.push(val);
             });
         }
 

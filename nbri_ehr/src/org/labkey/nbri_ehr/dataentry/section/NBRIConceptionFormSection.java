@@ -20,5 +20,8 @@ public class NBRIConceptionFormSection extends BaseFormSection
     public NBRIConceptionFormSection(String label)
     {
         super("nbri_ehr", "conception", label, "ehr-gridpanel", true, false, false);
+
+        // a conception is not recorded against a batch of animals, so drop the Add Batch button
+        setAllowBulkAdd(false);
     }
 }

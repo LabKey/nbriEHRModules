@@ -6,7 +6,27 @@
                 <tableTitle>Rooms</tableTitle>
                 <columns>
                     <column columnName="name" />
-                    <column columnName="building" />
+                    <!-- The shared EHR metadata hides building and keeps it off the entry forms. A room key is
+                         derived from it, so it has to be visible and editable wherever rooms are entered. -->
+                    <column columnName="building">
+                        <isHidden>false</isHidden>
+                        <isUserEditable>true</isUserEditable>
+                        <shownInInsertView>true</shownInInsertView>
+                        <shownInUpdateView>true</shownInUpdateView>
+                        <shownInDetailsView>true</shownInDetailsView>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>buildings</fkTable>
+                            <fkColumnName>name</fkColumnName>
+                            <fkDisplayColumnName>description</fkDisplayColumnName>
+                            <filters>
+                                <filterGroup>
+                                    <!-- Insert and update only, so a room whose building was retired afterward still displays it. -->
+                                    <filter column="dateDisabled" operator="isblank" value=""/>
+                                </filterGroup>
+                            </filters>
+                        </fk>
+                    </column>
                     <column columnName="room">
                         <!-- Carried onto any lookup that displays this column, so room/room links the same way cage/room does. -->
                         <url>/nbri_ehr/cageDetails.view?room=${room}</url>

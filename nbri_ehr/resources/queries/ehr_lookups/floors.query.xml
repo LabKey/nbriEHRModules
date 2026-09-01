@@ -13,6 +13,12 @@
                             <fkTable>buildings</fkTable>
                             <fkColumnName>name</fkColumnName>
                             <fkDisplayColumnName>description</fkDisplayColumnName>
+                            <filters>
+                                <filterGroup>
+                                    <!-- Insert and update only, so a floor whose building was retired afterward still displays it. -->
+                                    <filter column="dateDisabled" operator="isblank" value=""/>
+                                </filterGroup>
+                            </filters>
                         </fk>
                     </column>
                     <column columnName="floor">

@@ -8,6 +8,27 @@ require("ehr/triggers").initScript(this);
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 var idsToSync = [];
 
+// opens one assignment record against the animal being entered; each dataset carries the assignment under its own field
+function createAssignment(scriptErrors, dataset, fieldName, value, row) {
+    if (!value)
+        return;
+
+    var assignmentRec = {
+        Id: row.Id,
+        date: row.date,
+        taskid: row.taskid,
+        remark: row.remark,
+        qcstate: row.qcstate,
+        performedby: row.performedby
+    };
+    assignmentRec[fieldName] = value;
+
+    var error = triggerHelper.createAssignmentRecord(dataset, row.Id, assignmentRec);
+    if (error) {
+        EHR.Server.Utils.addError(scriptErrors, 'Id', error, 'ERROR');
+    }
+}
+
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'Arrival', function(event, helper){
 
     // the script scope can outlive a single save, so never inherit ids from a prior one
@@ -68,26 +89,11 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
             }
         }
 
+        // an animal arrives already assigned to a project, a protocol and a group, all entered on the arrival row
         if (row.Id && row.date) {
-
-            let assignmentRec = {
-                Id: row.Id,
-                date: row.date,
-                taskid: row.taskid,
-                remark: row.remark,
-                qcstate: row.qcstate,
-                performedby: row.performedby
-            }
-
-            if (row.project) {
-                assignmentRec['project'] = row.project;
-                triggerHelper.createAssignmentRecord("assignment", row.Id, assignmentRec);
-            }
-
-            if (row.arrivalProtocol) {
-                assignmentRec['protocol'] = row.arrivalProtocol;
-                triggerHelper.createAssignmentRecord("protocolAssignment", row.Id, assignmentRec);
-            }
+            createAssignment(scriptErrors, 'assignment', 'project', row.project, row);
+            createAssignment(scriptErrors, 'protocolAssignment', 'protocol', row.arrivalProtocol, row);
+            createAssignment(scriptErrors, 'animal_group_members', 'groupId', row.groupId, row);
         }
 
         // if 'cage', labeled as "Initial Location" is provided, then insert into housing.
