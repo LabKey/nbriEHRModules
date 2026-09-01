@@ -11,6 +11,7 @@
                     <column columnName="Id"/>
                     <column columnName="date">
                         <columnTitle>Arrival Date</columnTitle>
+                        <formatString>DateTime</formatString>
                     </column>
                     <column columnName="arrivalType">
                         <columnTitle>Arrival Type</columnTitle>
