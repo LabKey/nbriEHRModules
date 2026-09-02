@@ -37,7 +37,7 @@ public class NBRIClinicalObservationsFormType extends NBRIBaseTaskFormType
         super(ctx, owner, NAME, NAME, "Clinical", Arrays.asList(
                 new NBRITaskFormSection(),
                 new NBRIAnimalDetailsFormSection(),
-                new NBRIClinicalObservationsFormSection(false, false),
+                new NBRIClinicalObservationsFormSection("NBRI_DAILY_CLINICAL_OBS", false),
                 new NBRIWeightFormSection(true, true)
         ));
 
