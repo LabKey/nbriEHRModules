@@ -20,7 +20,8 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
     byQuery: {
         'study.arrival': {
             'cage': {
-                // allowBlank: false,
+                allowBlank: false,
+                nullable: false,
                 columnConfig: {
                     fixed: true,
                     width: 200

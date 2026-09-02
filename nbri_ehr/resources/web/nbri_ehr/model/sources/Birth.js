@@ -59,7 +59,8 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                 }
             },
             'cage': {
-                // allowBlank: false,
+                allowBlank: false,
+                nullable: false,
                 columnConfig: {
                     fixed: true,
                     width: 200
