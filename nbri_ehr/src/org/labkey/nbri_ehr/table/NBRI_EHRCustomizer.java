@@ -62,9 +62,11 @@ import org.labkey.nbri_ehr.NBRI_EHRManager;
 import org.labkey.nbri_ehr.dataentry.form.NBRIClinicalObservationsFormType;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class NBRI_EHRCustomizer extends AbstractTableCustomizer
@@ -721,6 +723,13 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         col.setLabel("Is Active?");
         col.setDescription("No birth or pregnancy outcome record has claimed this conception Id.");
         ti.addColumn(col);
+
+        // Customizers run after the query XML column reorder, so listing isActive there does nothing and it lands last
+        List<FieldKey> visible = new ArrayList<>(ti.getDefaultVisibleColumns());
+        visible.remove(col.getFieldKey());
+        int sireIndex = visible.indexOf(FieldKey.fromParts("Sire"));
+        visible.add(sireIndex < 0 ? visible.size() : sireIndex + 1, col.getFieldKey());
+        ti.setDefaultVisibleColumns(visible);
     }
 
     // A null QCState means none was assigned, which LabKey treats as visible, so only an explicitly non-public state hides a row

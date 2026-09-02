@@ -9,6 +9,7 @@ SELECT
     c.ConceptDate,
     c.Estimated,
     c.Sire,
+    c.isActive,
     CASE
         WHEN c.isActive = true THEN 'Unknown'
         WHEN b.conceptId IS NOT NULL THEN 'Live Birth'

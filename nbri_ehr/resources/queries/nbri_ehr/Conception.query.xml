@@ -24,7 +24,6 @@
                         <required>true</required>
                     </column>
                     <column columnName="Sire" />
-                    <column columnName="isActive" />
                     <column columnName="TaskId">
                         <columnTitle>Task Id</columnTitle>
                         <facetingBehavior>ALWAYS_OFF</facetingBehavior>
