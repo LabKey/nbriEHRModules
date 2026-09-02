@@ -47,6 +47,7 @@ import org.labkey.api.view.template.ClientDependency;
 import org.labkey.nbri_ehr.dataentry.form.*;
 import org.labkey.nbri_ehr.demographics.ActiveAssignmentsDemographicsProvider;
 import org.labkey.nbri_ehr.demographics.ActiveCasesDemographicsProvider;
+import org.labkey.nbri_ehr.demographics.ActiveConceptionsDemographicsProvider;
 import org.labkey.nbri_ehr.demographics.ActiveFlagsDemographicsProvider;
 import org.labkey.nbri_ehr.demographics.ActiveTreatmentsDemographicsProvider;
 import org.labkey.nbri_ehr.demographics.CagematesDemographicsProvider;
@@ -135,6 +136,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         ehrService.registerDemographicsProvider(new ActiveTreatmentsDemographicsProvider(this));
         ehrService.registerDemographicsProvider(new SourceDemographicsProvider(this));
         ehrService.registerDemographicsProvider(new NecropsyStatusDemographicsProvider(this));
+        ehrService.registerDemographicsProvider(new ActiveConceptionsDemographicsProvider(this));
 
         EHRService.get().registerHistoryDataSource(new AnimalGroupsDataSource(this));
         EHRService.get().registerHistoryDataSource(new AnimalGroupsEndDataSource(this));

@@ -644,6 +644,10 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         {
             addIsActiveForProject(ti, EHRService.EndingOption.activeAfterMidnightTonight);
         }
+        if (matches(ti, "nbri_ehr", "Conception"))
+        {
+            addIsActiveForConception(ti);
+        }
         if (matches(ti, "study", "protocolAssignment"))
         {
             EHRService.get().addIsActiveCol(ti, false, EHRService.EndingOption.activeAfterMidnightTonight, EHRService.EndingOption.activeAfterMidnightTonight);
@@ -683,6 +687,56 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             col.setLabel("Is Active?");
             ti.addColumn(col);
         }
+    }
+
+    private void addIsActiveForConception(AbstractTableInfo ti)
+    {
+        String name = "isActive";
+        if (ti.getColumn(name) != null || ti.getColumn("conceptid") == null)
+            return;
+
+        UserSchema us = ti.getUserSchema();
+        Container ehrContainer = us == null ? null : EHRService.get().getEHRStudyContainer(us.getContainer());
+        if (ehrContainer == null)
+            return;
+
+        String birthTable = getDatasetStorageTableName(ehrContainer, "birth");
+        String pregnancyTable = getDatasetStorageTableName(ehrContainer, "pregnancy");
+        if (birthTable == null || pregnancyTable == null)
+            return;
+
+        String alias = ExprColumn.STR_TABLE_ALIAS;
+        String isFalse = ti.getSqlDialect().getBooleanFALSE();
+
+        // ConceptId is globally unique, so the subqueries need no container filter
+        SQLFragment sql = new SQLFragment("(CASE WHEN (" +
+                isPublicSql(alias, isFalse) +
+                " AND NOT EXISTS (SELECT 1 FROM studydataset." + birthTable + " b WHERE b.conceptid = " + alias + ".conceptid AND " + isPublicSql("b", isFalse) + ")" +
+                " AND NOT EXISTS (SELECT 1 FROM studydataset." + pregnancyTable + " p WHERE p.conceptid = " + alias + ".conceptid AND " + isPublicSql("p", isFalse) + ")" +
+                ") THEN " + ti.getSqlDialect().getBooleanTRUE() +
+                " ELSE " + isFalse +
+                " END)");
+
+        ExprColumn col = new ExprColumn(ti, name, sql, JdbcType.BOOLEAN, ti.getColumn("conceptid"), ti.getColumn("qcstate"));
+        col.setLabel("Is Active?");
+        col.setDescription("No birth or pregnancy outcome record has claimed this conception Id.");
+        ti.addColumn(col);
+    }
+
+    // A null QCState means none was assigned, which LabKey treats as visible, so only an explicitly non-public state hides a row
+    private String isPublicSql(String tableAlias, String isFalse)
+    {
+        return "NOT EXISTS (SELECT 1 FROM core.datastates ds WHERE ds.rowid = " + tableAlias + ".qcstate AND ds.publicdata = " + isFalse + ")";
+    }
+
+    private String getDatasetStorageTableName(Container c, String datasetName)
+    {
+        StudyService studyService = StudyService.get();
+        if (studyService == null)
+            return null;
+
+        Dataset dataset = studyService.getDataset(c, studyService.getDatasetIdByName(c, datasetName));
+        return dataset != null && dataset.getDomain() != null ? dataset.getDomain().getStorageTableName() : null;
     }
 
     public void doSharedCustomization(AbstractTableInfo ti)

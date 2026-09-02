@@ -2,6 +2,7 @@
     <metadata>
         <tables xmlns="http://labkey.org/data/xml">
             <table tableName="Conception" tableDbType="TABLE" useColumnOrder="true">
+                <javaCustomizer class="org.labkey.nbri_ehr.table.NBRI_EHRCustomizer"/>
                 <tableTitle>Conception Records</tableTitle>
                 <columns>
                     <column columnName="rowId">
@@ -23,6 +24,7 @@
                         <required>true</required>
                     </column>
                     <column columnName="Sire" />
+                    <column columnName="isActive" />
                     <column columnName="TaskId">
                         <columnTitle>Task Id</columnTitle>
                         <facetingBehavior>ALWAYS_OFF</facetingBehavior>

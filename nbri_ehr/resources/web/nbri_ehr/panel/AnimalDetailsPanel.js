@@ -139,6 +139,9 @@ Ext4.define('NBRI_EHR.panel.AnimalDetailsPanel', {
                     fieldLabel: 'Cagemates',
                     name: 'cagemates'
                 },{
+                    fieldLabel: 'Pregnant',
+                    name: 'pregnant'
+                },{
                     fieldLabel: 'Weight',
                     name: 'weights'
                 },{
