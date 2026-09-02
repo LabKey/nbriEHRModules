@@ -28,6 +28,17 @@
                             query.species~eq=${species}&amp;
                         </url>
                     </column>
+                    <column columnName="allowed">
+                        <columnTitle># Animals Allowed</columnTitle>
+                        <description>Approved for this species by the amendment currently in effect</description>
+                    </column>
+                    <column columnName="TotalRemaining">
+                        <columnTitle># Remaining</columnTitle>
+                    </column>
+                    <column columnName="PercentUsed">
+                        <columnTitle>% Used</columnTitle>
+                        <formatString>0.0</formatString>
+                    </column>
                 </columns>
                 <titleColumn>TotalAnimals</titleColumn>
             </table>

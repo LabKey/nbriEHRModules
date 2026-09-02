@@ -25,4 +25,45 @@
         </columns>
     </table>
 
+    <table tableName="ProtocolAmendment" tableDbType="TABLE">
+        <tableTitle>protocol Amendment</tableTitle>
+        <auditLogging>DETAILED</auditLogging>
+        <columns>
+            <column columnName="rowid"/>
+            <column columnName="protocol"/>
+            <column columnName="amendmentType"/>
+            <column columnName="status"/>
+            <column columnName="cycle"/>
+            <column columnName="revision"/>
+            <column columnName="date">
+                <formatString>Date</formatString>
+            </column>
+            <column columnName="submittedDate">
+                <formatString>Date</formatString>
+            </column>
+            <column columnName="approvedDate">
+                <formatString>Date</formatString>
+            </column>
+            <column columnName="effectiveDate">
+                <formatString>Date</formatString>
+            </column>
+            <column columnName="enddate">
+                <formatString>Date</formatString>
+            </column>
+            <column columnName="newExpirationDate">
+                <formatString>Date</formatString>
+            </column>
+            <column columnName="amendmentReason"/>
+            <column columnName="remark"/>
+            <column columnName="taskid"/>
+            <column columnName="QCState"/>
+            <column columnName="objectid"/>
+            <column columnName="Container"/>
+            <column columnName="Created"/>
+            <column columnName="CreatedBy"/>
+            <column columnName="Modified"/>
+            <column columnName="ModifiedBy"/>
+        </columns>
+    </table>
+
 </tables>

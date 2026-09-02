@@ -11,11 +11,12 @@ SELECT
 
 FROM ehr.protocol p
 
---we find total distinct animals ever assigned to this protocol
+--we find distinct animals currently assigned to this protocol
 LEFT JOIN
   (SELECT a.protocol, a.id, count(*) AS TotalAssignments, max(a.date) as LatestStart,
   max(a.enddateCoalesced) as latestEnd
   FROM study.protocolAssignment a
+  WHERE a.isActive = true
   GROUP BY a.protocol, a.id) a ON (p.protocol = a.protocol.protocol)
 
 group by p.protocol, p.title

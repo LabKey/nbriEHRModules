@@ -11,8 +11,39 @@
                             <fkDbSchema>ehr_lookups</fkDbSchema>
                             <fkTable>species_codes</fkTable>
                             <fkColumnName>code</fkColumnName>
-                            <fkDisplayColumnName>scientific_name</fkDisplayColumnName>
+                            <fkDisplayColumnName>common_name</fkDisplayColumnName>
                         </fk>
+                    </column>
+                    <column columnName="allowed">
+                        <columnTitle># Animals Allowed</columnTitle>
+                    </column>
+                    <!-- start and enddate are not used here: a count's window is its amendment's effectiveDate..endDate -->
+                    <column columnName="start">
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="enddate">
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="amendmentId">
+                        <columnTitle>Amendment</columnTitle>
+                        <description>The amendment that approved this count; the row is only in effect once that amendment is approved</description>
+                        <fk>
+                            <fkDbSchema>nbri_ehr</fkDbSchema>
+                            <fkTable>ProtocolAmendment</fkTable>
+                            <fkColumnName>objectid</fkColumnName>
+                            <fkDisplayColumnName>rowid</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="taskid">
+                        <columnTitle>Task Id</columnTitle>
+                        <facetingBehavior>ALWAYS_OFF</facetingBehavior>
+                        <fk>
+                            <fkDbSchema>ehr</fkDbSchema>
+                            <fkTable>tasks</fkTable>
+                            <fkColumnName>taskid</fkColumnName>
+                            <fkDisplayColumnName>rowid</fkDisplayColumnName>
+                        </fk>
+                        <url>/ehr/dataEntryFormDetails.view?formType=${taskid/formtype}&amp;taskid=${taskid}</url>
                     </column>
                 </columns>
             </table>

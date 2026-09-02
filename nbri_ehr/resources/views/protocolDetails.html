@@ -1,0 +1,105 @@
+<script type="text/javascript" nonce="<%=scriptNonce%>">
+
+// Overrides the shared EHR view, which reports protocol enrollment by rolling up project assignments through
+// project/protocol. Animals here are assigned to protocols independently of projects, so that rollup under-reports.
+Ext4.onReady(function (){
+    var protocol = LABKEY.ActionURL.getParameter('protocol') || LABKEY.ActionURL.getParameter('key');
+    if (!protocol){
+        alert('Must Provide Protocol Number');
+        return false;
+    }
+    protocol = protocol.toLowerCase();
+
+    var webpart = <%=webpartContext%>;
+    var sections = [
+        'protocolDetails',
+        'protocolAmendments',
+        'protocolCounts',
+        'protocolAssignments',
+        'protocolTotalAnimalsBySpecies',
+        'protocolProjects',
+        'protocolProcedures'
+    ];
+
+    var domSpec = [];
+    Ext4.each(sections, function(id){
+        domSpec.push({
+            tag: 'div',
+            style: 'padding-bottom: 10px;',
+            id: id + '_' + webpart.wrapperDivId
+        });
+    });
+
+    Ext4.DomHelper.append(Ext4.get(webpart.wrapperDivId), domSpec);
+
+    var protocolFilter = [LABKEY.Filter.create('protocol', protocol, LABKEY.Filter.Types.EQUAL)];
+
+    function queryWebPart(config, target){
+        Ext4.applyIf(config, {
+            allowChooseQuery: false,
+            allowChooseView: true,
+            showInsertNewButton: false,
+            showDeleteButton: false,
+            showDetailsColumn: true,
+            showUpdateColumn: false,
+            buttonBarPosition: 'top',
+            filters: protocolFilter,
+            scope: this,
+            failure: EHR.Utils.onError
+        });
+
+        new LABKEY.QueryWebPart(config).render(target + '_' + webpart.wrapperDivId);
+    }
+
+    Ext4.create('LDK.panel.DetailsPanel', {
+        store: {
+            schemaName: 'ehr',
+            queryName: 'protocol',
+            filterArray: protocolFilter
+        },
+        title: 'Protocol Details:',
+        renderTo: 'protocolDetails_' + webpart.wrapperDivId
+    });
+
+    queryWebPart({
+        title: 'Amendments And Renewals',
+        schemaName: 'nbri_ehr',
+        queryName: 'ProtocolAmendment',
+        sort: '-date'
+    }, 'protocolAmendments');
+
+    queryWebPart({
+        title: 'Animals Allowed Per Species',
+        schemaName: 'ehr',
+        queryName: 'protocol_counts'
+    }, 'protocolCounts');
+
+    queryWebPart({
+        title: 'Active Protocol Assignments',
+        schemaName: 'study',
+        queryName: 'protocolAssignment',
+        viewName: 'Active Assignments',
+        showRecordSelectors: true,
+        sort: '-date'
+    }, 'protocolAssignments');
+
+    queryWebPart({
+        title: 'Approved Versus Assigned By Species',
+        schemaName: 'ehr',
+        queryName: 'protocolTotalAnimalsBySpecies'
+    }, 'protocolTotalAnimalsBySpecies');
+
+    queryWebPart({
+        title: 'Projects Under This Protocol',
+        schemaName: 'ehr',
+        queryName: 'project'
+    }, 'protocolProjects');
+
+    queryWebPart({
+        title: 'Procedures Allowed Under This Protocol',
+        schemaName: 'ehr',
+        queryName: 'ProtocolProcedures'
+    }, 'protocolProcedures');
+});
+
+</script>

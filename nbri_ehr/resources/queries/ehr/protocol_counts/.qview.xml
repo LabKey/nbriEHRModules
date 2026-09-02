@@ -3,7 +3,14 @@
         <column name="protocol"/>
         <column name="species"/>
         <column name="allowed"/>
-        <column name="euthanasia"/>
+        <column name="amendmentId"/>
+        <column name="amendmentId/effectiveDate"/>
+        <column name="amendmentId/enddate"/>
         <column name="description"/>
     </columns>
+    <sorts>
+        <sort column="protocol"/>
+        <sort column="species"/>
+        <sort column="amendmentId/effectiveDate" descending="true"/>
+    </sorts>
 </customView>

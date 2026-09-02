@@ -1,0 +1,21 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="protocol"/>
+        <column name="amendmentType"/>
+        <column name="status"/>
+        <column name="cycle"/>
+        <column name="revision"/>
+        <column name="date"/>
+        <column name="submittedDate"/>
+        <column name="approvedDate"/>
+        <column name="effectiveDate"/>
+        <column name="enddate"/>
+        <column name="newExpirationDate"/>
+        <column name="amendmentReason"/>
+        <column name="QCState"/>
+    </columns>
+    <sorts>
+        <sort column="protocol"/>
+        <sort column="date" descending="true"/>
+    </sorts>
+</customView>

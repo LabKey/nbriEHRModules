@@ -60,6 +60,7 @@ import org.labkey.nbri_ehr.notification.NBRIPregnancyOutcomeNotification;
 import org.labkey.nbri_ehr.notification.NBRIProcedureOverdueNotification;
 import org.labkey.nbri_ehr.query.NBRI_EHRUserSchema;
 import org.labkey.nbri_ehr.security.NBRIEHRVetTechRole;
+import org.labkey.nbri_ehr.security.NBRIProtocolAmendmentApproverRole;
 import org.labkey.nbri_ehr.table.NBRI_EHRCustomizer;
 
 import java.io.File;
@@ -80,7 +81,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 26.002;
+        return 26.005;
     }
 
     @Override
@@ -178,9 +179,11 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         ehrService.registerActionOverride("animalHistory", this, "views/animalHistory.html");
         ehrService.registerActionOverride("participantView", this, "views/participantView.html");
         ehrService.registerActionOverride("enterData", this, "views/enterData.html");
+        ehrService.registerActionOverride("protocolDetails", this, "views/protocolDetails.html");
 
         ehrService.registerTriggerScriptOption("datasetsToCloseOnNewEntry", List.of("assignment", "protocolAssignment", "animal_group_members"));
         RoleManager.registerRole(new NBRIEHRVetTechRole());
+        RoleManager.registerRole(new NBRIProtocolAmendmentApproverRole());
 
         EHRService.get().registerMoreActionsButton(new ShowEditUIButton(this, "ehr", "observation_types", EHRDataAdminPermission.class), "ehr", "observation_types");
 
@@ -235,6 +238,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRISerologyImportFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIRearrivalFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIConceptionFormType.class, this));
+        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProtocolAmendmentFormType.class, this));
     }
 
     @Override

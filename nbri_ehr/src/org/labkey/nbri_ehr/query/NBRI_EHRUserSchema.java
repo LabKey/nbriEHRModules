@@ -15,12 +15,20 @@
  */
 package org.labkey.nbri_ehr.query;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.ContainerFilter;
 import org.labkey.api.data.DbSchema;
+import org.labkey.api.data.TableInfo;
+import org.labkey.api.ehr.security.EHRProtocolEditPermission;
+import org.labkey.api.ldk.table.CustomPermissionsTable;
 import org.labkey.api.query.SimpleUserSchema;
 import org.labkey.api.security.User;
+import org.labkey.api.security.permissions.DeletePermission;
+import org.labkey.api.security.permissions.InsertPermission;
 import org.labkey.api.security.permissions.ReadPermission;
+import org.labkey.api.security.permissions.UpdatePermission;
 
 public class NBRI_EHRUserSchema extends SimpleUserSchema
 {
@@ -29,6 +37,25 @@ public class NBRI_EHRUserSchema extends SimpleUserSchema
     public NBRI_EHRUserSchema(String name, @Nullable String description, User user, Container container, DbSchema dbschema)
     {
         super(name, description, user, container, dbschema);
+    }
+
+    @Override
+    @Nullable
+    protected TableInfo createWrappedTable(String name, @NotNull TableInfo schemaTable, ContainerFilter cf)
+    {
+        // Approving an amendment additionally requires NBRIProtocolAmendmentApprovePermission, but that is checked on
+        // the status transition in ProtocolAmendment.js -- mapping it to UpdatePermission here would stop submitters
+        // editing their own drafts.
+        if ("protocolAmendment".equalsIgnoreCase(name))
+        {
+            CustomPermissionsTable<?> ti = new CustomPermissionsTable<>(this, schemaTable, cf).init();
+            ti.addPermissionMapping(InsertPermission.class, EHRProtocolEditPermission.class);
+            ti.addPermissionMapping(UpdatePermission.class, EHRProtocolEditPermission.class);
+            ti.addPermissionMapping(DeletePermission.class, EHRProtocolEditPermission.class);
+            return ti;
+        }
+
+        return super.createWrappedTable(name, schemaTable, cf);
     }
 
     @Override

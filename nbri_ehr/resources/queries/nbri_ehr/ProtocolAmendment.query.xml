@@ -1,0 +1,128 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="ProtocolAmendment" tableDbType="TABLE" useColumnOrder="true">
+                <tableTitle>Protocol Amendments</tableTitle>
+                <columns>
+                    <column columnName="rowid">
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="protocol">
+                        <columnTitle>IACUC Protocol</columnTitle>
+                        <required>true</required>
+                        <fk>
+                            <fkDbSchema>ehr</fkDbSchema>
+                            <fkTable>protocol</fkTable>
+                            <fkColumnName>protocol</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="amendmentType">
+                        <columnTitle>Type</columnTitle>
+                        <required>true</required>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>protocol_type</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="status">
+                        <columnTitle>Amendment Status</columnTitle>
+                        <required>true</required>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>protocol_state</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="cycle">
+                        <columnTitle>Renewal Cycle</columnTitle>
+                    </column>
+                    <column columnName="revision">
+                        <columnTitle>Revision</columnTitle>
+                        <description>Amendment number within the renewal cycle</description>
+                    </column>
+                    <column columnName="date">
+                        <columnTitle>Amendment Date</columnTitle>
+                        <required>true</required>
+                    </column>
+                    <column columnName="submittedDate">
+                        <columnTitle>Submitted To IACUC</columnTitle>
+                    </column>
+                    <column columnName="approvedDate">
+                        <columnTitle>Decision Date</columnTitle>
+                        <description>The date the IACUC approved or declined, as stated on the letter</description>
+                    </column>
+                    <column columnName="effectiveDate">
+                        <columnTitle>Effective From</columnTitle>
+                        <description>When this amendment's counts take effect; defaults to the decision date</description>
+                    </column>
+                    <column columnName="enddate">
+                        <columnTitle>Effective Through</columnTitle>
+                        <description>Set when a later amendment on this protocol is approved; blank while this amendment is current</description>
+                    </column>
+                    <column columnName="newExpirationDate">
+                        <columnTitle>New Expiration Date</columnTitle>
+                        <description>For a renewal, the end of the new approval span</description>
+                    </column>
+                    <column columnName="amendmentReason">
+                        <columnTitle>Reason</columnTitle>
+                    </column>
+                    <column columnName="remark"/>
+                    <column columnName="objectid">
+                        <columnTitle>Key</columnTitle>
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="taskid">
+                        <columnTitle>Task Id</columnTitle>
+                        <facetingBehavior>ALWAYS_OFF</facetingBehavior>
+                        <fk>
+                            <fkDbSchema>ehr</fkDbSchema>
+                            <fkTable>tasks</fkTable>
+                            <fkColumnName>taskid</fkColumnName>
+                            <fkDisplayColumnName>rowid</fkDisplayColumnName>
+                        </fk>
+                        <url>/ehr/dataEntryFormDetails.view?formType=${taskid/formtype}&amp;taskid=${taskid}</url>
+                    </column>
+                    <column columnName="QCState">
+                        <columnTitle>Data Entry Status</columnTitle>
+                        <description>Draft/submitted/completed state of this record. Unrelated to the IACUC decision, which is the Amendment Status field.</description>
+                        <fk>
+                            <fkDbSchema>core</fkDbSchema>
+                            <fkTable>qcstate</fkTable>
+                            <fkColumnName>rowid</fkColumnName>
+                        </fk>
+                        <conditionalFormats>
+                            <conditionalFormat>
+                                <filters>
+                                    <filter operator="eq" value="In Progress"/>
+                                </filters>
+                                <backgroundColor>FBEC5D</backgroundColor>
+                            </conditionalFormat>
+                            <conditionalFormat>
+                                <filters>
+                                    <filter operator="eq" value="Review Required"/>
+                                </filters>
+                                <backgroundColor>FBEC5D</backgroundColor>
+                            </conditionalFormat>
+                            <conditionalFormat>
+                                <filters>
+                                    <filter operator="eq" value="Scheduled"/>
+                                </filters>
+                                <backgroundColor>FBEC5D</backgroundColor>
+                            </conditionalFormat>
+                            <conditionalFormat>
+                                <filters>
+                                    <filter operator="eq" value="Delete Requested"/>
+                                </filters>
+                                <backgroundColor>FF0000</backgroundColor>
+                            </conditionalFormat>
+                        </conditionalFormats>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

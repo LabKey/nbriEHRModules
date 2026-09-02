@@ -15,12 +15,14 @@
  */
 package org.labkey.nbri_ehr.query;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.Mutable;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.labkey.api.collections.CaseInsensitiveHashMap;
+import org.labkey.api.collections.CaseInsensitiveHashSet;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
@@ -35,6 +37,7 @@ import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.ehr.EHRDemographicsService;
 import org.labkey.api.ehr.EHRService;
+import org.labkey.api.ehr.demographics.AnimalRecord;
 import org.labkey.api.ehr.security.EHRVeterinarianPermission;
 import org.labkey.api.ldk.notification.NotificationService;
 import org.labkey.api.query.BatchValidationException;
@@ -42,6 +45,7 @@ import org.labkey.api.query.DuplicateKeyException;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.InvalidKeyException;
 import org.labkey.api.query.QueryService;
+import org.labkey.api.query.QueryUpdateService;
 import org.labkey.api.query.QueryUpdateServiceException;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
@@ -59,12 +63,15 @@ import org.labkey.nbri_ehr.notification.NBRIClinicalMoveNotification;
 import org.labkey.nbri_ehr.notification.NBRIDeathNotification;
 import org.labkey.nbri_ehr.notification.NBRIPregnancyOutcomeNotification;
 import org.labkey.nbri_ehr.notification.TriggerScriptNotification;
+import org.labkey.nbri_ehr.security.NBRIProtocolAmendmentApprovePermission;
 
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -832,6 +839,176 @@ public class NBRI_EHRTriggerHelper
     public boolean canCloseCase()
     {
         return _container.hasPermission(_user, EHRVeterinarianPermission.class);
+    }
+
+    public boolean canApproveProtocolAmendment()
+    {
+        return _container.hasPermission(_user, NBRIProtocolAmendmentApprovePermission.class);
+    }
+
+    /**
+     * Warns when assigning an animal to a protocol would exceed the animals approved for its species. The shared
+     * EHR check reaches the protocol through a project, which cannot see a protocol assignment here, so this keys on
+     * the protocol directly. Returns the messages joined with "&lt;&gt;", or null when nothing is wrong.
+     */
+    public String verifyProtocolCountsForProtocol(final String id, final String protocol, final List<Map<String, Object>> recordsInTransaction)
+    {
+        if (id == null || protocol == null)
+            return null;
+
+        AnimalRecord ar = EHRDemographicsService.get().getAnimal(_container, id);
+        if (ar == null || ar.getSpecies() == null)
+            return "Unknown species: " + id;
+
+        final String species = ar.getSpecies();
+        final Set<String> animals = new CaseInsensitiveHashSet();
+        animals.add(id);
+
+        if (recordsInTransaction != null)
+        {
+            for (Map<String, Object> r : recordsInTransaction)
+            {
+                String rowId = (String) r.get("Id");
+                String rowProtocol = (String) r.get("protocol");
+                if (rowId == null || !protocol.equals(rowProtocol))
+                    continue;
+
+                AnimalRecord rowRecord = EHRDemographicsService.get().getAnimal(_container, rowId);
+                if (rowRecord == null || !species.equals(rowRecord.getSpecies()))
+                    continue;
+
+                animals.add(rowId);
+            }
+        }
+
+        TableInfo ti = getTableInfo("ehr", "protocolTotalAnimalsBySpecies");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
+        filter.addCondition(FieldKey.fromString("species"), species);
+        TableSelector ts = new TableSelector(ti, filter, null);
+
+        final List<String> errors = new ArrayList<>();
+        ts.forEach(rs -> {
+            int allowed = rs.getInt("allowed");
+            // a protocol with no approved count row is not the same as a protocol approved for zero animals
+            if (rs.wasNull())
+                return;
+
+            Set<String> used = new CaseInsensitiveHashSet(animals);
+            String animalString = rs.getString("Animals");
+            if (animalString != null)
+                used.addAll(Arrays.asList(StringUtils.split(animalString, ",")));
+
+            if (used.size() > allowed)
+            {
+                String msg = "Protocol " + protocol + ", " + species + ": " + used.size() + " of " + allowed + " approved.";
+                String pending = describePendingAmendments(protocol, species);
+                errors.add(pending == null ? msg : msg + " " + pending);
+            }
+        });
+
+        return errors.isEmpty() ? null : StringUtils.join(errors, "<>");
+    }
+
+    /**
+     * Applies an amendment the IACUC has approved. Every approved amendment states the protocol's complete per-species
+     * counts, so approval closes the previously current amendment on the protocol -- its window ends the day before this
+     * one takes effect -- and, for a renewal, moves the protocol's approval span. Fired once, on the status transition.
+     */
+    public void applyApprovedAmendment(String protocol, String amendmentId, Object effectiveDateValue, Object newExpirationDateValue, boolean isRenewal) throws Exception
+    {
+        Date effectiveDate = ConvertHelper.convert(effectiveDateValue, Date.class);
+        Date newExpirationDate = ConvertHelper.convert(newExpirationDateValue, Date.class);
+
+        if (protocol == null || amendmentId == null || effectiveDate == null)
+            return;
+
+        TableInfo amendmentTi = getTableInfo("nbri_ehr", "protocolAmendment");
+
+        // enddate is inclusive, so the superseded amendment ends the day before this one takes effect
+        Date closeDate = DateUtils.addDays(DateUtils.truncate(effectiveDate, Calendar.DATE), -1);
+
+        SimpleFilter priorFilter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
+        priorFilter.addCondition(FieldKey.fromString("objectid"), amendmentId, CompareType.NEQ);
+        priorFilter.addCondition(FieldKey.fromString("status/title"), "Approved");
+        priorFilter.addCondition(FieldKey.fromString("enddate"), null, CompareType.ISBLANK);
+        // never end an amendment before it began; one that takes effect after this one is not superseded by it
+        priorFilter.addClause(new SimpleFilter.OrClause(
+                CompareType.ISBLANK.createFilterClause(FieldKey.fromString("effectiveDate"), null),
+                CompareType.DATE_LTE.createFilterClause(FieldKey.fromString("effectiveDate"), closeDate)));
+
+        List<Map<String, Object>> toClose = new ArrayList<>();
+        List<Map<String, Object>> oldKeys = new ArrayList<>();
+        new TableSelector(amendmentTi, PageFlowUtil.set("rowid"), priorFilter, null).forEach(Integer.class, rowid -> {
+            Map<String, Object> row = new CaseInsensitiveHashMap<>();
+            row.put("rowid", rowid);
+            row.put("enddate", closeDate);
+            toClose.add(row);
+
+            Map<String, Object> key = new CaseInsensitiveHashMap<>();
+            key.put("rowid", rowid);
+            oldKeys.add(key);
+        });
+
+        if (!toClose.isEmpty())
+        {
+            QueryUpdateService amendmentQus = amendmentTi.getUpdateService();
+            if (amendmentQus == null)
+                throw new IllegalStateException("nbri_ehr.ProtocolAmendment is not updatable");
+
+            BatchValidationException errors = new BatchValidationException();
+            amendmentQus.updateRows(_user, _container, toClose, oldKeys, errors, null, getExtraContext());
+            if (errors.hasErrors())
+                throw errors;
+
+            _log.info("Closed " + toClose.size() + " superseded amendment(s) on protocol " + protocol);
+        }
+
+        if (isRenewal)
+        {
+            TableInfo protocolTi = getTableInfo("ehr", "protocol");
+            Map<String, Object> row = new CaseInsensitiveHashMap<>();
+            row.put("protocol", protocol);
+            row.put("approve", effectiveDate);
+            if (newExpirationDate != null)
+                row.put("enddate", newExpirationDate);
+
+            Map<String, Object> key = new CaseInsensitiveHashMap<>();
+            key.put("protocol", protocol);
+
+            QueryUpdateService protocolQus = protocolTi.getUpdateService();
+            if (protocolQus == null)
+                throw new IllegalStateException("ehr.protocol is not updatable");
+
+            BatchValidationException errors = new BatchValidationException();
+            protocolQus.updateRows(_user, _container, List.of(row), List.of(key), errors, null, getExtraContext());
+            if (errors.hasErrors())
+                throw errors;
+        }
+    }
+
+    /** Rhino cannot construct a JS Date from a java.util.Date, so date arithmetic for the triggers lives here. */
+    public Date plusYears(Object dateValue, int years)
+    {
+        Date date = ConvertHelper.convert(dateValue, Date.class);
+        return date == null ? null : DateUtils.addYears(DateUtils.truncate(date, Calendar.DATE), years);
+    }
+
+    /** Names any submitted-but-undecided amendment proposing a different count, so the warning does not look stale. */
+    private String describePendingAmendments(String protocol, String species)
+    {
+        TableInfo ti = getTableInfo("ehr", "protocolCountsPending");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
+        filter.addCondition(FieldKey.fromString("species"), species);
+        TableSelector ts = new TableSelector(ti, filter, null);
+
+        final List<String> pending = new ArrayList<>();
+        ts.forEach(rs -> {
+            int proposed = rs.getInt("allowed");
+            if (!rs.wasNull())
+                pending.add(proposed + " proposed on amendment " + rs.getString("amendmentLabel"));
+        });
+
+        return pending.isEmpty() ? null : "Pending: " + StringUtils.join(pending, "; ") + ".";
     }
 
     public void closeDailyClinicalObs(String caseid, String enddate)

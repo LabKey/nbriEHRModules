@@ -22,4 +22,23 @@
         </table>
     </template>
 
+    <template xsi:type="EHRTemplateType">
+        <table tableName="protocol_counts" tableDbType="TABLE">
+            <dat:columns>
+                <!-- objectid of the nbri_ehr.ProtocolAmendment this count belongs to. The amendment form declares
+                     this as the child sections's isParentField, so ParentClientStore writes the parent's objectid
+                     here. A count row is only in effect once its amendment is approved. -->
+                <dat:column columnName="amendmentId">
+                    <dat:rangeURI>string</dat:rangeURI>
+                    <dat:scale>36</dat:scale>
+                </dat:column>
+                <!-- stamped by the task framework; lets a saved task reload its own count rows -->
+                <dat:column columnName="taskid">
+                    <dat:rangeURI>string</dat:rangeURI>
+                    <dat:scale>36</dat:scale>
+                </dat:column>
+            </dat:columns>
+        </table>
+    </template>
+
 </templates>
