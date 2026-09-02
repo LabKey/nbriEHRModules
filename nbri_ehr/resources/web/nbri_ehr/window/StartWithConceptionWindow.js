@@ -5,17 +5,23 @@
  */
 
 /**
- * Adds a birth record pre-populated from an existing conception record.
+ * Populates a birth record from an existing conception record.
+ *
+ * With no targetRecord a new birth row is added; with one, only that row's conception fields are replaced and the
+ * rest of the row is left untouched.
  *
  * @cfg {Object} targetStore
  * @cfg {Object} formConfig
+ * @cfg {Object} [targetRecord] the birth row to populate, or null to add a new one
  */
 Ext4.define('NBRI_EHR.window.StartWithConceptionWindow', {
     extend: 'Ext.window.Window',
 
     initComponent: function(){
+        var isExistingRow = !!this.targetRecord;
+
         Ext4.apply(this, {
-            title: 'Start with Conception',
+            title: isExistingRow ? 'Change Conception' : 'Start with Conception',
             modal: true,
             closeAction: 'destroy',
             border: true,
@@ -26,12 +32,15 @@ Ext4.define('NBRI_EHR.window.StartWithConceptionWindow', {
                 width: 370
             },
             items: [{
-                html: 'Select a conception record.  A new birth record will be added using the conception Id, along with the dam, sire and species from that conception.',
+                html: isExistingRow
+                        ? 'Select a conception record.  The conception Id, dam, sire and species on this birth record will be replaced with the values from that conception.  Everything else on the row is left as it is.'
+                        : 'Select a conception record.  A new birth record will be added using the conception Id, along with the dam, sire and species from that conception.',
                 style: 'padding-bottom: 10px;'
             },{
                 xtype: 'labkey-combo',
                 itemId: 'conceptionField',
                 fieldLabel: 'Conception Id',
+                value: isExistingRow ? this.targetRecord.get('conceptId') : null,
                 displayField: 'ConceptId',
                 valueField: 'ConceptId',
                 forceSelection: true,
@@ -81,14 +90,14 @@ Ext4.define('NBRI_EHR.window.StartWithConceptionWindow', {
 
         btn.disable();
         this.getSpecies(dam, function(species, speciesError){
-            this.addRow(conceptId, dam, sire, species);
+            this.applyConception(conceptId, dam, sire, species);
             btn.enable();
             this.close();
 
-            // the row is still added so the conception values are not lost, but a blank species would otherwise
+            // the row is still populated so the conception values are not lost, but a blank species would otherwise
             // surface only as a bare "Species is required" error with no hint that the copy from the dam failed
             if (speciesError){
-                Ext4.Msg.alert('Species Not Copied', speciesError + '  Enter the species on the new birth record manually.');
+                Ext4.Msg.alert('Species Not Copied', speciesError + '  Enter the species on the birth record manually.');
             }
         }, this);
     },
@@ -128,13 +137,21 @@ Ext4.define('NBRI_EHR.window.StartWithConceptionWindow', {
         });
     },
 
-    addRow: function(conceptId, dam, sire, species){
-        this.targetStore.add(this.targetStore.createModel({
+    applyConception: function(conceptId, dam, sire, species){
+        var values = {
             conceptId: conceptId,
             'Id/demographics/dam': dam,
             'Id/demographics/sire': sire,
             'Id/demographics/species': species
-        }));
+        };
+
+        // only the fields the conception owns are written, so anything already entered on the row survives
+        if (this.targetRecord){
+            this.targetRecord.set(values);
+            return;
+        }
+
+        this.targetStore.add(this.targetStore.createModel(values));
     }
 });
 

@@ -86,6 +86,9 @@ EHR.model.DataModelManager.registerMetadata('Default', {
                 fixed: true,
                 width: 150
             },
+            lookup: {
+                filterArray: [LABKEY.Filter.create('dateDisabled', null, LABKEY.Filter.Types.ISBLANK)]
+            }
         },
         QCState: {
             hidden: true,

@@ -22,14 +22,12 @@
                     </column>
                     <column columnName="cage">
                         <columnTitle>Birth Location</columnTitle>
-                        <displayWidth>80</displayWidth>
                         <shownInInsertView>true</shownInInsertView>
                         <shownInUpdateView>true</shownInUpdateView>
                         <fk>
                             <fkDbSchema>ehr_lookups</fkDbSchema>
                             <fkTable>cage</fkTable>
                             <fkColumnName>location</fkColumnName>
-                            <fkDisplayColumnName>cage</fkDisplayColumnName>
                         </fk>
                     </column>
                     <column columnName="type">
@@ -57,6 +55,15 @@
                             <fkDbSchema>ehr</fkDbSchema>
                             <fkTable>protocol</fkTable>
                             <fkColumnName>protocol</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="groupId">
+                        <columnTitle>Group</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>breeding_type</fkTable>
+                            <fkColumnName>value</fkColumnName>
                             <fkDisplayColumnName>title</fkDisplayColumnName>
                         </fk>
                     </column>

@@ -13,6 +13,12 @@
                             <fkDbSchema>ehr_lookups</fkDbSchema>
                             <fkTable>rooms</fkTable>
                             <fkColumnName>room</fkColumnName>
+                            <filters>
+                                <filterGroup>
+                                    <!-- Insert and update only, so a cage whose room was retired afterward still displays it. -->
+                                    <filter column="dateDisabled" operator="isblank" value=""/>
+                                </filterGroup>
+                            </filters>
                         </fk>
                     </column>
                     <column columnName="location">

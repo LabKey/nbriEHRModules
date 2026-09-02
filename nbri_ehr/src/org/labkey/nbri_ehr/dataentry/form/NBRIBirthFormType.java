@@ -24,9 +24,6 @@ import org.labkey.api.view.template.ClientDependency;
 import org.labkey.nbri_ehr.dataentry.section.NBRIAnimalDetailsFormSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRIBirthFormSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRIBirthInstructionsFormSection;
-import org.labkey.nbri_ehr.dataentry.section.NBRIGroupAssignmentFormSection;
-import org.labkey.nbri_ehr.dataentry.section.NBRIProjectAssignmentFormSection;
-import org.labkey.nbri_ehr.dataentry.section.NBRIProtocolAssignmentFormSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRITaskFormSection;
 
 import java.util.ArrayList;
@@ -42,23 +39,16 @@ public class NBRIBirthFormType extends BirthFormType
                 new NBRIBirthInstructionsFormSection(),
                 new NBRITaskFormSection(),
                 new NBRIAnimalDetailsFormSection(),
-                new NBRIBirthFormSection(),
-                new NBRIProtocolAssignmentFormSection(true, true, true),
-                new NBRIProjectAssignmentFormSection(true, true, true),
-                new NBRIGroupAssignmentFormSection(true, true, true)
+                new NBRIBirthFormSection()
         ));
 
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/plugin/RowEditor.js"));
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/model/sources/NBRIDefault.js"));
-        addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/model/sources/Assignment.js"));
-        addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/model/sources/AnimalGroupMembers.js"));
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/model/sources/Birth.js"));
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/window/AddAnimalsWindow.js"));
 
         for (FormSection s : getFormSections())
         {
-            s.addConfigSource("Assignment");
-            s.addConfigSource("AnimalGroupMembers");
             s.addConfigSource("Birth");
         }
     }
