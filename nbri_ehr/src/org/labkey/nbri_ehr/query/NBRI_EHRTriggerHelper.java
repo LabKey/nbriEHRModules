@@ -300,6 +300,18 @@ public class NBRI_EHRTriggerHelper
         return ts.exists();
     }
 
+    /**
+     * Null both when the animal has no demographics record and when it has one carrying no generation; birth.js treats
+     * the two the same, so the caller never needs to tell them apart.
+     */
+    public Integer getGeneration(String id)
+    {
+        TableInfo ti = getTableInfo("study", "demographics");
+        TableSelector ts = new TableSelector(ti, PageFlowUtil.set("generation"), new SimpleFilter(FieldKey.fromString("Id"), id), null);
+
+        return ts.getObject(Integer.class);
+    }
+
     public boolean birthExists(String id)
     {
         TableInfo ti = getTableInfo("study", "birth");

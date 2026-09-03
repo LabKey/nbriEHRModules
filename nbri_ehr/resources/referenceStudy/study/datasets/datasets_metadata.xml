@@ -509,6 +509,9 @@
             <column columnName="socialCode">
                 <datatype>varchar</datatype>
             </column>
+            <column columnName="generation">
+                <datatype>integer</datatype>
+            </column>
             <column columnName="CITES">
                 <datatype>varchar</datatype>
             </column>

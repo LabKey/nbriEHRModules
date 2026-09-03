@@ -146,6 +146,17 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                 columnConfig: {
                     width: 200
                 }
+            },
+            // derived from the dam by the conception window, but left editable so it can be corrected by hand
+            'Id/demographics/generation': {
+                allowBlank: false,
+                nullable: false,
+                editorConfig: {
+                    minValue: 0
+                },
+                columnConfig: {
+                    width: 120
+                }
             }
         }
     }

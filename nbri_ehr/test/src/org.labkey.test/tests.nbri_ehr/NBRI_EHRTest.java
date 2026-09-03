@@ -696,6 +696,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitForFormError("The field: Social Code is required");
         arrivals.setGridCell(1, "Id/demographics/socialCode", socialCode);
 
+        log("Verifying Generation is seeded to 0 and is required");
+        assertEquals("An arriving animal should start at generation 0", "0", String.valueOf(arrivals.getFieldValue(1, "Id/demographics/generation")));
+        arrivals.setGridCellJS(1, "Id/demographics/generation", null);
+        waitForFormError("The field: Generation is required");
+        arrivals.setGridCellJS(1, "Id/demographics/generation", 0);
+
         // the animal's opening project, protocol and group are entered on the arrival row itself; the trigger script
         // opens the matching assignment record for each one
         arrivals.setGridCell(1, "project", "640991");
@@ -754,6 +760,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table.setFilter("Id", "Equals", arrivedAnimal);
         Assert.assertEquals("Social code entered on the arrival form did not reach demographics",
                 Arrays.asList(socialCode), table.getRowDataAsText(0, "socialCode"));
+        Assert.assertEquals("Generation seeded by the arrival form did not reach demographics",
+                Arrays.asList("0"), table.getRowDataAsText(0, "generation"));
 
         log("Verifying the birth date reached demographics and agrees with the birth record");
         String arrivalBirthDay = now.minusDays(7).format(_dateFormat);
@@ -774,6 +782,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         String damSpecies = "Brown-Tufted Capuchin";
         String conceptId = "TESTCONCEPT1";
         String breedingType = "Time-Mated";
+        int damGeneration = 2;
         // demographics.socialCode holds an ehr_lookups.social_code code; the grids display its title
         String socialCode = "Mother-rearing (for indoors)";
         // the group is an ehr_lookups.breeding_type code, carried to animal_group_members; the grids display its title
@@ -781,7 +790,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating the dam and sire of the conception");
-        createBreedingPair(damId, sireId, damSpeciesCode);
+        createBreedingPair(damId, sireId, damSpeciesCode, damGeneration);
 
         log("Creating conception record");
         InsertRowsCommand conception = new InsertRowsCommand("nbri_ehr", "Conception");
@@ -803,6 +812,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assertEquals("Dam was not copied from the conception", damId, births.getFieldValue(1, "Id/demographics/dam"));
         assertEquals("Sire was not copied from the conception", sireId, births.getFieldValue(1, "Id/demographics/sire"));
         assertEquals("Species was not copied from the dam of the conception", damSpeciesCode, births.getFieldValue(1, "Id/demographics/species"));
+        assertEquals("Generation was not derived from the dam of the conception", String.valueOf(damGeneration + 1),
+                String.valueOf(births.getFieldValue(1, "Id/demographics/generation")));
 
         log("Verifying Conception Id is required");
         births.setGridCellJS(1, "conceptId", null);
@@ -820,6 +831,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         births.setGridCellJS(1, "Id/demographics/socialCode", null);
         waitForFormError("The field: Social Code is required");
         births.setGridCell(1, "Id/demographics/socialCode", socialCode);
+
+        log("Verifying Generation is required");
+        births.setGridCellJS(1, "Id/demographics/generation", null);
+        waitForFormError("The field: Generation is required");
+        births.setGridCellJS(1, "Id/demographics/generation", damGeneration + 1);
 
         // the animal's opening project, protocol and group are entered on the birth row itself; the trigger script
         // opens the matching assignment record for each one
@@ -859,6 +875,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Assert.assertEquals("Invalid demographics record", Arrays.asList(damSpecies), table.getRowDataAsText(0, "species"));
         Assert.assertEquals("Social code entered on the birth form did not reach demographics",
                 Arrays.asList(socialCode), table.getRowDataAsText(0, "socialCode"));
+        Assert.assertEquals("Generation derived from the dam did not reach demographics",
+                Arrays.asList(String.valueOf(damGeneration + 1)), table.getRowDataAsText(0, "generation"));
 
         goToSchemaBrowser();
         table = viewQueryData("study", "assignment");
@@ -931,6 +949,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Entering two births that both claim the first conception");
         startWithConception(births, firstConcept, 1);
+        assertEquals("A dam with no generation of her own should leave the birth at generation 1", "1",
+                String.valueOf(births.getFieldValue(1, "Id/demographics/generation")));
         fillBirthRow(births, 1, firstAnimal, now.minusDays(1), socialCode, animalGroup);
         startWithConception(births, firstConcept, 2);
         fillBirthRow(births, 2, secondAnimal, now.minusDays(1), socialCode, animalGroup);
@@ -976,6 +996,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         // different species on each pair, so the copy from the newly picked dam is visible
         String firstSpeciesCode = "CAP";
         String secondSpeciesCode = "MMU";
+        // different generations on each dam, so the re-derivation from the newly picked dam is visible
+        int firstDamGeneration = 2;
+        int secondDamGeneration = 5;
         String firstConcept = "TESTCONCEPT6";
         String secondConcept = "TESTCONCEPT7";
         String socialCode = "Mother-rearing (for indoors)";
@@ -983,8 +1006,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating a breeding pair and a conception for each");
-        createBreedingPair(firstDam, firstSire, firstSpeciesCode);
-        createBreedingPair(secondDam, secondSire, secondSpeciesCode);
+        createBreedingPair(firstDam, firstSire, firstSpeciesCode, firstDamGeneration);
+        createBreedingPair(secondDam, secondSire, secondSpeciesCode, secondDamGeneration);
 
         InsertRowsCommand conceptions = new InsertRowsCommand("nbri_ehr", "Conception");
         conceptions.addRow(Map.of("ConceptId", firstConcept, "ConceptDate", now.minusDays(200), "Dam", firstDam, "Sire", firstSire));
@@ -1028,6 +1051,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assertEquals("Dam was not replaced from the picked conception", secondDam, births.getFieldValue(1, "Id/demographics/dam"));
         assertEquals("Sire was not replaced from the picked conception", secondSire, births.getFieldValue(1, "Id/demographics/sire"));
         assertEquals("Species was not replaced from the dam of the picked conception", secondSpeciesCode, births.getFieldValue(1, "Id/demographics/species"));
+        assertEquals("Generation was not re-derived from the dam of the picked conception", String.valueOf(secondDamGeneration + 1),
+                String.valueOf(births.getFieldValue(1, "Id/demographics/generation")));
 
         log("Verifying nothing else on the row was touched");
         assertEquals("Animal Id should have been left alone", bornAnimal, births.getFieldValue(1, "Id"));
@@ -2321,12 +2346,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     }
 
     // Fills in everything a birth row needs beyond what the conception supplies, so the form can be submitted.
-    // Birth Location is left blank on purpose: it is optional, and skipping it keeps housing out of these tests.
+    // Generation is not set here: the conception supplies it from the dam.
     private void fillBirthRow(Ext4GridRef births, int rowIdx, String animalId, LocalDateTime birthDate,
                               String socialCode, String animalGroup)
     {
         births.setGridCellJS(rowIdx, "date", birthDate.format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         births.setGridCell(rowIdx, "Id", animalId);
+        births.setGridCell(rowIdx, "cage", CAGE_IN_R2);
         births.setGridCell(rowIdx, "Id/demographics/gender", "Female");
         births.setGridCell(rowIdx, "Id/demographics/socialCode", socialCode);
         births.setGridCell(rowIdx, "project", "795644");
@@ -2336,10 +2362,16 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
     private void createBreedingPair(String damId, String sireId, String species) throws Exception
     {
-        String[] fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
+        createBreedingPair(damId, sireId, species, null);
+    }
+
+    // A null damGeneration leaves the dam with no generation of her own, which is what makes her offspring generation 1.
+    private void createBreedingPair(String damId, String sireId, String species, Integer damGeneration) throws Exception
+    {
+        String[] fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby", "generation"};
         Object[][] data = new Object[][]{
-                {damId, species, (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {sireId, species, (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
+                {damId, species, (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004, damGeneration},
+                {sireId, species, (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004, null}
         };
         SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
         getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", damId + ";" + sireId, Filter.Operator.IN));
@@ -2351,7 +2383,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private void verifyBirthColumnOrder(Ext4GridRef births)
     {
         List<String> expectedOrder = List.of("Id", "date", "conceptId", "Id/demographics/species", "Id/demographics/gender",
-                "Id/demographics/dam", "Id/demographics/sire", "cage", "Id/demographics/socialCode", "project",
+                "Id/demographics/dam", "Id/demographics/sire", "cage", "Id/demographics/socialCode",
+                "Id/demographics/generation", "project",
                 "birthProtocol", "groupId", "type", "breedingType", "remark", "performedby");
 
         int previousIdx = 0;

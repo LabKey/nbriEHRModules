@@ -56,6 +56,21 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
                     width: 200
                 }
             },
+            // an arriving animal founds its own line, so it starts at generation 0
+            'Id/demographics/generation': {
+                allowBlank: false,
+                nullable: false,
+                getInitialValue: function(v) {
+                    return Ext4.isEmpty(v) ? 0 : v;
+                },
+                editorConfig: {
+                    minValue: 0
+                },
+                columnConfig: {
+                    fixed: true,
+                    width: 120
+                }
+            },
             // an animal joins the colony already assigned to a project, a protocol and a group; the trigger script
             // opens the matching assignment record for each one
             project: {
