@@ -829,6 +829,18 @@ public class NBRI_EHRTriggerHelper
         return ts.getRowCount();
     }
 
+    // The Conception table has no Id column, so its trigger cannot announce a modified participant on its own
+    public String getConceptionDam(String conceptId)
+    {
+        if (conceptId == null)
+            return null;
+
+        TableInfo ti = getTableInfo("nbri_ehr", "Conception");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("ConceptId"), conceptId);
+
+        return new TableSelector(ti, Collections.singleton("Dam"), filter, null).getObject(String.class);
+    }
+
     public boolean canCloseCase()
     {
         return _container.hasPermission(_user, EHRVeterinarianPermission.class);
