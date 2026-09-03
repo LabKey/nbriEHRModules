@@ -5,6 +5,7 @@
                 <columns>
                     <column columnName="date">
                         <columnTitle>Exam Date</columnTitle>
+                        <formatString>DateTime</formatString>
                     </column>
                     <column columnName="category">
                         <columnTitle>Category</columnTitle>

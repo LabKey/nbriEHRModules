@@ -6,6 +6,7 @@
                     <column columnName="Id"/>
                     <column columnName="date">
                         <columnTitle>In Date</columnTitle>
+                        <formatString>DateTime</formatString>
                     </column>
                     <column columnName="enddate">
                         <nullable>true</nullable>
