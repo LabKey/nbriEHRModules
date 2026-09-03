@@ -11,6 +11,7 @@
                     </column>
                     <column columnName="enddate">
                         <columnTitle>Date Removed</columnTitle>
+                        <formatString>DateTime</formatString>
                         <isHidden>false</isHidden>
                     </column>
                     <column columnName="groupId">
