@@ -951,9 +951,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         startWithConception(births, firstConcept, 1);
         assertEquals("A dam with no generation of her own should leave the birth at generation 1", "1",
                 String.valueOf(births.getFieldValue(1, "Id/demographics/generation")));
-        fillBirthRow(births, 1, firstAnimal, now.minusDays(1), socialCode, animalGroup);
+        fillBirthRow(births, 1, firstAnimal, now.minusDays(1), socialCode, animalGroup, CAGE_IN_R2);
         startWithConception(births, firstConcept, 2);
-        fillBirthRow(births, 2, secondAnimal, now.minusDays(1), socialCode, animalGroup);
+        fillBirthRow(births, 2, secondAnimal, now.minusDays(1), socialCode, animalGroup, CAGE_IN_R3);
 
         // Live validation only sends the row that just changed, so the rows of one form entry first reach the
         // server together on submit. A rule that compares them therefore reports by refusing the save rather than
@@ -1020,7 +1020,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         Ext4GridRef births = _helper.getExt4GridForFormSection("Births");
         startWithConception(births, firstConcept, 1);
-        fillBirthRow(births, 1, bornAnimal, now.minusDays(1), socialCode, animalGroup);
+        fillBirthRow(births, 1, bornAnimal, now.minusDays(1), socialCode, animalGroup, CAGE_IN_R1);
         births.setGridCell(1, "breedingType", "Time-Mated");
 
         // the codes behind these lookups are not spelled out in the test, so remember what the row carries and
@@ -2349,13 +2349,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     }
 
     // Fills in everything a birth row needs beyond what the conception supplies, so the form can be submitted.
-    // Generation is not set here: the conception supplies it from the dam.
+    // Generation is not set here: the conception supplies it from the dam. Each row takes its own cage so that a
+    // co-housing or capacity rule can never be what fails these tests.
     private void fillBirthRow(Ext4GridRef births, int rowIdx, String animalId, LocalDateTime birthDate,
-                              String socialCode, String animalGroup)
+                              String socialCode, String animalGroup, String cage)
     {
         births.setGridCellJS(rowIdx, "date", birthDate.format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         births.setGridCell(rowIdx, "Id", animalId);
-        births.setGridCell(rowIdx, "cage", CAGE_IN_R2);
+        births.setGridCell(rowIdx, "cage", cage);
         births.setGridCell(rowIdx, "Id/demographics/gender", "Female");
         births.setGridCell(rowIdx, "Id/demographics/socialCode", socialCode);
         births.setGridCell(rowIdx, "project", "795644");

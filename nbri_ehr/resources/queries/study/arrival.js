@@ -52,7 +52,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
     }
 
     // the arrival form seeds this to 0, so a blank one means an insert that bypassed the form
-    if (!row.rearrival && !helper.isETL() && isBlankGeneration(row['Id/demographics/generation'])) {
+    if (!row.rearrival && !helper.isETL() && !helper.isGeneratedByServer() && helper.getEvent() == 'insert' && isBlankGeneration(row['Id/demographics/generation'])) {
         EHR.Server.Utils.addError(scriptErrors, 'Id/demographics/generation', 'Generation is required', 'ERROR');
     }
 
@@ -79,7 +79,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         row.gender = row['Id/demographics/gender'] || null;
         row.geographic_origin = row['Id/demographics/geographic_origin'] || null;
         row.socialCode = row['Id/demographics/socialCode'] || null;
-        row.generation = isBlankGeneration(row['Id/demographics/generation']) ? null : row['Id/demographics/generation'];
+        row.generation = isBlankGeneration(row['Id/demographics/generation']) ? null : parseInt(row['Id/demographics/generation'], 10);
 
         if (row.QCStateLabel) {
             row.qcstate = helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId();
@@ -160,6 +160,12 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
             if (row.socialCode && row.socialCode !== data.socialCode)
             {
                 obj.socialCode = row.socialCode;
+                hasUpdates = true;
+            }
+
+            if (!isBlankGeneration(row.generation) && row.generation !== data.generation)
+            {
+                obj.generation = row.generation;
                 hasUpdates = true;
             }
 

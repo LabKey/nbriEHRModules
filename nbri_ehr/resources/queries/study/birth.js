@@ -151,7 +151,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 birth: row.date || null,
                 gender: row['Id/demographics/gender'] || null,
                 socialCode: row['Id/demographics/socialCode'] || null,
-                generation: isBlankGeneration(row['Id/demographics/generation']) ? null : row['Id/demographics/generation'],
+                generation: isBlankGeneration(row['Id/demographics/generation']) ? null : parseInt(row['Id/demographics/generation'], 10),
                 taskid: row.taskid,
                 remark: row.remark,
                 QCStateLabel: row.QCStateLabel,
@@ -171,7 +171,10 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
             if (isBlankGeneration(obj.generation)) {
                 var damGeneration = obj.dam ? triggerHelper.getGeneration(obj.dam) : null;
                 if (damGeneration === null) {
-                    EHR.Server.Utils.addError(scriptErrors, 'Id/demographics/generation', 'No generation is recorded for dam ' + (obj.dam || '(none)') + ', so this birth was recorded as generation 1', 'WARN');
+                    var generationWarning = obj.dam
+                            ? 'No generation is recorded for dam ' + obj.dam + ', so this birth was recorded as generation 1'
+                            : 'This birth record has no dam, so it was recorded as generation 1';
+                    EHR.Server.Utils.addError(scriptErrors, 'Id/demographics/generation', generationWarning, 'WARN');
                 }
 
                 obj.generation = (damGeneration === null ? 0 : damGeneration) + 1;

@@ -307,6 +307,9 @@ public class NBRI_EHRTriggerHelper
     public Integer getGeneration(String id)
     {
         TableInfo ti = getTableInfo("study", "demographics");
+        if (null == ti.getColumn("generation"))
+            throw new IllegalStateException("The demographics dataset has no 'generation' column. Import the reference study to add it.");
+
         TableSelector ts = new TableSelector(ti, PageFlowUtil.set("generation"), new SimpleFilter(FieldKey.fromString("Id"), id), null);
 
         return ts.getObject(Integer.class);
