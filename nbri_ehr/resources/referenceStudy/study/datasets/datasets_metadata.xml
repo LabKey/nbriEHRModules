@@ -1367,7 +1367,6 @@
                 <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
             </column>
             <column columnName="type">
-                <columnTitle>Type</columnTitle>
                 <datatype>varchar</datatype>
             </column>
             <column columnName="result">

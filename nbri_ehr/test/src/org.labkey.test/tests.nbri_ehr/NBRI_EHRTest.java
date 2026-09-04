@@ -1089,6 +1089,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         String conceptId = "TESTCONCEPT2";
         // a non-live outcome, so ConceptionsByDam reports it rather than falling through to 'Live Birth'
         String result = "Fetal Death";
+        String deliveryMode = "Vaginal";
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating conception record");
@@ -1106,6 +1107,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         outcomes.setGridCell(1, "Id", animalId);
         outcomes.setGridCell(1, "result", result);
         outcomes.setGridCell(1, "conceptId", conceptId);
+        outcomes.setGridCell(1, "type", deliveryMode);
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -1114,6 +1116,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(animalId), table.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(result), table.getRowDataAsText(0, "result"));
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
+        Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(deliveryMode), table.getRowDataAsText(0, "type"));
 
         log("Verifying conception outcome in ConceptionsByDam");
         goToSchemaBrowser();
