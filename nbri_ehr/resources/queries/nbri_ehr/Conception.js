@@ -23,6 +23,9 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 });
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'nbri_ehr', 'Conception', function(helper, scriptErrors, row, oldRow) {
+    if (helper.isValidateOnly())
+        return;
+
     addDam(row.Dam);
 
     // a re-pointed conception frees the dam it used to belong to

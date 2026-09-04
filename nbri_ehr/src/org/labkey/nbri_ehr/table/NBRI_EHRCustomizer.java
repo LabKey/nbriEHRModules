@@ -694,7 +694,8 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
     private void addIsActiveForConception(AbstractTableInfo ti)
     {
         String name = "isActive";
-        if (ti.getColumn(name) != null || ti.getColumn("conceptid") == null)
+        // both columns back the expression below, so neither may be missing
+        if (ti.getColumn(name) != null || ti.getColumn("conceptid") == null || ti.getColumn("qcstate") == null)
             return;
 
         UserSchema us = ti.getUserSchema();
