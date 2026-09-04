@@ -56,7 +56,7 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
                     width: 200
                 }
             },
-            // an arriving animal founds its own line, so it starts at generation 0
+            // an arriving animal establishes its own lineage, so it starts at generation 0
             'Id/demographics/generation': {
                 allowBlank: false,
                 nullable: false,
