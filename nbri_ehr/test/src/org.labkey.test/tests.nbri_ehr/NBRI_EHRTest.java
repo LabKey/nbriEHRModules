@@ -1644,7 +1644,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Marking an animal dead");
         InsertRowsCommand deaths = new InsertRowsCommand("study", "deaths");
-        deaths.addRow(Map.of("Id", deadAnimalId, "date", LocalDateTime.now().minusDays(10), "reason", "4", "performedby", 1004));
+        deaths.addRow(Map.of("Id", deadAnimalId, "date", LocalDateTime.now().minusDays(10), "performedby", 1004));
         deaths.execute(getApiHelper().getConnection(), getContainerPath());
 
         log("Marking an animal departed");
@@ -1840,7 +1840,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         // the death has to be recorded before the departure: the deaths trigger rejects an animal that has shipped
         log("Recording the death");
         InsertRowsCommand deaths = new InsertRowsCommand("study", "deaths");
-        deaths.addRow(Map.of("Id", animalId, "date", now.minusDays(10), "reason", "4", "QCStateLabel", "Completed", "performedby", 1004));
+        deaths.addRow(Map.of("Id", animalId, "date", now.minusDays(10), "QCStateLabel", "Completed", "performedby", 1004));
         deaths.execute(getApiHelper().getConnection(), getContainerPath());
 
         assertEquals("Demographics death date does not match the death record",

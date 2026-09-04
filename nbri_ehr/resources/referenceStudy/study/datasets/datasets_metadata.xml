@@ -564,9 +564,6 @@
                 <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
                 <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
             </column>
-            <column columnName="reason">
-                <datatype>varchar</datatype>
-            </column>
             <column columnName="deathWeight">
                 <datatype>double</datatype>
             </column>

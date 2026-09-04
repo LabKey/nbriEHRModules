@@ -596,11 +596,10 @@ public class NBRI_EHRTriggerHelper
 
                         //get death info
                         TableInfo deaths = getTableInfo("study", "deathNotification");
-                        TableSelector deathsTs = new TableSelector(deaths, PageFlowUtil.set("Id", "date", "taskid", "performedBy", "reason"), new SimpleFilter(FieldKey.fromString("Id"), animalId), null);
+                        TableSelector deathsTs = new TableSelector(deaths, PageFlowUtil.set("Id", "date", "taskid", "performedBy"), new SimpleFilter(FieldKey.fromString("Id"), animalId), null);
                         final Mutable<Date> deathDate = new MutableObject<>();
                         final Mutable<String> taskId = new MutableObject<>();
                         final Mutable<String> performedBy = new MutableObject<>();
-                        final Mutable<String> disposition = new MutableObject<>();
                         deathsTs.forEach(rs -> {
                             if (rs.getString("date") != null)
                             {
@@ -608,7 +607,6 @@ public class NBRI_EHRTriggerHelper
                                 deathDate.setValue(date);
                                 taskId.setValue(rs.getString("taskid"));
                                 performedBy.setValue(rs.getString("performedBy"));
-                                disposition.setValue(rs.getString("reason"));
                             }
                         });
 
@@ -621,8 +619,7 @@ public class NBRI_EHRTriggerHelper
                             return;
                         }
                         html.append("Animal '").append(PageFlowUtil.filter(animalId)).append("' has been declared dead on '").append(_dateFormat.format(deathDate.get())).append("'.<br>");
-                        html.append("Performed By: ").append(PageFlowUtil.filter(performedBy.get())).append("<br>");
-                        html.append("Disposition: ").append(PageFlowUtil.filter(disposition.get())).append("<br><br>");
+                        html.append("Performed By: ").append(PageFlowUtil.filter(performedBy.get())).append("<br><br>");
 
                         //append animal details
                         appendAnimalDetails(html, animalId, container);

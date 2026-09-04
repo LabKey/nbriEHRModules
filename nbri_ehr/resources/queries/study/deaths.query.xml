@@ -16,15 +16,6 @@
                             <fkDisplayColumnName>title</fkDisplayColumnName>
                         </fk>
                     </column>
-                    <column columnName="reason">
-                        <columnTitle>Disposition</columnTitle>
-                        <fk>
-                            <fkDbSchema>ehr_lookups</fkDbSchema>
-                            <fkTable>death_reason</fkTable>
-                            <fkColumnName>value</fkColumnName>
-                            <fkDisplayColumnName>title</fkDisplayColumnName>
-                        </fk>
-                    </column>
                     <column columnName="deathWeight">
                         <columnTitle>Death Weight (kg)</columnTitle>
                     </column>

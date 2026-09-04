@@ -8,6 +8,5 @@ SELECT
     Id,
     date,
     taskid,
-    performedBy.DisplayName AS performedBy,
-    reason.title AS reason
+    performedBy.DisplayName AS performedBy
 FROM study.deaths

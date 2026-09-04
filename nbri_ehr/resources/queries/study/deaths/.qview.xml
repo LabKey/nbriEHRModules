@@ -7,7 +7,6 @@
         <column name="Id/Demographics/species"/>
         <column name="date"/>
         <column name="type"/>
-        <column name="reason"/>
         <column name="deathWeight"/>
         <column name="remark"/>
         <column name="performedBy"/>
