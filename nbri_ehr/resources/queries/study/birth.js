@@ -9,6 +9,10 @@ EHR.Server.Utils = require("ehr/utils").EHR.Server.Utils;
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 var idsToSync = [];
 
+// dams whose conception this save closes.  The birth row announces the newborn, so the dam's cached Pregnant value
+// would otherwise keep listing a conception that is no longer open.
+var damsToSync = [];
+
 // conception ids claimed by the rows of this save that have already been validated.  Rows entered together are not in
 // study.birth yet when each one is checked, so this is the only way the one-birth-per-conception rule can see them.
 var conceptIdsInSave = [];
@@ -34,6 +38,17 @@ function createAssignment(scriptErrors, dataset, fieldName, value, row) {
     }
 }
 
+// resolves the dam of a conception so the birth can announce her; the conception carries the dam, the birth row does not
+function addConceptionDam(conceptId) {
+    if (!conceptId)
+        return;
+
+    var dam = triggerHelper.getConceptionDam(conceptId);
+    if (dam && damsToSync.indexOf(dam) === -1) {
+        damsToSync.push(dam);
+    }
+}
+
 function onInit(event, helper){
     helper.setScriptOptions({
         allowAnyId: true,
@@ -49,6 +64,7 @@ function onInit(event, helper){
     // the script scope can outlive a single save, so never inherit ids from a prior one
     idsToSync = [];
     conceptIdsInSave = [];
+    damsToSync = [];
 
     helper.decodeExtraContextProperty('birthsInTransaction');
 }
@@ -64,6 +80,16 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         }
         idsToSync = [];
     }
+
+    if (damsToSync.length) {
+        triggerHelper.reportDataChange('nbri_ehr', 'Conception', damsToSync);
+        damsToSync = [];
+    }
+});
+
+EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_DELETE, 'study', 'birth', function(helper, scriptErrors, row) {
+    // deleting the birth reopens its conception
+    addConceptionDam(row.conceptId);
 });
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'study', 'birth', function(helper, scriptErrors, row, oldRow) {
@@ -93,6 +119,13 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         if (triggerHelper.totalRecords('study', 'pregnancy', 'conceptId', row.conceptId) > 0) {
             EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id is already used by a pregnancy outcome record', 'WARN');
         }
+    }
+
+    if (!helper.isETL() && !helper.isValidateOnly()) {
+        addConceptionDam(row.conceptId);
+
+        // a re-pointed birth reopens the conception it used to claim
+        addConceptionDam(oldRow ? oldRow.conceptId : null);
     }
 
     if (!helper.isETL()) {

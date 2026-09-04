@@ -788,6 +788,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         conception.addRow(Map.of("ConceptId", conceptId, "ConceptDate", now.minusDays(160), "Dam", damId, "Sire", sireId));
         conception.execute(getApiHelper().getConnection(), getContainerPath());
 
+        log("Verifying the dam's Animal Details reports the open conception before the birth");
+        assertEquals("Animal Details did not report the open conception", conceptId, getSnapshotFieldValue(damId, "Pregnant"));
+
         gotoEnterData();
         waitAndClickAndWait(Locator.linkWithText("Birth"));
         lockForm();
@@ -895,6 +898,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(damId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Live Birth"), report.getRowDataAsText(0, "conceptionOutcome"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(bornAnimal), report.getRowDataAsText(0, "offspring"));
+        Assert.assertEquals("A conception claimed by a birth should not be active",
+                Arrays.asList("false"), report.getRowDataAsText(0, "isActive"));
+
+        log("Verifying the birth cleared the dam's pregnancy");
+        assertEquals("Animal Details still reports a conception a birth has closed", "No", getSnapshotFieldValue(damId, "Pregnant"));
     }
 
     @Test
@@ -1096,6 +1104,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         report.setFilter("ConceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(animalId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(result), report.getRowDataAsText(0, "conceptionOutcome"));
+        Assert.assertEquals("A conception claimed by a pregnancy outcome should not be active",
+                Arrays.asList("false"), report.getRowDataAsText(0, "isActive"));
+
+        log("Verifying the pregnancy outcome cleared the dam's pregnancy");
+        // this dam carries other conceptions from sibling tests, so assert only that this one is gone
+        Assert.assertFalse("Animal Details still reports a conception a pregnancy outcome has closed",
+                getSnapshotFieldValue(animalId, "Pregnant").contains(conceptId));
     }
 
     @Test
@@ -1140,6 +1155,30 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         report.setFilter("ConceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(damId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Unknown"), report.getRowDataAsText(0, "conceptionOutcome"));
+        Assert.assertEquals("A conception with no birth or pregnancy outcome should be active",
+                Arrays.asList("true"), report.getRowDataAsText(0, "isActive"));
+
+        log("Verifying the dam's Animal Details links to the open conception");
+        // this dam carries other conceptions from sibling tests, so assert only that this one is listed
+        Assert.assertTrue("Animal Details did not report the open conception",
+                getSnapshotFieldValue(damId, "Pregnant").contains(conceptId));
+    }
+
+    /**
+     * Reads one field from the Animal Details snapshot panel, which renders Ext4 displayfields rather than a grid, so
+     * there is no page object to read through. The value arrives from the demographics cache after the page settles,
+     * so an empty field means not-yet-loaded rather than no value.
+     */
+    private String getSnapshotFieldValue(String animalId, String fieldLabel)
+    {
+        ParticipantViewPage.beginAt(this, animalId);
+        Locator field = Locator.xpath("//*[contains(@class,'x4-form-item')][.//label[starts-with(normalize-space(.),'"
+                + fieldLabel + "')]]//div[contains(@class,'x4-form-display-field')]");
+        waitForElement(field);
+        waitFor(() -> !field.findElement(getDriver()).getText().trim().isEmpty(),
+                "Animal Details did not populate the " + fieldLabel + " field", WAIT_FOR_JAVASCRIPT);
+
+        return field.findElement(getDriver()).getText().trim();
     }
 
     @Test

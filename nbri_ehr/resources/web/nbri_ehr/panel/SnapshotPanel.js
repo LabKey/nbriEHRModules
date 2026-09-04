@@ -85,10 +85,6 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
                         xtype: 'displayfield',
                         fieldLabel: 'Source',
                         name: 'source'
-                    },{
-                        xtype: 'displayfield',
-                        fieldLabel: 'Prev Id',
-                        name: 'prev_id'
                     }]
                 },{
                     xtype: 'container',
@@ -133,6 +129,10 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
                         xtype: 'displayfield',
                         fieldLabel: 'Last TB',
                         name: 'lastTB'
+                    },{
+                        xtype: 'displayfield',
+                        fieldLabel: 'Pregnant',
+                        name: 'pregnant'
                     },{
                         xtype: 'displayfield',
                         fieldLabel: 'Weights',
@@ -390,5 +390,33 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
         else {
             toSet['parents'] = 'No data';
         }
+    },
+
+    appendDataResults: function(toSet, results, id){
+        this.callParent(arguments);
+        this.appendPregnancy(toSet, results);
+    },
+
+    appendPregnancy: function(toSet, results){
+        var records = results ? results.getData()['activeConceptions'] : null;
+        // getEHRContext returns null when the study container property is unset; fall back to the current container
+        var ctx = EHR.Utils.getEHRContext() || {};
+        var values = [];
+
+        if (Ext4.isArray(records)){
+            Ext4.each(records, function(record){
+                var conceptId = record['ConceptId'];
+                if (conceptId){
+                    var url = LABKEY.ActionURL.buildURL('query', 'executeQuery', ctx['EHRStudyContainer'], {
+                        schemaName: 'nbri_ehr',
+                        'query.queryName': 'Conception',
+                        'query.ConceptId~eq': conceptId
+                    });
+                    values.push('<a href="' + url + '" target="_blank">' + LABKEY.Utils.encodeHtml(conceptId) + '</a>');
+                }
+            }, this);
+        }
+
+        toSet['pregnant'] = values.length ? values.join('<br>') : 'No';
     },
 });
