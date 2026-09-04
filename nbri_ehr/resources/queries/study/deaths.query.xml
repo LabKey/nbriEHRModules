@@ -6,6 +6,7 @@
                     <column columnName="Id"/>
                     <column columnName="date">
                         <columnTitle>Death Date</columnTitle>
+                        <formatString>DateTime</formatString>
                     </column>
                     <column columnName="type">
                         <columnTitle>Death Type</columnTitle>

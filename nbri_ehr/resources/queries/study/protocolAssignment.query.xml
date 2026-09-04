@@ -4,8 +4,12 @@
             <table tableName="protocolAssignment" tableDbType="TABLE" useColumnOrder="true">
                 <columns>
                     <column columnName="Id"/>
-                    <column columnName="date"/>
-                    <column columnName="endDate"/>
+                    <column columnName="date">
+                        <formatString>DateTime</formatString>
+                    </column>
+                    <column columnName="endDate">
+                        <formatString>DateTime</formatString>
+                    </column>
                     <column columnName="project">
                         <isHidden>true</isHidden>
                     </column>

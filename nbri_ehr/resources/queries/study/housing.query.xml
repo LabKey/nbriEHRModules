@@ -6,6 +6,7 @@
                     <column columnName="Id"/>
                     <column columnName="date">
                         <columnTitle>In Date</columnTitle>
+                        <formatString>DateTime</formatString>
                     </column>
                     <column columnName="enddate">
                         <nullable>true</nullable>
@@ -13,6 +14,7 @@
                         <shownInInsertView>true</shownInInsertView>
                         <shownInDetailsView>true</shownInDetailsView>
                         <columnTitle>Out Date</columnTitle>
+                        <formatString>DateTime</formatString>
                     </column>
                     <column columnName="cage">
                         <columnTitle>Location</columnTitle>

@@ -13,7 +13,7 @@
                         <columnTitle>Species</columnTitle>
                     </column>
                     <column columnName="birth">
-                        <formatString>Date</formatString>
+                        <formatString>DateTime</formatString>
                         <columnTitle>Birth</columnTitle>
                         <url>/query/executeQuery.view?
                             schemaName=study&amp;
@@ -22,7 +22,7 @@
                         </url>
                     </column>
                     <column columnName="death">
-                        <formatString>Date</formatString>
+                        <formatString>DateTime</formatString>
                         <columnTitle>Death</columnTitle>
                         <url>/query/executeQuery.view?
                             schemaName=study&amp;

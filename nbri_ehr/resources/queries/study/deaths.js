@@ -10,6 +10,10 @@ var idMap = {};
 var deathIdMap = {};
 var idsToSync = [];
 
+// QC states that mean a death has been declared. Leaving draft for anything else -- 'Delete Requested', a denied
+// request -- is not a declaration, so it must not notify or close out the animal's procedure orders.
+var NOTIFY_STATES = ['REQUEST: PENDING', 'REVIEW REQUIRED', 'COMPLETED'];
+
 function onInit(event, helper){
 
     // the script scope can outlive a single save, so never inherit ids from a prior one
@@ -185,24 +189,33 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         idsToSync = [];
     }
 
+    // A delete arrives here as the deleted row with a null oldRow, which otherwise reads as a draft leaving draft.
+    if (event === 'delete')
+        return;
+
     var rows = helper.getRows() || [];
+    var idsToComplete = [];
     for (var i = 0; i < rows.length; i++) {
         var row = rows[i].row;
         var oldRow = rows[i].oldRow;
 
-        // Notification will get sent when:
-        // 1) a brand-new row saved directly as 'Request: Pending' (i.e., when a user clicks 'Submit Death'), or
-        // 2) a draft death record moving from 'In Progress' to 'Request: Pending'.
-        if (!helper.isETL() &&
-                row && row.Id &&
-                row.QCStateLabel &&
-                row.QCStateLabel.toUpperCase() === 'REQUEST: PENDING' &&
-                (!oldRow || !oldRow.QCStateLabel || oldRow.QCStateLabel.toUpperCase() === 'IN PROGRESS')) {
+        if (helper.isETL() || !row || !row.Id || !row.QCStateLabel)
+            continue;
+
+        // Notify once, on the first save that leaves draft: 'Submit Death' lands on 'Request: Pending', but a death entered alongside its necropsy goes straight to 'Review Required' or 'Completed'.
+        var wasDraft = !oldRow || !oldRow.QCStateLabel || oldRow.QCStateLabel.toUpperCase() === 'IN PROGRESS';
+        if (wasDraft && NOTIFY_STATES.indexOf(row.QCStateLabel.toUpperCase()) > -1) {
             console.log("Sending NBRI Death Notification")
             triggerHelper.sendDeathNotification(row.Id);
 
-            console.log("Updating Procedure Orders to Completed for Animal: " + row.Id + "")
-            triggerHelper.updateProcedureOrdersToCompleted([row.Id]);
+            if (idsToComplete.indexOf(row.Id) === -1)
+                idsToComplete.push(row.Id);
         }
+    }
+
+    // One pass for the whole save: the helper filters and updates in bulk, so a call per row multiplies round trips.
+    if (idsToComplete.length) {
+        console.log("Updating Procedure Orders to Completed for: " + idsToComplete.join(', '))
+        triggerHelper.updateProcedureOrdersToCompleted(idsToComplete);
     }
 });
