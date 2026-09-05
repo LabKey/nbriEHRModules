@@ -51,8 +51,8 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         EHR.Server.Utils.addError(scriptErrors, 'Id', 'Animal Id ' + row.Id + ' is already in use. Please use a different Id.', 'ERROR');
     }
 
-    // the arrival form seeds this to 0, so a blank one means an insert that bypassed the form
-    if (!row.rearrival && !helper.isETL() && !helper.isGeneratedByServer() && helper.getEvent() == 'insert' && isBlankGeneration(row['Id/demographics/generation'])) {
+    // only a form entry can be held to a generation: the form seeds it to 0, while a study import has no such column to carry
+    if (!row.rearrival && !helper.isETL() && helper.isEHRDataEntry() && helper.getEvent() == 'insert' && isBlankGeneration(row['Id/demographics/generation'])) {
         EHR.Server.Utils.addError(scriptErrors, 'Id/demographics/generation', 'Generation is required', 'ERROR');
     }
 
