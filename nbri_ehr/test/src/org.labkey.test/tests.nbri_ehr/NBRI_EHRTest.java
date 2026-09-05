@@ -1689,7 +1689,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         setFormElement(Locator.name("Id"), aliveAnimalId);
         _ext4Helper.selectComboBoxItem("Death Type:", "Spontaneous/Normal");
-        _ext4Helper.selectComboBoxItem("Disposition:", "Euthaniasia (project)");
         waitForElement(Locator.name("deathWeight"));
         setFormElement(Locator.name("deathWeight"), "23");
         Assert.assertFalse(isElementPresent(Locator.linkWithText("Submit Necropsy for Review")));
@@ -1699,8 +1698,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Verify a second death insert is rejected with a validation error, not a unique constraint violation");
         SimplePostCommand duplicateDeath = getApiHelper().prepareInsertCommand("study", "deaths", "lsid",
-                new String[]{"Id", "date", "reason", "performedby"},
-                new Object[][]{{aliveAnimalId, LocalDateTime.now(), "4", 1004}});
+                new String[]{"Id", "date", "performedby"},
+                new Object[][]{{aliveAnimalId, LocalDateTime.now(), 1004}});
         CommandException duplicateError = getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), duplicateDeath, getExtraContext());
         Map<String, List<String>> duplicateErrors = getApiHelper().extractErrors(duplicateError.getProperties());
         Assert.assertTrue("Expected duplicate death validation error, got: " + duplicateErrors,
