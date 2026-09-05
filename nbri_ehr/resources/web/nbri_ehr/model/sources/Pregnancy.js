@@ -12,9 +12,6 @@ EHR.model.DataModelManager.registerMetadata('Pregnancy', {
             project: {
                 hidden: true,
             },
-            type: {
-                hidden: true,
-            },
             diagnosis: {
                 hidden: true,
             },
@@ -26,8 +23,17 @@ EHR.model.DataModelManager.registerMetadata('Pregnancy', {
                 nullable: false,
             },
             conceptId: {
+                allowBlank: false,
+                nullable: false,
                 columnConfig: {
                     width: 150
+                }
+            },
+            // shares the delivery_mode lookup with study.birth, but is optional here: an outcome can be recorded
+            // before the delivery mode is known
+            type: {
+                columnConfig: {
+                    width: 200
                 }
             }
         },

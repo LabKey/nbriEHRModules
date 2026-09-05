@@ -8,6 +8,11 @@ require("ehr/triggers").initScript(this);
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 var idsToSync = [];
 
+// generation 0 is a real value, so emptiness cannot be tested by truthiness the way the other demographics fields test it
+function isBlankGeneration(value) {
+    return value === null || value === undefined || value === '';
+}
+
 // opens one assignment record against the animal being entered; each dataset carries the assignment under its own field
 function createAssignment(scriptErrors, dataset, fieldName, value, row) {
     if (!value)
@@ -46,6 +51,11 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         EHR.Server.Utils.addError(scriptErrors, 'Id', 'Animal Id ' + row.Id + ' is already in use. Please use a different Id.', 'ERROR');
     }
 
+    // only a form entry can be held to a generation: the form seeds it to 0, while a study import has no such column to carry
+    if (!row.rearrival && !helper.isETL() && helper.isEHRDataEntry() && helper.getEvent() == 'insert' && isBlankGeneration(row['Id/demographics/generation'])) {
+        EHR.Server.Utils.addError(scriptErrors, 'Id/demographics/generation', 'Generation is required', 'ERROR');
+    }
+
     if (row.eventDate) {
         row.date = row.eventDate;
     }
@@ -69,6 +79,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         row.gender = row['Id/demographics/gender'] || null;
         row.geographic_origin = row['Id/demographics/geographic_origin'] || null;
         row.socialCode = row['Id/demographics/socialCode'] || null;
+        row.generation = isBlankGeneration(row['Id/demographics/generation']) ? null : parseInt(row['Id/demographics/generation'], 10);
 
         if (row.QCStateLabel) {
             row.qcstate = helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId();
@@ -149,6 +160,12 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
             if (row.socialCode && row.socialCode !== data.socialCode)
             {
                 obj.socialCode = row.socialCode;
+                hasUpdates = true;
+            }
+
+            if (!isBlankGeneration(row.generation) && row.generation !== data.generation)
+            {
+                obj.generation = row.generation;
                 hasUpdates = true;
             }
 

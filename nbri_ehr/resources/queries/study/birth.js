@@ -17,6 +17,11 @@ var damsToSync = [];
 // study.birth yet when each one is checked, so this is the only way the one-birth-per-conception rule can see them.
 var conceptIdsInSave = [];
 
+// generation 0 is a real value, so emptiness cannot be tested by truthiness the way the other demographics fields test it
+function isBlankGeneration(value) {
+    return value === null || value === undefined || value === '';
+}
+
 // opens one assignment record against the animal being entered; each dataset carries the assignment under its own field
 function createAssignment(scriptErrors, dataset, fieldName, value, row) {
     if (!value)
@@ -178,6 +183,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 birth: row.date || null,
                 gender: row['Id/demographics/gender'] || null,
                 socialCode: row['Id/demographics/socialCode'] || null,
+                generation: isBlankGeneration(row['Id/demographics/generation']) ? null : parseInt(row['Id/demographics/generation'], 10),
                 taskid: row.taskid,
                 remark: row.remark,
                 QCStateLabel: row.QCStateLabel,
@@ -191,6 +197,19 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
             if (obj.dam && !obj.species) {
                 obj.species = helper.getJavaHelper().getSpecies(obj.dam);
+            }
+
+            // the conception window fills this in, so a blank one means a save that bypassed the form
+            if (isBlankGeneration(obj.generation)) {
+                var damGeneration = obj.dam ? triggerHelper.getGeneration(obj.dam) : null;
+                if (damGeneration === null) {
+                    var generationWarning = obj.dam
+                            ? 'No generation is recorded for dam ' + obj.dam + ', so this birth was recorded as generation 1'
+                            : 'This birth record has no dam, so it was recorded as generation 1';
+                    EHR.Server.Utils.addError(scriptErrors, 'Id/demographics/generation', generationWarning, 'WARN');
+                }
+
+                obj.generation = (damGeneration === null ? 0 : damGeneration) + 1;
             }
 
             if (!oldRow) {
@@ -227,6 +246,11 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
                 if (obj.socialCode && obj.socialCode !== data.socialCode) {
                     record.socialCode = obj.socialCode;
+                    hasUpdates = true;
+                }
+
+                if (!isBlankGeneration(obj.generation) && obj.generation !== data.generation) {
+                    record.generation = obj.generation;
                     hasUpdates = true;
                 }
 

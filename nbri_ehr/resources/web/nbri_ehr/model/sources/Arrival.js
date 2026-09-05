@@ -20,7 +20,8 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
     byQuery: {
         'study.arrival': {
             'cage': {
-                // allowBlank: false,
+                allowBlank: false,
+                nullable: false,
                 columnConfig: {
                     fixed: true,
                     width: 200
@@ -53,6 +54,21 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
                 columnConfig: {
                     fixed: true,
                     width: 200
+                }
+            },
+            // an arriving animal establishes its own lineage, so it starts at generation 0
+            'Id/demographics/generation': {
+                allowBlank: false,
+                nullable: false,
+                getInitialValue: function(v) {
+                    return Ext4.isEmpty(v) ? 0 : v;
+                },
+                editorConfig: {
+                    minValue: 0
+                },
+                columnConfig: {
+                    fixed: true,
+                    width: 120
                 }
             },
             // an animal joins the colony already assigned to a project, a protocol and a group; the trigger script

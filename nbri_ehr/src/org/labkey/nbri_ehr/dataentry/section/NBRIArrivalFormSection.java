@@ -55,8 +55,10 @@ public class NBRIArrivalFormSection extends BaseFormSection
 
         keys.add(indexOf(keys, "project") + 1, FieldKey.fromString("Id/demographics/geographic_origin"));
 
-        // the social code sits beside Initial Location
-        keys.add(indexOf(keys, "cage") + 1, FieldKey.fromString("Id/demographics/socialCode"));
+        // the social code and generation sit beside Initial Location
+        keys.addAll(indexOf(keys, "cage") + 1, List.of(
+                FieldKey.fromString("Id/demographics/socialCode"),
+                FieldKey.fromString("Id/demographics/generation")));
 
         return keys;
     }
