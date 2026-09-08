@@ -307,6 +307,21 @@ public class NBRI_EHRTriggerHelper
         return ts.exists();
     }
 
+    /**
+     * Null both when the animal has no demographics record and when it has one carrying no generation; birth.js treats
+     * the two the same, so the caller never needs to tell them apart.
+     */
+    public Integer getGeneration(String id)
+    {
+        TableInfo ti = getTableInfo("study", "demographics");
+        if (null == ti.getColumn("generation"))
+            throw new IllegalStateException("The demographics dataset has no 'generation' column. Import the reference study to add it.");
+
+        TableSelector ts = new TableSelector(ti, PageFlowUtil.set("generation"), new SimpleFilter(FieldKey.fromString("Id"), id), null);
+
+        return ts.getObject(Integer.class);
+    }
+
     public boolean birthExists(String id)
     {
         TableInfo ti = getTableInfo("study", "birth");
@@ -591,11 +606,10 @@ public class NBRI_EHRTriggerHelper
 
                         //get death info
                         TableInfo deaths = getTableInfo("study", "deathNotification");
-                        TableSelector deathsTs = new TableSelector(deaths, PageFlowUtil.set("Id", "date", "taskid", "performedBy", "reason"), new SimpleFilter(FieldKey.fromString("Id"), animalId), null);
+                        TableSelector deathsTs = new TableSelector(deaths, PageFlowUtil.set("Id", "date", "taskid", "performedBy"), new SimpleFilter(FieldKey.fromString("Id"), animalId), null);
                         final Mutable<Date> deathDate = new MutableObject<>();
                         final Mutable<String> taskId = new MutableObject<>();
                         final Mutable<String> performedBy = new MutableObject<>();
-                        final Mutable<String> disposition = new MutableObject<>();
                         deathsTs.forEach(rs -> {
                             if (rs.getString("date") != null)
                             {
@@ -603,7 +617,6 @@ public class NBRI_EHRTriggerHelper
                                 deathDate.setValue(date);
                                 taskId.setValue(rs.getString("taskid"));
                                 performedBy.setValue(rs.getString("performedBy"));
-                                disposition.setValue(rs.getString("reason"));
                             }
                         });
 
@@ -616,8 +629,7 @@ public class NBRI_EHRTriggerHelper
                             return;
                         }
                         html.append("Animal '").append(PageFlowUtil.filter(animalId)).append("' has been declared dead on '").append(_dateFormat.format(deathDate.get())).append("'.<br>");
-                        html.append("Performed By: ").append(PageFlowUtil.filter(performedBy.get())).append("<br>");
-                        html.append("Disposition: ").append(PageFlowUtil.filter(disposition.get())).append("<br><br>");
+                        html.append("Performed By: ").append(PageFlowUtil.filter(performedBy.get())).append("<br><br>");
 
                         //append animal details
                         appendAnimalDetails(html, animalId, container);
@@ -834,6 +846,18 @@ public class NBRI_EHRTriggerHelper
         TableSelector ts = new TableSelector(ti, PageFlowUtil.set(columnName), filter, null);
 
         return ts.getRowCount();
+    }
+
+    // The Conception table has no Id column, so its trigger cannot announce a modified participant on its own
+    public String getConceptionDam(String conceptId)
+    {
+        if (conceptId == null)
+            return null;
+
+        TableInfo ti = getTableInfo("nbri_ehr", "Conception");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("ConceptId"), conceptId);
+
+        return new TableSelector(ti, Collections.singleton("Dam"), filter, null).getObject(String.class);
     }
 
     public boolean canCloseCase()

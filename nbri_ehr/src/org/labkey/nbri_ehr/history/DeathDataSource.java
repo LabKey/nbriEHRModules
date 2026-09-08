@@ -35,23 +35,13 @@ public class DeathDataSource extends AbstractDataSource
     @Override
     protected Set<String> getColumnNames()
     {
-        return PageFlowUtil.set("Id", "date", "reason/title", "remark");
+        return PageFlowUtil.set("Id", "date", "remark");
     }
 
     @Override
     protected String getHtml(Container c, Results rs, boolean redacted) throws SQLException
     {
         StringBuilder sb = new StringBuilder();
-
-        if(rs.hasColumn(FieldKey.fromString("reason/title")) && rs.getObject(FieldKey.fromString("reason/title")) != null)
-        {
-            sb.append(safeAppend(rs, "Disposition", "reason/title"));
-        }
-        else
-        {
-            sb.append("Disposition: Unknown");
-            sb.append("\n");
-        }
 
         if(rs.hasColumn(FieldKey.fromString("remark")) && rs.getObject(FieldKey.fromString("remark")) != null)
             sb.append(safeAppend(rs, "Remark", "remark"));

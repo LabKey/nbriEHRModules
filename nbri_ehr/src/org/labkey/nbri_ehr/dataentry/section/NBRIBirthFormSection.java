@@ -38,6 +38,7 @@ public class NBRIBirthFormSection extends NewAnimalFormSection
             FieldKey.fromString("Id/demographics/sire"),
             FieldKey.fromString("cage"),
             FieldKey.fromString("Id/demographics/socialCode"),
+            FieldKey.fromString("Id/demographics/generation"),
             FieldKey.fromString("project"),
             FieldKey.fromString("birthProtocol"),
             FieldKey.fromString("groupId"),

@@ -29,6 +29,16 @@
                             <fkColumnName>ConceptId</fkColumnName>
                         </fk>
                     </column>
+                    <column columnName="type">
+                        <columnTitle>Delivery Mode</columnTitle>
+                        <required>false</required>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>delivery_mode</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
                 </columns>
             </table>
         </tables>

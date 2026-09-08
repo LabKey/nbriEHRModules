@@ -13,6 +13,7 @@
         <column name="dam"/>
         <column name="sire"/>
         <column name="socialCode"/>
+        <column name="generation"/>
         <column name="disposition"/>
         <column name="termination"/>
         <column name="implantNumber"/>

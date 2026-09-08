@@ -1,14 +1,14 @@
-value	title	sort_order
-A	Experimental	1
+value	title	sort_order	date_disabled
+A	Experimental	1	2026-09-03
 D	Spontaneous/Normal	2
-F	Fetal	3
-FD	Fetal Death	4
-FL	Fetal Live	5
-FN	Fetal found at necropsy	6
-FX	Fetal experimental	7
+F	Fetal	3	2026-09-03
+FD	Fetal Death	4	2026-09-03
+FL	Fetal Live	5	2026-09-03
+FN	Fetal found at necropsy	6	2026-09-03
+FX	Fetal experimental	7	2026-09-03
 K	Cull (scheduled)	8
 M	Medical cull (non-scheduled)	9
-ND	Non-vaginal (C-section) dead	10
-NT	Not pregnant at assessment	11
+ND	Non-vaginal (C-section) dead	10	2026-09-03
+NT	Not pregnant at assessment	11	2026-09-03
 S	Cull	12
 X	Experimental	13

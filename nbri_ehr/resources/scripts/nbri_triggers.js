@@ -58,7 +58,9 @@ exports.init = function (EHR) {
         // group memberships are routinely backdated, so historical dates must not raise a warning
         helper.setScriptOptions({
             requiresStatusRecalc: false,
-            allowDatesInDistantPast: true
+            allowDatesInDistantPast: true,
+            // Overrides the shared animal_group_members script, which sets this true.
+            removeTimeFromDate: false
         });
     });
 
