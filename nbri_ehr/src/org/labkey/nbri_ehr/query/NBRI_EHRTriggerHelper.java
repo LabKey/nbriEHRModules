@@ -80,6 +80,7 @@ public class NBRI_EHRTriggerHelper
     private User _user;
     private static final Logger _log = LogManager.getLogger(NBRI_EHRTriggerHelper.class);
     private final Map<String,Object> _cachedDrugFormulary = new HashMap<>();
+    private final Map<String,String> _cachedObservationTypeCategories = new HashMap<>();
 
     // Maps an originating observation order's taskid to the task its scheduled observations are grouped under,
     // for the duration of a single save batch (the same helper instance is reused across rows in the batch).
@@ -297,6 +298,21 @@ public class NBRI_EHRTriggerHelper
         SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
         TableSelector ts = new TableSelector(ti, PageFlowUtil.set("lsid"), filter, null);
         return ts.exists();
+    }
+
+    /**
+     * Null both when the animal has no demographics record and when it has one carrying no generation; birth.js treats
+     * the two the same, so the caller never needs to tell them apart.
+     */
+    public Integer getGeneration(String id)
+    {
+        TableInfo ti = getTableInfo("study", "demographics");
+        if (null == ti.getColumn("generation"))
+            throw new IllegalStateException("The demographics dataset has no 'generation' column. Import the reference study to add it.");
+
+        TableSelector ts = new TableSelector(ti, PageFlowUtil.set("generation"), new SimpleFilter(FieldKey.fromString("Id"), id), null);
+
+        return ts.getObject(Integer.class);
     }
 
     public boolean birthExists(String id)
@@ -583,11 +599,10 @@ public class NBRI_EHRTriggerHelper
 
                         //get death info
                         TableInfo deaths = getTableInfo("study", "deathNotification");
-                        TableSelector deathsTs = new TableSelector(deaths, PageFlowUtil.set("Id", "date", "taskid", "performedBy", "reason"), new SimpleFilter(FieldKey.fromString("Id"), animalId), null);
+                        TableSelector deathsTs = new TableSelector(deaths, PageFlowUtil.set("Id", "date", "taskid", "performedBy"), new SimpleFilter(FieldKey.fromString("Id"), animalId), null);
                         final Mutable<Date> deathDate = new MutableObject<>();
                         final Mutable<String> taskId = new MutableObject<>();
                         final Mutable<String> performedBy = new MutableObject<>();
-                        final Mutable<String> disposition = new MutableObject<>();
                         deathsTs.forEach(rs -> {
                             if (rs.getString("date") != null)
                             {
@@ -595,7 +610,6 @@ public class NBRI_EHRTriggerHelper
                                 deathDate.setValue(date);
                                 taskId.setValue(rs.getString("taskid"));
                                 performedBy.setValue(rs.getString("performedBy"));
-                                disposition.setValue(rs.getString("reason"));
                             }
                         });
 
@@ -608,8 +622,7 @@ public class NBRI_EHRTriggerHelper
                             return;
                         }
                         html.append("Animal '").append(PageFlowUtil.filter(animalId)).append("' has been declared dead on '").append(_dateFormat.format(deathDate.get())).append("'.<br>");
-                        html.append("Performed By: ").append(PageFlowUtil.filter(performedBy.get())).append("<br>");
-                        html.append("Disposition: ").append(PageFlowUtil.filter(disposition.get())).append("<br><br>");
+                        html.append("Performed By: ").append(PageFlowUtil.filter(performedBy.get())).append("<br><br>");
 
                         //append animal details
                         appendAnimalDetails(html, animalId, container);
@@ -828,6 +841,18 @@ public class NBRI_EHRTriggerHelper
         return ts.getRowCount();
     }
 
+    // The Conception table has no Id column, so its trigger cannot announce a modified participant on its own
+    public String getConceptionDam(String conceptId)
+    {
+        if (conceptId == null)
+            return null;
+
+        TableInfo ti = getTableInfo("nbri_ehr", "Conception");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("ConceptId"), conceptId);
+
+        return new TableSelector(ti, Collections.singleton("Dam"), filter, null).getObject(String.class);
+    }
+
     public boolean canCloseCase()
     {
         return _container.hasPermission(_user, EHRVeterinarianPermission.class);
@@ -922,6 +947,26 @@ public class NBRI_EHRTriggerHelper
                 _log.error("Error adding daily clinical observation orders", e);
             }
         }
+    }
+
+    /**
+     * Returns the category of an observation type from ehr.observation_types, or null when the type has no
+     * category or is not found. Cached for the life of the save batch.
+     */
+    public String getObservationTypeCategory(String observationType)
+    {
+        if (observationType == null)
+            return null;
+
+        if (!_cachedObservationTypeCategories.containsKey(observationType))
+        {
+            TableInfo ti = getTableInfo("ehr", "observation_types");
+            SimpleFilter filter = new SimpleFilter(FieldKey.fromString("value"), observationType);
+            List<String> categories = new TableSelector(ti, Collections.singleton("category"), filter, null).getArrayList(String.class);
+            _cachedObservationTypeCategories.put(observationType, categories.isEmpty() ? null : categories.get(0));
+        }
+
+        return _cachedObservationTypeCategories.get(observationType);
     }
 
     // This helper function propagates clinical observations through clinical cases

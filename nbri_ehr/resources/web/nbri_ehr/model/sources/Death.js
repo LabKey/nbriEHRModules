@@ -36,11 +36,9 @@ EHR.model.DataModelManager.registerMetadata('Death', {
                 nullable: false,
                 columnConfig: {
                     width: 160
-                }
-            },
-            reason: {
-                columnConfig: {
-                    width: 160
+                },
+                lookup: {
+                    filterArray: [LABKEY.Filter.create('date_disabled', null, LABKEY.Filter.Types.ISBLANK)]
                 }
             },
             remark: {

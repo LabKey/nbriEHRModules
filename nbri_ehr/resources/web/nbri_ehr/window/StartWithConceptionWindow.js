@@ -89,8 +89,8 @@ Ext4.define('NBRI_EHR.window.StartWithConceptionWindow', {
         var sire = record.get('Sire');
 
         btn.disable();
-        this.getSpecies(dam, function(species, speciesError){
-            this.applyConception(conceptId, dam, sire, species);
+        this.getDamAttributes(dam, function(damAttributes, speciesError){
+            this.applyConception(conceptId, dam, sire, damAttributes.species, damAttributes.generation);
             btn.enable();
             this.close();
 
@@ -102,47 +102,60 @@ Ext4.define('NBRI_EHR.window.StartWithConceptionWindow', {
         }, this);
     },
 
-    // the species of the offspring is inferred from the dam of the conception.  When it cannot be determined the
-    // callback receives a message explaining why, rather than a null that is indistinguishable from an unset field.
-    getSpecies: function(dam, callback, scope){
+    // the species and generation of the offspring are both inferred from the dam of the conception.  A species that
+    // cannot be determined comes back with a message explaining why, rather than a null that is indistinguishable from
+    // an unset field; a dam with no generation is not an error and simply leaves the offspring at generation 1.
+    getDamAttributes: function(dam, callback, scope){
         if (!dam){
-            callback.call(scope, null, 'The conception record has no dam, so the species could not be determined.');
+            callback.call(scope, {species: null, generation: this.nextGeneration(null)},
+                    'The conception record has no dam, so the species could not be determined.');
             return;
         }
 
         LABKEY.Query.selectRows({
             schemaName: 'study',
             queryName: 'demographics',
-            columns: 'Id,species',
+            columns: 'Id,species,generation',
             filterArray: [LABKEY.Filter.create('Id', dam, LABKEY.Filter.Types.EQUAL)],
             scope: this,
             success: function(results){
                 var rows = (results && results.rows) || [];
                 if (!rows.length){
-                    callback.call(scope, null, 'No demographics record was found for dam ' + dam + '.');
+                    callback.call(scope, {species: null, generation: this.nextGeneration(null)},
+                            'No demographics record was found for dam ' + dam + '.');
                     return;
                 }
+
+                var generation = this.nextGeneration(rows[0].generation);
 
                 if (!rows[0].species){
-                    callback.call(scope, null, 'No species is recorded on the demographics record for dam ' + dam + '.');
+                    callback.call(scope, {species: null, generation: generation},
+                            'No species is recorded on the demographics record for dam ' + dam + '.');
                     return;
                 }
 
-                callback.call(scope, rows[0].species);
+                callback.call(scope, {species: rows[0].species, generation: generation});
             },
             failure: function(error){
                 console.error(error);
-                callback.call(scope, null, 'Unable to look up the species of dam ' + dam + ': ' + ((error && error.exception) || 'the query failed') + '.');
+                callback.call(scope, {species: null, generation: this.nextGeneration(null)},
+                        'Unable to look up the species of dam ' + dam + ': ' + ((error && error.exception) || 'the query failed') + '.');
             }
         });
     },
 
-    applyConception: function(conceptId, dam, sire, species){
+    // a founder dam carries no generation of her own, so her offspring start the count at 1
+    nextGeneration: function(damGeneration){
+        return (damGeneration == null ? 0 : damGeneration) + 1;
+    },
+
+    applyConception: function(conceptId, dam, sire, species, generation){
         var values = {
             conceptId: conceptId,
             'Id/demographics/dam': dam,
             'Id/demographics/sire': sire,
-            'Id/demographics/species': species
+            'Id/demographics/species': species,
+            'Id/demographics/generation': generation
         };
 
         // only the fields the conception owns are written, so anything already entered on the row survives

@@ -46,7 +46,7 @@ public class NBRIBehaviorRoundsFormType extends NBRIBaseTaskFormType
                 new NBRIAnimalDetailsFormSection(),
                 new NBRICaseTemplateFormSection("Case Template", "Case Template", "nbri_ehr-casetemplatepanel", Arrays.asList(ClientDependency.supplierFromPath("nbri_ehr/panel/CaseTemplatePanel.js"))),
                 new NBRICasesFormPanelSection("Behavior Case", ctx, true),
-                new NBRIClinicalObservationsFormSection(true, "cases"),
+                new NBRIClinicalObservationsFormSection(null, true, "cases"),
                 new NBRITreatmentGivenFormSection(true, "cases")
         ));
 

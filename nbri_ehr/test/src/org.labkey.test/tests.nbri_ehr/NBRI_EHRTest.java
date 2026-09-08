@@ -110,6 +110,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     // Dedicated animal for testScheduledObservationTaskGrouping; provisioned (alive, housed, assigned) in
     // createTestSubjects so the clinical case form raises no warnings that would keep the validation banner up.
     private static final String taskGroupAnimalId = "TESTGRP9090";
+    // Dedicated animal for testObservationTypeDerivedFromCategory; provisioned the same way so the Observations
+    // form can be submitted final in one step.
+    private static final String obsTypeAnimalId = "TESTOBSTYPE9191";
 
     // Rooms are keyed by building and name, so every room fixture needs a building to hang off of.
     // 'buildings' derives its key from the description, and 'SPF' is one of the areas seeded with the ehr_lookups schema.
@@ -574,6 +577,32 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         getApiHelper().deleteAllRecords("study", "Assignment", new Filter("Id", taskGroupAnimalId));
         getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
 
+        // Fully provision the observation-type test animal for the same reason.
+        log("Creating observation type test subject");
+        fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
+        data = new Object[][]{
+                {obsTypeAnimalId, "MMU", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
+        };
+        insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
+        getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", obsTypeAnimalId));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+
+        fields = new String[]{"Id", "date", "enddate", "room", "cage", "performedby"};
+        data = new Object[][]{
+                {obsTypeAnimalId, pastDate1, null, getRooms()[0], CAGE_IN_R1, 1004}
+        };
+        insertCommand = getApiHelper().prepareInsertCommand("study", "Housing", "lsid", fields, data);
+        getApiHelper().deleteAllRecords("study", "Housing", new Filter("Id", obsTypeAnimalId));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+
+        fields = new String[]{"Id", "date", "enddate", "project", "performedby"};
+        data = new Object[][]{
+                {obsTypeAnimalId, pastDate1, null, PROJECTS[0], 1004}
+        };
+        insertCommand = getApiHelper().prepareInsertCommand("study", "Assignment", "lsid", fields, data);
+        getApiHelper().deleteAllRecords("study", "Assignment", new Filter("Id", obsTypeAnimalId));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+
         primeCaches();
     }
 
@@ -666,6 +695,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         waitForFormError("The field: Social Code is required");
         arrivals.setGridCell(1, "Id/demographics/socialCode", socialCode);
 
+        log("Verifying Generation is seeded to 0 and is required");
+        assertEquals("An arriving animal should start at generation 0", "0", String.valueOf(arrivals.getFieldValue(1, "Id/demographics/generation")));
+        arrivals.setGridCellJS(1, "Id/demographics/generation", null);
+        waitForFormError("The field: Generation is required");
+        arrivals.setGridCellJS(1, "Id/demographics/generation", 0);
+
         // the animal's opening project, protocol and group are entered on the arrival row itself; the trigger script
         // opens the matching assignment record for each one
         arrivals.setGridCell(1, "project", "640991");
@@ -724,6 +759,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         table.setFilter("Id", "Equals", arrivedAnimal);
         Assert.assertEquals("Social code entered on the arrival form did not reach demographics",
                 Arrays.asList(socialCode), table.getRowDataAsText(0, "socialCode"));
+        Assert.assertEquals("Generation seeded by the arrival form did not reach demographics",
+                Arrays.asList("0"), table.getRowDataAsText(0, "generation"));
 
         log("Verifying the birth date reached demographics and agrees with the birth record");
         String arrivalBirthDay = now.minusDays(7).format(_dateFormat);
@@ -744,6 +781,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         String damSpecies = "Brown-Tufted Capuchin";
         String conceptId = "TESTCONCEPT1";
         String breedingType = "Time-Mated";
+        int damGeneration = 2;
         // demographics.socialCode holds an ehr_lookups.social_code code; the grids display its title
         String socialCode = "Mother-rearing (for indoors)";
         // the group is an ehr_lookups.breeding_type code, carried to animal_group_members; the grids display its title
@@ -751,12 +789,15 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating the dam and sire of the conception");
-        createBreedingPair(damId, sireId, damSpeciesCode);
+        createBreedingPair(damId, sireId, damSpeciesCode, damGeneration);
 
         log("Creating conception record");
         InsertRowsCommand conception = new InsertRowsCommand("nbri_ehr", "Conception");
         conception.addRow(Map.of("ConceptId", conceptId, "ConceptDate", now.minusDays(160), "Dam", damId, "Sire", sireId));
         conception.execute(getApiHelper().getConnection(), getContainerPath());
+
+        log("Verifying the dam's Animal Details reports the open conception before the birth");
+        assertEquals("Animal Details did not report the open conception", conceptId, getSnapshotFieldValue(damId, "Pregnant"));
 
         gotoEnterData();
         waitAndClickAndWait(Locator.linkWithText("Birth"));
@@ -773,6 +814,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         assertEquals("Dam was not copied from the conception", damId, births.getFieldValue(1, "Id/demographics/dam"));
         assertEquals("Sire was not copied from the conception", sireId, births.getFieldValue(1, "Id/demographics/sire"));
         assertEquals("Species was not copied from the dam of the conception", damSpeciesCode, births.getFieldValue(1, "Id/demographics/species"));
+        assertEquals("Generation was not derived from the dam of the conception", String.valueOf(damGeneration + 1),
+                String.valueOf(births.getFieldValue(1, "Id/demographics/generation")));
 
         log("Verifying Conception Id is required");
         births.setGridCellJS(1, "conceptId", null);
@@ -790,6 +833,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         births.setGridCellJS(1, "Id/demographics/socialCode", null);
         waitForFormError("The field: Social Code is required");
         births.setGridCell(1, "Id/demographics/socialCode", socialCode);
+
+        log("Verifying Generation is required");
+        births.setGridCellJS(1, "Id/demographics/generation", null);
+        waitForFormError("The field: Generation is required");
+        births.setGridCellJS(1, "Id/demographics/generation", damGeneration + 1);
 
         // the animal's opening project, protocol and group are entered on the birth row itself; the trigger script
         // opens the matching assignment record for each one
@@ -829,6 +877,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         Assert.assertEquals("Invalid demographics record", Arrays.asList(damSpecies), table.getRowDataAsText(0, "species"));
         Assert.assertEquals("Social code entered on the birth form did not reach demographics",
                 Arrays.asList(socialCode), table.getRowDataAsText(0, "socialCode"));
+        Assert.assertEquals("Generation derived from the dam did not reach demographics",
+                Arrays.asList(String.valueOf(damGeneration + 1)), table.getRowDataAsText(0, "generation"));
 
         goToSchemaBrowser();
         table = viewQueryData("study", "assignment");
@@ -865,6 +915,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(damId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Live Birth"), report.getRowDataAsText(0, "conceptionOutcome"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(bornAnimal), report.getRowDataAsText(0, "offspring"));
+        Assert.assertEquals("A conception claimed by a birth should not be active",
+                Arrays.asList("false"), report.getRowDataAsText(0, "isActive"));
+
+        log("Verifying the birth cleared the dam's pregnancy");
+        assertEquals("Animal Details still reports a conception a birth has closed", "No", getSnapshotFieldValue(damId, "Pregnant"));
     }
 
     @Test
@@ -901,9 +956,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         log("Entering two births that both claim the first conception");
         startWithConception(births, firstConcept, 1);
-        fillBirthRow(births, 1, firstAnimal, now.minusDays(1), socialCode, animalGroup);
+        assertEquals("A dam with no generation of her own should leave the birth at generation 1", "1",
+                String.valueOf(births.getFieldValue(1, "Id/demographics/generation")));
+        fillBirthRow(births, 1, firstAnimal, now.minusDays(1), socialCode, animalGroup, CAGE_IN_R2);
         startWithConception(births, firstConcept, 2);
-        fillBirthRow(births, 2, secondAnimal, now.minusDays(1), socialCode, animalGroup);
+        fillBirthRow(births, 2, secondAnimal, now.minusDays(1), socialCode, animalGroup, CAGE_IN_R3);
 
         // Live validation only sends the row that just changed, so the rows of one form entry first reach the
         // server together on submit. A rule that compares them therefore reports by refusing the save rather than
@@ -946,6 +1003,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         // different species on each pair, so the copy from the newly picked dam is visible
         String firstSpeciesCode = "CAP";
         String secondSpeciesCode = "MMU";
+        // different generations on each dam, so the re-derivation from the newly picked dam is visible
+        int firstDamGeneration = 2;
+        int secondDamGeneration = 5;
         String firstConcept = "TESTCONCEPT6";
         String secondConcept = "TESTCONCEPT7";
         String socialCode = "Mother-rearing (for indoors)";
@@ -953,8 +1013,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating a breeding pair and a conception for each");
-        createBreedingPair(firstDam, firstSire, firstSpeciesCode);
-        createBreedingPair(secondDam, secondSire, secondSpeciesCode);
+        createBreedingPair(firstDam, firstSire, firstSpeciesCode, firstDamGeneration);
+        createBreedingPair(secondDam, secondSire, secondSpeciesCode, secondDamGeneration);
 
         InsertRowsCommand conceptions = new InsertRowsCommand("nbri_ehr", "Conception");
         conceptions.addRow(Map.of("ConceptId", firstConcept, "ConceptDate", now.minusDays(200), "Dam", firstDam, "Sire", firstSire));
@@ -967,7 +1027,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         Ext4GridRef births = _helper.getExt4GridForFormSection("Births");
         startWithConception(births, firstConcept, 1);
-        fillBirthRow(births, 1, bornAnimal, now.minusDays(1), socialCode, animalGroup);
+        fillBirthRow(births, 1, bornAnimal, now.minusDays(1), socialCode, animalGroup, CAGE_IN_R1);
         births.setGridCell(1, "breedingType", "Time-Mated");
 
         // the codes behind these lookups are not spelled out in the test, so remember what the row carries and
@@ -998,6 +1058,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         assertEquals("Dam was not replaced from the picked conception", secondDam, births.getFieldValue(1, "Id/demographics/dam"));
         assertEquals("Sire was not replaced from the picked conception", secondSire, births.getFieldValue(1, "Id/demographics/sire"));
         assertEquals("Species was not replaced from the dam of the picked conception", secondSpeciesCode, births.getFieldValue(1, "Id/demographics/species"));
+        assertEquals("Generation was not re-derived from the dam of the picked conception", String.valueOf(secondDamGeneration + 1),
+                String.valueOf(births.getFieldValue(1, "Id/demographics/generation")));
 
         log("Verifying nothing else on the row was touched");
         assertEquals("Animal Id should have been left alone", bornAnimal, births.getFieldValue(1, "Id"));
@@ -1034,6 +1096,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         String conceptId = "TESTCONCEPT2";
         // a non-live outcome, so ConceptionsByDam reports it rather than falling through to 'Live Birth'
         String result = "Fetal Death";
+        String deliveryMode = "Vaginal";
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating conception record");
@@ -1051,6 +1114,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         outcomes.setGridCell(1, "Id", animalId);
         outcomes.setGridCell(1, "result", result);
         outcomes.setGridCell(1, "conceptId", conceptId);
+        outcomes.setGridCell(1, "type", deliveryMode);
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -1059,6 +1123,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(animalId), table.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(result), table.getRowDataAsText(0, "result"));
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
+        Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(deliveryMode), table.getRowDataAsText(0, "type"));
 
         log("Verifying conception outcome in ConceptionsByDam");
         goToSchemaBrowser();
@@ -1066,6 +1131,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         report.setFilter("ConceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(animalId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(result), report.getRowDataAsText(0, "conceptionOutcome"));
+        Assert.assertEquals("A conception claimed by a pregnancy outcome should not be active",
+                Arrays.asList("false"), report.getRowDataAsText(0, "isActive"));
+
+        log("Verifying the pregnancy outcome cleared the dam's pregnancy");
+        // this dam carries other conceptions from sibling tests, so assert only that this one is gone
+        Assert.assertFalse("Animal Details still reports a conception a pregnancy outcome has closed",
+                getSnapshotFieldValue(animalId, "Pregnant").contains(conceptId));
     }
 
     @Test
@@ -1110,6 +1182,30 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         report.setFilter("ConceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(damId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Unknown"), report.getRowDataAsText(0, "conceptionOutcome"));
+        Assert.assertEquals("A conception with no birth or pregnancy outcome should be active",
+                Arrays.asList("true"), report.getRowDataAsText(0, "isActive"));
+
+        log("Verifying the dam's Animal Details links to the open conception");
+        // this dam carries other conceptions from sibling tests, so assert only that this one is listed
+        Assert.assertTrue("Animal Details did not report the open conception",
+                getSnapshotFieldValue(damId, "Pregnant").contains(conceptId));
+    }
+
+    /**
+     * Reads one field from the Animal Details snapshot panel, which renders Ext4 displayfields rather than a grid, so
+     * there is no page object to read through. The value arrives from the demographics cache after the page settles,
+     * so an empty field means not-yet-loaded rather than no value.
+     */
+    private String getSnapshotFieldValue(String animalId, String fieldLabel)
+    {
+        ParticipantViewPage.beginAt(this, animalId);
+        Locator field = Locator.xpath("//*[contains(@class,'x4-form-item')][.//label[starts-with(normalize-space(.),'"
+                + fieldLabel + "')]]//div[contains(@class,'x4-form-display-field')]");
+        waitForElement(field);
+        waitFor(() -> !field.findElement(getDriver()).getText().trim().isEmpty(),
+                "Animal Details did not populate the " + fieldLabel + " field", WAIT_FOR_JAVASCRIPT);
+
+        return field.findElement(getDriver()).getText().trim();
     }
 
     @Test
@@ -1314,7 +1410,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         Map<String, Integer> entriesPerCategory = new HashMap<>();
         for (Map<String, Object> row : getClinicalObservations(animalId))
+        {
             entriesPerCategory.merge(String.valueOf(row.get("category")), 1, Integer::sum);
+            // A scheduled observation takes its type from the originating order, which the daily clinical
+            // observation orders create as Clinical.
+            Assert.assertEquals("Scheduled observation for category " + row.get("category") + " should be Clinical",
+                    "Clinical", String.valueOf(row.get("type")));
+        }
         Assert.assertEquals("Expected the six daily observation categories", NBRI_DAILY_OBS_VALUES.size(), entriesPerCategory.size());
         entriesPerCategory.forEach((category, count) ->
                 Assert.assertEquals("Expected two entries (one per matching order) for category " + category, Integer.valueOf(2), count));
@@ -1404,6 +1506,56 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     private int countObservationsForTask(String taskId)
     {
         return executeSelectRowCommand("study", "clinical_observations", ContainerFilter.Current, "/" + getContainerPath(), List.of(new Filter("taskid", taskId))).getRowCount().intValue();
+    }
+
+    // Two ehr.observation_types values on either side of the derivation: the first has no category, the second
+    // is categorized as Behavior. Both use a free-text Observation/Score editor, so neither depends on an
+    // ehr_lookups value list being populated.
+    private static final String UNCATEGORIZED_OBS_TYPE = "Mass";
+    private static final String BEHAVIOR_OBS_TYPE = "General Behavior Observation";
+
+    @Test
+    public void testObservationTypeDerivedFromCategory()
+    {
+        String animalId = obsTypeAnimalId;
+
+        // The Observations form offers every observation type, so it cannot set the observation's type up
+        // front; the trigger script derives it from the selected type's category. A type categorized as
+        // Behavior must be stored as a Behavior observation and everything else as Clinical, otherwise the
+        // entry drops out of the behavior views (study.behaviorObservations filters on type = 'Behavior').
+        log("Entering an uncategorized and a Behavior-categorized observation type on the Observations form");
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Observations"));
+
+        Ext4GridRef observations = _helper.getExt4GridForFormSection("Observations");
+        addObservationRow(observations, animalId, UNCATEGORIZED_OBS_TYPE, "3 cm mass on left arm");
+        addObservationRow(observations, animalId, BEHAVIOR_OBS_TYPE, "Pacing observed");
+        submitForm("Submit Final", "Finalize");
+
+        Map<String, String> typeByCategory = new HashMap<>();
+        for (Map<String, Object> row : getClinicalObservations(animalId))
+            typeByCategory.put(String.valueOf(row.get("category")), String.valueOf(row.get("type")));
+
+        Assert.assertEquals("Expected exactly the two entered observations for " + animalId,
+                Set.of(UNCATEGORIZED_OBS_TYPE, BEHAVIOR_OBS_TYPE), typeByCategory.keySet());
+        Assert.assertEquals("An uncategorized observation type should be stored as a Clinical observation",
+                "Clinical", typeByCategory.get(UNCATEGORIZED_OBS_TYPE));
+        Assert.assertEquals("A Behavior-categorized observation type should be stored as a Behavior observation",
+                "Behavior", typeByCategory.get(BEHAVIOR_OBS_TYPE));
+    }
+
+    // Appends a row to an Observations grid and fills in the fields the trigger script needs to accept it: an
+    // animal, an observation type (the grid's "category"), and an Observation/Score plus remark, since an entry
+    // with neither raises a WARN that would disable Submit Final. The row index is read back from the grid
+    // rather than assumed, so this works whether or not the form starts with rows of its own.
+    private void addObservationRow(Ext4GridRef observations, String animalId, String category, String observation)
+    {
+        _helper.addRecordToGrid(observations);
+        int row = observations.getRowCount();
+        observations.setGridCell(row, "Id", animalId);
+        observations.setGridCell(row, "category", category);
+        observations.setGridCell(row, "observation", observation);
+        observations.setGridCellJS(row, "remark", "remark for " + category);
     }
 
     @Test
@@ -1533,7 +1685,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         log("Marking an animal dead");
         InsertRowsCommand deaths = new InsertRowsCommand("study", "deaths");
-        deaths.addRow(Map.of("Id", deadAnimalId, "date", LocalDateTime.now().minusDays(10), "reason", "4", "performedby", 1004));
+        deaths.addRow(Map.of("Id", deadAnimalId, "date", LocalDateTime.now().minusDays(10), "performedby", 1004));
         deaths.execute(getApiHelper().getConnection(), getContainerPath());
 
         log("Marking an animal departed");
@@ -1575,7 +1727,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         setFormElement(Locator.name("Id"), aliveAnimalId);
         _ext4Helper.selectComboBoxItem("Death Type:", "Spontaneous/Normal");
-        _ext4Helper.selectComboBoxItem("Disposition:", "Euthaniasia (project)");
         waitForElement(Locator.name("deathWeight"));
         setFormElement(Locator.name("deathWeight"), "23");
         Assert.assertFalse(isElementPresent(Locator.linkWithText("Submit Necropsy for Review")));
@@ -1585,8 +1736,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         log("Verify a second death insert is rejected with a validation error, not a unique constraint violation");
         SimplePostCommand duplicateDeath = getApiHelper().prepareInsertCommand("study", "deaths", "lsid",
-                new String[]{"Id", "date", "reason", "performedby"},
-                new Object[][]{{aliveAnimalId, LocalDateTime.now(), "4", 1004}});
+                new String[]{"Id", "date", "performedby"},
+                new Object[][]{{aliveAnimalId, LocalDateTime.now(), 1004}});
         CommandException duplicateError = getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), duplicateDeath, getExtraContext());
         Map<String, List<String>> duplicateErrors = getApiHelper().extractErrors(duplicateError.getProperties());
         Assert.assertTrue("Expected duplicate death validation error, got: " + duplicateErrors,
@@ -1729,7 +1880,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         // the death has to be recorded before the departure: the deaths trigger rejects an animal that has shipped
         log("Recording the death");
         InsertRowsCommand deaths = new InsertRowsCommand("study", "deaths");
-        deaths.addRow(Map.of("Id", animalId, "date", now.minusDays(10), "reason", "4", "QCStateLabel", "Completed", "performedby", 1004));
+        deaths.addRow(Map.of("Id", animalId, "date", now.minusDays(10), "QCStateLabel", "Completed", "performedby", 1004));
         deaths.execute(getApiHelper().getConnection(), getContainerPath());
 
         assertEquals("Demographics death date does not match the death record",
@@ -2235,12 +2386,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     }
 
     // Fills in everything a birth row needs beyond what the conception supplies, so the form can be submitted.
-    // Birth Location is left blank on purpose: it is optional, and skipping it keeps housing out of these tests.
+    // Generation is not set here: the conception supplies it from the dam. Each row takes its own cage so that a
+    // co-housing or capacity rule can never be what fails these tests.
     private void fillBirthRow(Ext4GridRef births, int rowIdx, String animalId, LocalDateTime birthDate,
-                              String socialCode, String animalGroup)
+                              String socialCode, String animalGroup, String cage)
     {
         births.setGridCellJS(rowIdx, "date", birthDate.format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT_STRING)));
         births.setGridCell(rowIdx, "Id", animalId);
+        births.setGridCell(rowIdx, "cage", cage);
         births.setGridCell(rowIdx, "Id/demographics/gender", "Female");
         births.setGridCell(rowIdx, "Id/demographics/socialCode", socialCode);
         births.setGridCell(rowIdx, "project", "795644");
@@ -2250,10 +2403,16 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
     private void createBreedingPair(String damId, String sireId, String species) throws Exception
     {
-        String[] fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
+        createBreedingPair(damId, sireId, species, null);
+    }
+
+    // A null damGeneration leaves the dam with no generation of her own, which is what makes her offspring generation 1.
+    private void createBreedingPair(String damId, String sireId, String species, Integer damGeneration) throws Exception
+    {
+        String[] fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby", "generation"};
         Object[][] data = new Object[][]{
-                {damId, species, (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004},
-                {sireId, species, (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}
+                {damId, species, (new Date()).toString(), getFemale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004, damGeneration},
+                {sireId, species, (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004, null}
         };
         SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
         getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", damId + ";" + sireId, Filter.Operator.IN));
@@ -2265,7 +2424,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     private void verifyBirthColumnOrder(Ext4GridRef births)
     {
         List<String> expectedOrder = List.of("Id", "date", "conceptId", "Id/demographics/species", "Id/demographics/gender",
-                "Id/demographics/dam", "Id/demographics/sire", "cage", "Id/demographics/socialCode", "project",
+                "Id/demographics/dam", "Id/demographics/sire", "cage", "Id/demographics/socialCode",
+                "Id/demographics/generation", "project",
                 "birthProtocol", "groupId", "type", "breedingType", "remark", "performedby");
 
         int previousIdx = 0;

@@ -32,7 +32,6 @@ public class NBRIObservationOrdersFormSection extends BaseFormSection
         _dailyObsOption = dailyObsOption;
         addClientDependency(ClientDependency.supplierFromPath("ehr/plugin/ClinicalObservationsCellEditing.js"));
         addClientDependency(ClientDependency.supplierFromPath("ehr/grid/ClinicalObservationGridPanel.js"));
-        addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/buttons/clinicalObsGridButton.js"));
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/buttons/addClinicalObsButton.js"));
 
         setClientStoreClass("NBRI_EHR.data.ObsOrdersClientStore");
