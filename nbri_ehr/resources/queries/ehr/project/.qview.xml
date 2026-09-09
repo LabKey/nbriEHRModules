@@ -1,6 +1,22 @@
-<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
     <columns>
+        <column name="project"/>
         <column name="name"/>
+        <column name="displayName"/>
+        <column name="title"/>
+        <column name="shortname"/>
+        <column name="protocol"/>
+        <column name="investigatorId"/>
+        <column name="inves"/>
+        <column name="inves2"/>
+        <column name="reqname"/>
+        <column name="contact_emails"/>
+        <column name="account"/>
+        <column name="avail"/>
+        <column name="use_category"/>
+        <column name="projectType"/>
+        <column name="research"/>
+        <column name="alwaysavailable"/>
         <column name="startdate"/>
         <column name="enddate"/>
         <column name="isActive"/>

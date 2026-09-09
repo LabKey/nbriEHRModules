@@ -1,15 +1,26 @@
-<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
     <columns>
         <column name="protocol"/>
+        <column name="displayName"/>
         <column name="title"/>
         <column name="description"/>
+        <column name="external_id"/>
         <column name="investigatorId"/>
+        <column name="inves"/>
+        <column name="contacts"/>
+        <column name="project_type"/>
+        <column name="usda_level"/>
+        <column name="ibc_approval_required"/>
+        <column name="ibc_approval_num"/>
+        <column name="maxAnimals"/>
         <column name="approve"/>
-        <column name="endDate"/>
+        <column name="first_approval"/>
+        <column name="lastAnnualReview"/>
+        <column name="last_modification"/>
+        <column name="enddate"/>
         <column name="inactiveDate"/>
         <column name="exemptFood"/>
         <column name="exemptHousing"/>
         <column name="exemptPairing"/>
-        <column name="displayName"/>
     </columns>
 </customView>
