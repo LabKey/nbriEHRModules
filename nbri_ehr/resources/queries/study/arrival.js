@@ -69,15 +69,14 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
             row.qcstate = helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId();
         }
 
-        // A rearrival reuses the animal's existing demographics record instead of creating one, so the status is written there directly.
-        // Caching it keeps the records created below from validating against the stale 'Shipped' status.
-        if (row.rearrival && row.Id && row.QCStateLabel && row.QCStateLabel.toUpperCase() === 'COMPLETED') {
-            row.calculated_status = 'Alive';
+        // A rearrival reuses the existing demographics record, so its status is written directly; drafts get the same interim status an arrival draft does.
+        // The update refreshes the server-side animal cache, so the records opened below validate against this status rather than the departure's.
+        if (row.rearrival && row.Id && row.QCStateLabel) {
+            row.calculated_status = (row.QCStateLabel.toUpperCase() === 'IN PROGRESS' || row.QCStateLabel.toUpperCase() === 'REVIEW REQUIRED') ? 'Alive - In Progress' : 'Alive';
             helper.getJavaHelper().updateDemographicsRecord([{
                 Id: row.Id,
                 calculated_status: row.calculated_status
             }]);
-            helper.cacheDemographics(row.Id, row);
         }
 
         // an animal arrives already assigned to a project, a protocol and a group, all entered on the arrival row
