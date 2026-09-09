@@ -18,10 +18,34 @@ EHR.model.DataModelManager.registerMetadata('Assignment', {
                     schemaName: 'ehr',
                     queryName: 'project',
                     keyColumn: 'project',
-                    columns: 'project,name',
+                    columns: 'project,name,account',
                     filterArray: [
                         LABKEY.Filter.create('isActive', true, LABKEY.Filter.Types.EQUAL),
                     ]
+                },
+                editorConfig: {
+                    listeners: {
+                        select: function (combo, recs) {
+                            if (!recs || recs.length !== 1)
+                                return;
+
+                            EHR.DataEntryUtils.setSiblingFields(combo, {'project/account': recs[0].get('account')});
+                        },
+                        change: function (combo, newVal) {
+                            if (Ext4.isEmpty(newVal))
+                                EHR.DataEntryUtils.setSiblingFields(combo, {'project/account': null});
+                        }
+                    }
+                }
+            },
+            // read-only echo of the selected project's account; the select listener above keeps it current
+            'project/account': {
+                header: 'Project Account',
+                label: 'Project Account',
+                editable: false,
+                columnConfig: {
+                    editable: false,
+                    width: 200
                 }
             }
         },
@@ -37,15 +61,38 @@ EHR.model.DataModelManager.registerMetadata('Assignment', {
                 nullable: false,
                 columnConfig: {
                     fixed: true,
-                    width: 150
+                    width: 250
                 },
-                // set displayColumn: ehr.protocol's title column (displayName) is not returned by this query
                 lookup: {
                     schemaName: 'ehr',
                     queryName: 'activeProtocols',
                     keyColumn: 'protocol',
-                    displayColumn: 'protocol',
-                    columns: 'protocol,title'
+                    displayColumn: 'displayText',
+                    columns: 'protocol,title,description,displayText'
+                },
+                editorConfig: {
+                    listeners: {
+                        select: function (combo, recs) {
+                            if (!recs || recs.length !== 1)
+                                return;
+
+                            EHR.DataEntryUtils.setSiblingFields(combo, {'protocol/description': recs[0].get('description')});
+                        },
+                        change: function (combo, newVal) {
+                            if (Ext4.isEmpty(newVal))
+                                EHR.DataEntryUtils.setSiblingFields(combo, {'protocol/description': null});
+                        }
+                    }
+                }
+            },
+            // read-only echo of the selected protocol's description; the select listener above keeps it current
+            'protocol/description': {
+                header: 'Protocol Description',
+                label: 'Protocol Description',
+                editable: false,
+                columnConfig: {
+                    editable: false,
+                    width: 300
                 }
             }
         }
