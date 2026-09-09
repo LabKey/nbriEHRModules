@@ -51,7 +51,7 @@ public class NBRIBulkClinicalFormType extends NBRIBaseTaskFormType
                         ctx.getContainer().hasPermission(ctx.getUser(), EHRVeterinarianPermission.class),
                         ctx.getContainer().hasPermission(ctx.getUser(), AdminPermission.class)),
                 new NBRIWeightFormSection(true, true),
-                new NBRIClinicalObservationsFormSection(false, null),
+                new NBRIClinicalObservationsFormSection("NBRI_DAILY_CLINICAL_OBS", false, null),
                 new NBRIObservationOrdersFormSection("NBRI_DAILY_CLINICAL_OBS_ORDERS", false, null),
                 new NBRIProcedureFormSection(),
                 new NBRIProcedureOrderFormSection(),

@@ -9,9 +9,18 @@ EHR.Server.Utils = require("ehr/utils").EHR.Server.Utils;
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 var idsToSync = [];
 
+// dams whose conception this save closes.  The birth row announces the newborn, so the dam's cached Pregnant value
+// would otherwise keep listing a conception that is no longer open.
+var damsToSync = [];
+
 // conception ids claimed by the rows of this save that have already been validated.  Rows entered together are not in
 // study.birth yet when each one is checked, so this is the only way the one-birth-per-conception rule can see them.
 var conceptIdsInSave = [];
+
+// generation 0 is a real value, so emptiness cannot be tested by truthiness the way the other demographics fields test it
+function isBlankGeneration(value) {
+    return value === null || value === undefined || value === '';
+}
 
 // opens one assignment record against the animal being entered; each dataset carries the assignment under its own field
 function createAssignment(scriptErrors, dataset, fieldName, value, row) {
@@ -34,6 +43,17 @@ function createAssignment(scriptErrors, dataset, fieldName, value, row) {
     }
 }
 
+// resolves the dam of a conception so the birth can announce her; the conception carries the dam, the birth row does not
+function addConceptionDam(conceptId) {
+    if (!conceptId)
+        return;
+
+    var dam = triggerHelper.getConceptionDam(conceptId);
+    if (dam && damsToSync.indexOf(dam) === -1) {
+        damsToSync.push(dam);
+    }
+}
+
 function onInit(event, helper){
     helper.setScriptOptions({
         allowAnyId: true,
@@ -43,13 +63,13 @@ function onInit(event, helper){
         skipHousingCheck: true,
         announceAllModifiedParticipants: true,
         allowDatesInDistantPast: true,
-        removeTimeFromDate: true,
         skipAssignmentCheck: true,
     });
 
     // the script scope can outlive a single save, so never inherit ids from a prior one
     idsToSync = [];
     conceptIdsInSave = [];
+    damsToSync = [];
 
     helper.decodeExtraContextProperty('birthsInTransaction');
 }
@@ -65,6 +85,16 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         }
         idsToSync = [];
     }
+
+    if (damsToSync.length) {
+        triggerHelper.reportDataChange('nbri_ehr', 'Conception', damsToSync);
+        damsToSync = [];
+    }
+});
+
+EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_DELETE, 'study', 'birth', function(helper, scriptErrors, row) {
+    // deleting the birth reopens its conception
+    addConceptionDam(row.conceptId);
 });
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'study', 'birth', function(helper, scriptErrors, row, oldRow) {
@@ -94,6 +124,13 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         if (triggerHelper.totalRecords('study', 'pregnancy', 'conceptId', row.conceptId) > 0) {
             EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id is already used by a pregnancy outcome record', 'WARN');
         }
+    }
+
+    if (!helper.isETL() && !helper.isValidateOnly()) {
+        addConceptionDam(row.conceptId);
+
+        // a re-pointed birth reopens the conception it used to claim
+        addConceptionDam(oldRow ? oldRow.conceptId : null);
     }
 
     if (!helper.isETL()) {
@@ -146,6 +183,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 birth: row.date || null,
                 gender: row['Id/demographics/gender'] || null,
                 socialCode: row['Id/demographics/socialCode'] || null,
+                generation: isBlankGeneration(row['Id/demographics/generation']) ? null : parseInt(row['Id/demographics/generation'], 10),
                 taskid: row.taskid,
                 remark: row.remark,
                 QCStateLabel: row.QCStateLabel,
@@ -159,6 +197,19 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
             if (obj.dam && !obj.species) {
                 obj.species = helper.getJavaHelper().getSpecies(obj.dam);
+            }
+
+            // the conception window fills this in, so a blank one means a save that bypassed the form
+            if (isBlankGeneration(obj.generation)) {
+                var damGeneration = obj.dam ? triggerHelper.getGeneration(obj.dam) : null;
+                if (damGeneration === null) {
+                    var generationWarning = obj.dam
+                            ? 'No generation is recorded for dam ' + obj.dam + ', so this birth was recorded as generation 1'
+                            : 'This birth record has no dam, so it was recorded as generation 1';
+                    EHR.Server.Utils.addError(scriptErrors, 'Id/demographics/generation', generationWarning, 'WARN');
+                }
+
+                obj.generation = (damGeneration === null ? 0 : damGeneration) + 1;
             }
 
             if (!oldRow) {
@@ -195,6 +246,11 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
                 if (obj.socialCode && obj.socialCode !== data.socialCode) {
                     record.socialCode = obj.socialCode;
+                    hasUpdates = true;
+                }
+
+                if (!isBlankGeneration(obj.generation) && obj.generation !== data.generation) {
+                    record.generation = obj.generation;
                     hasUpdates = true;
                 }
 

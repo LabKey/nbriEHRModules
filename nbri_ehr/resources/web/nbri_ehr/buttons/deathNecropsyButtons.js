@@ -101,7 +101,7 @@ Ext4.define('NBRI_EHR.window.DeathNecropsySubmitForReviewWindow', {
                 text: 'Cancel',
                 scope: this,
                 handler: function(btn){
-                    btn.up('window').hide();
+                    btn.up('window').close();
                 }
             }],
             items: [{
@@ -127,8 +127,10 @@ Ext4.define('NBRI_EHR.window.DeathNecropsySubmitForReviewWindow', {
                     value: this.getDefaultRecipient(),
                     displayField: 'DisplayName',
                     valueField: 'UserId',
+                    // No global 'id' here: a reopened window would adopt the previous window's element and render a second combo.
                     itemId: 'assignedTo',
-                    id: 'assignedTo',
+                    // Ext derives the input's name from the component id when 'name' is absent, so set it explicitly rather than leaning on the id.
+                    name: 'assignedTo',
                     anyMatch: true,
                     caseSensitive: false,
                 }]

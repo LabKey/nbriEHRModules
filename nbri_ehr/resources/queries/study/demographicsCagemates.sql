@@ -25,10 +25,12 @@ JOIN study.housing h2
 -- cagemates. Room is not consulted, since it is derived from this same id and so can never distinguish two rows.
 ON (h.cage = h2.cage
         AND h2.Id.demographics.calculated_status = 'Alive'
-        AND h2.enddateTimeCoalesced >= now()
+        AND h2.isActive = true
         AND h2.qcstate.publicdata = true)
 
-WHERE h.enddateTimeCoalesced >= now()
+-- a null location never resolved, so the row gets no cagemates rather than grouping with every other unresolved row
+WHERE h.cage IS NOT NULL
+AND h.isActive = true
 AND h.qcstate.publicdata = true
 GROUP BY h.id, h.cage
 
