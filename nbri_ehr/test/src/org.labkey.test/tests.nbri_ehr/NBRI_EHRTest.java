@@ -139,6 +139,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String ROOMLESS_CAGE = cageLocation("R1", ROOMLESS_CAGE_NAME);
     private static final String[] ROOMLESS_ANIMALS = {"CAGE0001", "CAGE0002"};
 
+    // protocol.investigatorId looks up ehr.investigators rather than the user table, so a protocol shows an
+    // investigator only when a row there carries its id.
+    private static final String INVES_LAST_NAME = "Marsh";
+    private static final String DUMMY_INVES_LAST_NAME = "Okafor";
+    private static final String PROTOCOL_DESCRIPTION = "Chronic implant study";
+    private static final String DUMMY_PROTOCOL_DESCRIPTION = "Placeholder protocol for the arrival and assignment fixtures";
+
     private final String[] weightFields = {"Id", "date", "enddate", "project", "weight", FIELD_QCSTATELABEL, FIELD_OBJECTID, FIELD_LSID, "_recordid", "performedby"};
     private final Object[] weightData1 = {getExpectedAnimalIDCasing("TESTSUBJECT1"), EHRClientAPIHelper.DATE_SUBSTITUTION, null, null, "12", EHRQCState.IN_PROGRESS.label, null, null, "_recordID", 1004};
 
@@ -177,17 +184,28 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         _permissionsHelper.addUserToProjGroup(inves1.getEmail(), getProjectName(), INVESTIGATOR.getGroup());
         _permissionsHelper.addUserToProjGroup(inves2.getEmail(), getProjectName(), INVESTIGATOR.getGroup());
 
+        InsertRowsCommand invesCmd = new InsertRowsCommand("ehr", "investigators");
+        invesCmd.addRow(Map.of("lastName", INVES_LAST_NAME, "firstName", "Robin", "userid", inves1.getUserId()));
+        invesCmd.addRow(Map.of("lastName", DUMMY_INVES_LAST_NAME, "firstName", "Alex", "userid", inves2.getUserId()));
+        invesCmd.execute(createDefaultConnection(), getContainerPath());
+
+        Map<String, Object> investigatorIds = new HashMap<>();
+        for (Map<String, Object> row : executeSelectRowCommand("ehr", "investigators", ContainerFilter.Current, "/" + getContainerPath(), List.of()).getRows())
+            investigatorIds.put((String) row.get("lastName"), row.get("rowid"));
+
         InsertRowsCommand insertCmd = new InsertRowsCommand("ehr", "protocol");
 
         Map<String, Object> rowMap = new HashMap<>();
         rowMap.put("protocol", PROTOCOL_ID);
-        rowMap.put("InvestigatorId", inves1.getUserId());
+        rowMap.put("InvestigatorId", investigatorIds.get(INVES_LAST_NAME));
         rowMap.put("title", PROTOCOL_ID);
+        rowMap.put("description", PROTOCOL_DESCRIPTION);
         insertCmd.addRow(rowMap);
         rowMap = new HashMap<>();
         rowMap.put("protocol", DUMMY_PROTOCOL);
-        rowMap.put("InvestigatorId", inves2.getUserId());
+        rowMap.put("InvestigatorId", investigatorIds.get(DUMMY_INVES_LAST_NAME));
         rowMap.put("title", DUMMY_PROTOCOL);
+        rowMap.put("description", DUMMY_PROTOCOL_DESCRIPTION);
         insertCmd.addRow(rowMap);
 
         insertCmd.execute(createDefaultConnection(), getContainerPath());
@@ -769,6 +787,73 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
                 arrivalBirthDay, getDatasetDay("birth", arrivedAnimal, "date"));
         assertEquals("Demographics birth date does not match the birth record",
                 arrivalBirthDay, getDatasetDay("demographics", arrivedAnimal, "birth"));
+    }
+
+    @Test
+    public void testAssignmentFormLookupColumns()
+    {
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Assignment"));
+        lockForm();
+
+        Ext4GridRef protocols = _helper.getExt4GridForFormSection("Protocol Assignment");
+        _helper.addRecordToGrid(protocols);
+        protocols.setGridCell(1, "Id", aliveAnimalId);
+
+        log("Verifying the protocol dropdown lists each protocol with its investigator");
+        // setGridCell clicks the list item whose text is exactly this, so selecting it is the check on the format
+        protocols.setGridCell(1, "protocol", DUMMY_PROTOCOL + " - " + DUMMY_INVES_LAST_NAME);
+        Assert.assertEquals("Protocol dropdown stored something other than the protocol id",
+                DUMMY_PROTOCOL, protocols.getFieldValue(1, "protocol"));
+
+        log("Verifying the protocol description follows the selected protocol");
+        Assert.assertEquals("Protocol description did not follow the selected protocol",
+                DUMMY_PROTOCOL_DESCRIPTION, protocols.getFieldValue(1, "protocol/description"));
+        protocols.setGridCell(1, "protocol", PROTOCOL_ID + " - " + INVES_LAST_NAME);
+        Assert.assertEquals("Protocol description did not follow a changed protocol",
+                PROTOCOL_DESCRIPTION, protocols.getFieldValue(1, "protocol/description"));
+
+        Assert.assertEquals("Protocol Description is not the last column",
+                getVisibleColumnCount(protocols), protocols.getIndexOfColumn("protocol/description", true));
+        Assert.assertEquals("Wrong header over the protocol description",
+                "Protocol Description", getColumnHeader(protocols, "protocol/description"));
+        Assert.assertFalse("Protocol Description should not be editable",
+                isColumnEditable(protocols, "protocol/description"));
+
+        Ext4GridRef projects = _helper.getExt4GridForFormSection("Project Assignment");
+        _helper.addRecordToGrid(projects);
+        projects.setGridCell(1, "Id", aliveAnimalId);
+        projects.setGridCell(1, "project", PROJECT_ID);
+
+        log("Verifying the project account follows the selected project");
+        Assert.assertEquals("Project account did not follow the selected project",
+                ACCOUNT_ID_2, projects.getFieldValue(1, "project/account"));
+        Assert.assertEquals("Project Account is not the last column",
+                getVisibleColumnCount(projects), projects.getIndexOfColumn("project/account", true));
+        Assert.assertEquals("Wrong header over the project account",
+                "Project Account", getColumnHeader(projects, "project/account"));
+        Assert.assertFalse("Project Account should not be editable",
+                isColumnEditable(projects, "project/account"));
+
+        // every check above reads the unsaved row, so discard rather than submit and leave the animal's own
+        // assignments alone
+        _helper.discardForm();
+    }
+
+    /** The header a data entry grid renders for a column, which only the column config carries. */
+    private String getColumnHeader(Ext4GridRef grid, String dataIndex)
+    {
+        return (String) grid.getFnEval("for (var i=0;i<this.columns.length;i++){if (this.columns[i].dataIndex == '" + dataIndex + "') return this.columns[i].text;} return null;");
+    }
+
+    private boolean isColumnEditable(Ext4GridRef grid, String dataIndex)
+    {
+        return Boolean.TRUE.equals(grid.getFnEval("for (var i=0;i<this.columns.length;i++){if (this.columns[i].dataIndex == '" + dataIndex + "') return this.columns[i].editable !== false;} return null;"));
+    }
+
+    private int getVisibleColumnCount(Ext4GridRef grid)
+    {
+        return ((Long) grid.getFnEval("var n = 0; for (var i=0;i<this.columns.length;i++){if (!this.columns[i].hidden) n++;} return n;")).intValue();
     }
 
     @Test
