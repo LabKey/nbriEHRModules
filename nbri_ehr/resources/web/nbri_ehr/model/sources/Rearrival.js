@@ -29,12 +29,16 @@ EHR.model.DataModelManager.registerMetadata('Rearrival', {
                     width: 150
                 },
             },
+            // a rearrival is a return, not a fresh acquisition, so neither field applies to it
             acquisitionType: {
-                allowBlank: false,
-                columnConfig: {
-                    fixed: true,
-                    width: 150
-                },
+                allowBlank: true,
+                hidden: true,
+                showInGrid: false
+            },
+            CITES: {
+                allowBlank: true,
+                hidden: true,
+                showInGrid: false
             },
             arrivalType: {
                 allowBlank: false,
@@ -43,25 +47,59 @@ EHR.model.DataModelManager.registerMetadata('Rearrival', {
                 }
             },
             'cage': {
-                allowBlank: true,
-                hidden: true,
-                showInGrid: false
+                allowBlank: false,
+                nullable: false,
+                columnConfig: {
+                    fixed: true,
+                    width: 200
+                },
             },
+            // the animal's departure closed its project, protocol and group assignments, so each is opened again here
             project: {
-                allowBlank: true,
-                hidden: true,
-                showInGrid: false
+                xtype: 'combo',
+                allowBlank: false,
+                nullable: false,
+                columnConfig: {
+                    fixed: true,
+                    width: 150
+                },
+                lookup: {
+                    schemaName: 'ehr',
+                    queryName: 'project',
+                    keyColumn: 'project',
+                    columns: 'project,name',
+                    filterArray: [
+                        LABKEY.Filter.create('isActive', true, LABKEY.Filter.Types.EQUAL),
+                    ]
+                }
             },
             arrivalProtocol: {
-                allowBlank: true,
-                hidden: true,
-                showInGrid: false
+                xtype: 'combo',
+                allowBlank: false,
+                nullable: false,
+                columnConfig: {
+                    fixed: true,
+                    width: 150
+                },
+                // set displayColumn: ehr.protocol's title column (displayName) is not returned by this query
+                lookup: {
+                    schemaName: 'ehr',
+                    queryName: 'activeProtocols',
+                    keyColumn: 'protocol',
+                    displayColumn: 'protocol',
+                    columns: 'protocol,title'
+                }
             },
-            // a rearriving animal keeps the assignments it already had; new ones are made on the Assignment forms
             groupId: {
-                allowBlank: true,
-                hidden: true,
-                showInGrid: false
+                allowBlank: false,
+                nullable: false,
+                columnConfig: {
+                    width: 200
+                },
+                lookup: {
+                    // the shared default filters on a date column that the breeding type lookup does not have
+                    filterArray: []
+                }
             },
         }
     }

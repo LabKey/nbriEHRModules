@@ -62,42 +62,22 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
     helper.registerArrival(row.Id, row.date);
 
-    //Insert or update demographic and birth records
-    if (!row.rearrival && !helper.isETL() && !helper.isGeneratedByServer() && !helper.isValidateOnly()) {
-
-        // this allows demographic records in qcstates other than completed
-        var extraDemographicsFieldMappings = {
-            'taskid': row.taskid,
-            'qcstate': helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId()
-        }
-
-        // null (not undefined) required for call to java trigger helper
-        row.dam = row['Id/demographics/dam'] || null;
-        row.sire = row['Id/demographics/sire'] || null;
-        row.species = row['Id/demographics/species'] || null;
-        row.birth = row['Id/demographics/birth'] || null;
-        row.gender = row['Id/demographics/gender'] || null;
-        row.geographic_origin = row['Id/demographics/geographic_origin'] || null;
-        row.socialCode = row['Id/demographics/socialCode'] || null;
-        row.generation = isBlankGeneration(row['Id/demographics/generation']) ? null : parseInt(row['Id/demographics/generation'], 10);
+    // These records are created for rearrivals too: the animal's departure closed the ones it had.
+    if (!helper.isETL() && !helper.isGeneratedByServer() && !helper.isValidateOnly()) {
 
         if (row.QCStateLabel) {
             row.qcstate = helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId();
         }
 
-        if (row.birth) {
-            var birthInfo = {
+        // A rearrival reuses the animal's existing demographics record instead of creating one, so the status is written there directly.
+        // Caching it keeps the records created below from validating against the stale 'Shipped' status.
+        if (row.rearrival && row.Id && row.QCStateLabel && row.QCStateLabel.toUpperCase() === 'COMPLETED') {
+            row.calculated_status = 'Alive';
+            helper.getJavaHelper().updateDemographicsRecord([{
                 Id: row.Id,
-                date: row.birth,
-                qcstate: row.qcstate,
-                taskid: row.taskid,
-                performedby: row.performedby
-            }
-
-            var birthErrors = triggerHelper.saveBirthRecord(row.Id, birthInfo);
-            if (birthErrors){
-                EHR.Server.Utils.addError(scriptErrors, 'birth', birthErrors, 'ERROR');
-            }
+                calculated_status: row.calculated_status
+            }]);
+            helper.cacheDemographics(row.Id, row);
         }
 
         // an animal arrives already assigned to a project, a protocol and a group, all entered on the arrival row
@@ -122,6 +102,41 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
             var housingErrors = triggerHelper.createHousingRecord(row.Id, housingRec, "arrival");
             if (housingErrors) {
                 EHR.Server.Utils.addError(scriptErrors, 'Id', housingErrors, 'ERROR');
+            }
+        }
+    }
+
+    //Insert or update demographic and birth records
+    if (!row.rearrival && !helper.isETL() && !helper.isGeneratedByServer() && !helper.isValidateOnly()) {
+
+        // this allows demographic records in qcstates other than completed
+        var extraDemographicsFieldMappings = {
+            'taskid': row.taskid,
+            'qcstate': helper.getJavaHelper().getQCStateForLabel(row.QCStateLabel).getRowId()
+        }
+
+        // null (not undefined) required for call to java trigger helper
+        row.dam = row['Id/demographics/dam'] || null;
+        row.sire = row['Id/demographics/sire'] || null;
+        row.species = row['Id/demographics/species'] || null;
+        row.birth = row['Id/demographics/birth'] || null;
+        row.gender = row['Id/demographics/gender'] || null;
+        row.geographic_origin = row['Id/demographics/geographic_origin'] || null;
+        row.socialCode = row['Id/demographics/socialCode'] || null;
+        row.generation = isBlankGeneration(row['Id/demographics/generation']) ? null : parseInt(row['Id/demographics/generation'], 10);
+
+        if (row.birth) {
+            var birthInfo = {
+                Id: row.Id,
+                date: row.birth,
+                qcstate: row.qcstate,
+                taskid: row.taskid,
+                performedby: row.performedby
+            }
+
+            var birthErrors = triggerHelper.saveBirthRecord(row.Id, birthInfo);
+            if (birthErrors){
+                EHR.Server.Utils.addError(scriptErrors, 'birth', birthErrors, 'ERROR');
             }
         }
 
