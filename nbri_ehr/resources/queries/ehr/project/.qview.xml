@@ -7,8 +7,6 @@
         <column name="shortname"/>
         <column name="protocol"/>
         <column name="investigatorId"/>
-        <column name="inves"/>
-        <column name="inves2"/>
         <column name="reqname"/>
         <column name="contact_emails"/>
         <column name="account"/>

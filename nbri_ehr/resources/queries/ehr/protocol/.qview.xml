@@ -6,7 +6,6 @@
         <column name="description"/>
         <column name="external_id"/>
         <column name="investigatorId"/>
-        <column name="inves"/>
         <column name="contacts"/>
         <column name="project_type"/>
         <column name="usda_level"/>
