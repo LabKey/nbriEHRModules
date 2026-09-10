@@ -5,7 +5,6 @@
  */
 SELECT
   pr.protocol,
-  pr.title,
   pr.description,
   CASE WHEN pr.investigatorId.lastName IS NULL THEN pr.displayName ELSE pr.displayName || ' - ' || pr.investigatorId.lastName END AS displayText
 FROM ehr.protocol pr

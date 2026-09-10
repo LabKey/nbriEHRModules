@@ -68,7 +68,7 @@ EHR.model.DataModelManager.registerMetadata('Assignment', {
                     queryName: 'activeProtocols',
                     keyColumn: 'protocol',
                     displayColumn: 'displayText',
-                    columns: 'protocol,title,description,displayText'
+                    columns: 'protocol,description,displayText'
                 },
                 editorConfig: {
                     listeners: {

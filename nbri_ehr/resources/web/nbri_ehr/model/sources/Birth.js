@@ -97,13 +97,14 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                 columnConfig: {
                     width: 150
                 },
-                // set displayColumn: ehr.protocol's title column (displayName) is not returned by this query
                 lookup: {
                     schemaName: 'ehr',
                     queryName: 'activeProtocols',
                     keyColumn: 'protocol',
-                    displayColumn: 'protocol',
-                    columns: 'protocol,title'
+                    displayColumn: 'displayText',
+                    // description is unused here, but the lookup store is shared by display column alone, so every
+                    // consumer must request the same columns or whichever loads first starves the others
+                    columns: 'protocol,description,displayText'
                 }
             },
             groupId: {
