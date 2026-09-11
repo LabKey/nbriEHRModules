@@ -28,6 +28,7 @@ import org.labkey.api.data.JdbcType;
 import org.labkey.api.data.MutableColumnInfo;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.data.SQLFragment;
+import org.labkey.api.data.dialect.SqlDialect;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.WrappedColumn;
 import org.labkey.api.ehr.EHRService;
@@ -649,6 +650,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         if (matches(ti, "study", "conception"))
         {
             addIsActiveForConception(ti);
+            addConceptionDaysCol(ti);
         }
         if (matches(ti, "study", "protocolAssignment"))
         {
@@ -730,6 +732,31 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         visible.remove(col.getFieldKey());
         int sireIndex = visible.indexOf(FieldKey.fromParts("Sire"));
         visible.add(sireIndex < 0 ? visible.size() : sireIndex + 1, col.getFieldKey());
+        ti.setDefaultVisibleColumns(visible);
+    }
+
+    private void addConceptionDaysCol(AbstractTableInfo ti)
+    {
+        String name = "conceptionDays";
+        if (ti.getColumn(name) != null || ti.getColumn("date") == null)
+            return;
+
+        // The stored date carries a time, so truncate it: differencing it against midnight today otherwise leaves a
+        // conception entered today a fraction of a day in the future, which the dialect's rounding cast turns into -1.
+        // Cast back to a timestamp because date minus date is an integer in postgres, which EXTRACT(EPOCH) rejects.
+        SqlDialect dialect = ti.getSqlDialect();
+        String conceptionDay = "CAST(" + dialect.getDateTimeToDateCast(ExprColumn.STR_TABLE_ALIAS + ".date") + " AS " + dialect.getDefaultDateTimeDataType() + ")";
+        SQLFragment sql = new SQLFragment(dialect.getDateDiff(Calendar.DATE, "{fn curdate()}", conceptionDay));
+        ExprColumn col = new ExprColumn(ti, name, sql, JdbcType.INTEGER, ti.getColumn("date"));
+        col.setLabel("Conception Days");
+        col.setDescription("Days elapsed from the conception date to today.");
+        ti.addColumn(col);
+
+        // Customizers run after the query XML column reorder, so listing conceptionDays there does nothing and it lands last
+        List<FieldKey> visible = new ArrayList<>(ti.getDefaultVisibleColumns());
+        visible.remove(col.getFieldKey());
+        int dateIndex = visible.indexOf(FieldKey.fromParts("date"));
+        visible.add(dateIndex < 0 ? visible.size() : dateIndex + 1, col.getFieldKey());
         ti.setDefaultVisibleColumns(visible);
     }
 
