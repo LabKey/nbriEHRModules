@@ -794,11 +794,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Creating conception record");
         InsertRowsCommand conception = new InsertRowsCommand("study", "conception");
-        conception.addRow(Map.of("conceptId", conceptId, "date", now.minusDays(160), "Id", damId, "sire", sireId, "QCStateLabel", "Completed"));
+        int conceptionDays = 160;
+        conception.addRow(Map.of("conceptId", conceptId, "date", now.minusDays(conceptionDays), "Id", damId, "sire", sireId, "QCStateLabel", "Completed"));
         conception.execute(getApiHelper().getConnection(), getContainerPath());
 
-        log("Verifying the dam's Animal Details reports the open conception before the birth");
-        assertEquals("Animal Details did not report the open conception", conceptId, getSnapshotFieldValue(damId, "Pregnant"));
+        log("Verifying the dam's Animal Details reports the open conception and its day count before the birth");
+        assertEquals("Animal Details did not report the open conception", conceptId + " (" + conceptionDays + " days)",
+                getSnapshotFieldValue(damId, "Pregnant"));
 
         gotoEnterData();
         waitAndClickAndWait(Locator.linkWithText("Birth"));

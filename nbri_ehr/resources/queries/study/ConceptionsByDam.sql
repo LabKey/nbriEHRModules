@@ -7,6 +7,7 @@ SELECT
     c.Id,
     c.conceptId,
     c.date,
+    c.conceptionDays,
     c.estimated,
     c.sire,
     c.isActive,

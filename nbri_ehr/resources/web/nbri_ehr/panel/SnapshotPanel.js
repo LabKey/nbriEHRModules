@@ -412,7 +412,15 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
                         'query.queryName': 'conception',
                         'query.conceptId~eq': conceptId
                     });
-                    values.push('<a href="' + url + '" target="_blank">' + LABKEY.Utils.encodeHtml(conceptId) + '</a>');
+                    var link = '<a href="' + url + '" target="_blank">' + LABKEY.Utils.encodeHtml(conceptId) + '</a>';
+
+                    // a record cached before conceptionDays was added to the provider carries no count, so show the id alone
+                    var days = record['conceptionDays'];
+                    if (days !== null && days !== undefined){
+                        link += ' (' + LABKEY.Utils.encodeHtml(String(days)) + (Number(days) === 1 ? ' day' : ' days') + ')';
+                    }
+
+                    values.push(link);
                 }
             }, this);
         }
