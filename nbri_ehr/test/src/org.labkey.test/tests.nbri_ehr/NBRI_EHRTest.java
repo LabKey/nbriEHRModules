@@ -139,6 +139,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String ROOMLESS_CAGE = cageLocation("R1", ROOMLESS_CAGE_NAME);
     private static final String[] ROOMLESS_ANIMALS = {"CAGE0001", "CAGE0002"};
 
+    // Housed by testSnapshotShowsFullLocation against its own animal, so a sibling test relocating a shared one
+    // cannot change what the snapshot reports.
+    private static final String[] LOCATION_ANIMALS = {"LOC0001"};
+
     private final String[] weightFields = {"Id", "date", "enddate", "project", "weight", FIELD_QCSTATELABEL, FIELD_OBJECTID, FIELD_LSID, "_recordid", "performedby"};
     private final Object[] weightData1 = {getExpectedAnimalIDCasing("TESTSUBJECT1"), EHRClientAPIHelper.DATE_SUBSTITUTION, null, null, "12", EHRQCState.IN_PROGRESS.label, null, null, "_recordID", 1004};
 
@@ -2146,6 +2150,21 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Verifying animals sharing a cage location resolve as each other's cagemates");
         assertCagemates(ROOMLESS_ANIMALS[0], 2, ROOMLESS_ANIMALS[1]);
+    }
+
+    @Test
+    public void testSnapshotShowsFullLocation() throws Exception
+    {
+        createAliveAnimals(LOCATION_ANIMALS);
+
+        log("Housing an animal against a cage location");
+        houseAnimals(LOCATION_ANIMALS, CAGE_IN_R1);
+
+        log("Verifying Animal Details reports the room-qualified location rather than the bare cage");
+        // The panel appends the housing date, so the location is a prefix of the field rather than the whole of it.
+        String location = getSnapshotFieldValue(LOCATION_ANIMALS[0], "Location");
+        Assert.assertTrue("Animal Details reported an unexpected location: " + location,
+                location.startsWith(CAGE_IN_R1));
     }
 
     /**

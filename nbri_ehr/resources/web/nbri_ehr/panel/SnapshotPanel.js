@@ -178,7 +178,7 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
             var housingRow = row.getActiveHousing();
             location = '';
             if (housingRow)
-                location +=  LABKEY.Utils.encodeHtml(housingRow[0]?.['cage/cage']);
+                location +=  LABKEY.Utils.encodeHtml(housingRow[0]?.['location']);
 
             if (location){
                 if (this.showLocationDuration && housingRow[0].date){
