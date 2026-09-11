@@ -87,7 +87,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
     }
 
     if (damsToSync.length) {
-        triggerHelper.reportDataChange('nbri_ehr', 'Conception', damsToSync);
+        triggerHelper.reportDataChange('study', 'conception', damsToSync);
         damsToSync = [];
     }
 });
@@ -104,7 +104,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
     }
 
     if (!helper.isETL() && row.conceptId) {
-        if (triggerHelper.totalRecords('nbri_ehr', 'Conception', 'ConceptId', row.conceptId) === 0) {
+        if (triggerHelper.totalRecords('study', 'conception', 'conceptId', row.conceptId) === 0) {
             EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id does not match any conception record', 'WARN');
         }
 

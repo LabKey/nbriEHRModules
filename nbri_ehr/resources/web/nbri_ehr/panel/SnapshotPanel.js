@@ -405,12 +405,12 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
 
         if (Ext4.isArray(records)){
             Ext4.each(records, function(record){
-                var conceptId = record['ConceptId'];
+                var conceptId = record['conceptId'];
                 if (conceptId){
                     var url = LABKEY.ActionURL.buildURL('query', 'executeQuery', ctx['EHRStudyContainer'], {
-                        schemaName: 'nbri_ehr',
-                        'query.queryName': 'Conception',
-                        'query.ConceptId~eq': conceptId
+                        schemaName: 'study',
+                        'query.queryName': 'conception',
+                        'query.conceptId~eq': conceptId
                     });
                     values.push('<a href="' + url + '" target="_blank">' + LABKEY.Utils.encodeHtml(conceptId) + '</a>');
                 }

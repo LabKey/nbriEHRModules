@@ -1,0 +1,29 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="conception" tableDbType="TABLE" useColumnOrder="true">
+                <javaCustomizer class="org.labkey.nbri_ehr.table.NBRI_EHRCustomizer"/>
+                <tableTitle>Conception Records</tableTitle>
+                <columns>
+                    <column columnName="Id">
+                        <columnTitle>Dam</columnTitle>
+                    </column>
+                    <column columnName="date">
+                        <columnTitle>Conception Date</columnTitle>
+                        <formatString>Date</formatString>
+                    </column>
+                    <column columnName="conceptId">
+                        <columnTitle>Conception Id</columnTitle>
+                        <required>true</required>
+                    </column>
+                    <column columnName="estimated">
+                        <columnTitle>Estimated</columnTitle>
+                        <description>Conception date is estimated rather than observed</description>
+                    </column>
+                    <column columnName="sire"/>
+                    <column columnName="remark"/>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

@@ -13,6 +13,7 @@
         <dataset name="clinremarks" id="1009" category="Clinical" type="Standard"/>
         <dataset name="cases" id="1023" category="Clinical" type="Standard"/>
         <dataset name="chemistryResults" id="1024" category="ClinPath" type="Standard"/>
+        <dataset name="conception" id="1050" category="Reproductive Management" type="Standard"/>
         <dataset name="deaths" id="1011" category="Pathology" demographicData="true" type="Standard"/>
         <dataset name="demographics" id="1012" category="Colony Management" demographicData="true" type="Standard"/>
         <dataset name="departure" id="1013" category="Colony Management" type="Standard"/>

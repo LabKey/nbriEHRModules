@@ -646,7 +646,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         {
             addIsActiveForProject(ti, EHRService.EndingOption.activeAfterMidnightTonight);
         }
-        if (matches(ti, "nbri_ehr", "Conception"))
+        if (matches(ti, "study", "conception"))
         {
             addIsActiveForConception(ti);
         }
