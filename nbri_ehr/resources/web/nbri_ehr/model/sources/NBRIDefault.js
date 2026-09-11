@@ -127,7 +127,7 @@ EHR.model.DataModelManager.registerMetadata('Default', {
             },
             reason: {
                 defaultValue: null,
-                allowBlank: false,
+                allowBlank: true,
                 columnConfig: {
                     width: 180
                 },
