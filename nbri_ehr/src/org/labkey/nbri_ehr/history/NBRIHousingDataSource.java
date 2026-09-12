@@ -36,7 +36,7 @@ public class NBRIHousingDataSource extends AbstractDataSource
     @Override
     protected Set<String> getColumnNames()
     {
-        return PageFlowUtil.set("Id", "date", "cage/cage", "room/room", "reason", "remark");
+        return PageFlowUtil.set("Id", "date", "cage", "room/room", "reason", "remark");
     }
 
     @Override
@@ -45,11 +45,12 @@ public class NBRIHousingDataSource extends AbstractDataSource
         StringBuilder sb = new StringBuilder();
 
         FieldKey room = FieldKey.fromString("room/room");
-        FieldKey cage = FieldKey.fromString("cage/cage");
+        // housing.cage holds the room-qualified location key; traversing it to the cage lookup would drop the room.
+        FieldKey location = FieldKey.fromString("cage");
         String value = "Unknown";
-        if (rs.hasColumn(cage) && rs.getObject(cage) != null)
+        if (rs.hasColumn(location) && rs.getObject(location) != null)
         {
-            value = rs.getString(cage);
+            value = rs.getString(location);
         }
         else if(rs.hasColumn(room) && rs.getObject(room) != null)
         {
