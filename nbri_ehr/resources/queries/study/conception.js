@@ -25,9 +25,11 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 });
 
 // conceptId was a unique constraint before this became a dataset, and the birth and pregnancy triggers still resolve a
-// conception by that id alone, so the rule is enforced here now
+// conception by that id alone, so the rule is enforced here now.  Unlike the sibling checks in birth.js and
+// pregnancy.js this one does not exempt ETL: getConceptionDam() reads the dam with getObject(), which throws on a
+// second match, so a duplicate from any write path breaks later birth and pregnancy saves.
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'study', 'conception', function(helper, scriptErrors, row, oldRow) {
-    if (helper.isETL() || !row.conceptId)
+    if (!row.conceptId)
         return;
 
     //when updating a record that already carries this conception id, the existing row accounts for one match

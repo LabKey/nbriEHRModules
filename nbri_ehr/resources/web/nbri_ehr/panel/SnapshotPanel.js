@@ -414,10 +414,11 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
                     });
                     var link = '<a href="' + url + '" target="_blank">' + LABKEY.Utils.encodeHtml(conceptId) + '</a>';
 
-                    // a record cached before conceptionDays was added to the provider carries no count, so show the id alone
-                    var days = record['conceptionDays'];
-                    if (days !== null && days !== undefined){
-                        link += ' (' + LABKEY.Utils.encodeHtml(String(days)) + (Number(days) === 1 ? ' day' : ' days') + ')';
+                    // Counted here rather than read off the record because the demographics cache holds a record for up
+                    // to 25 hours, which would leave a cached count a day behind the same figure on the dam report
+                    var days = this.daysSinceConception(record['date']);
+                    if (days !== null){
+                        link += ' (' + days + (days === 1 ? ' day' : ' days') + ')';
                     }
 
                     values.push(link);
@@ -427,4 +428,19 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
 
         toSet['pregnant'] = values.length ? values.join('<br>') : 'No';
     },
+
+    // Whole days from the conception date to today, both truncated to local midnight so the count ticks over at the
+    // same moment the server's does.  Rounded, because a DST boundary leaves the difference an hour short of a multiple.
+    daysSinceConception: function(value){
+        var date = value ? LDK.ConvertUtils.parseDate(value) : null;
+        if (!Ext4.isDate(date)){
+            return null;
+        }
+
+        var conceptionDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        var now = new Date();
+        var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        return Math.round((today.getTime() - conceptionDay.getTime()) / 86400000);
+    }
 });

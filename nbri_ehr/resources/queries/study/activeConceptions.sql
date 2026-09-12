@@ -6,7 +6,6 @@
 SELECT
     c.Id,
     c.conceptId,
-    c.date,
-    c.conceptionDays
+    c.date
 FROM study.conception c
 WHERE c.isActive = true AND c.Id IS NOT NULL

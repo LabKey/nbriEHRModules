@@ -47,7 +47,6 @@ public class ActiveConceptionsDemographicsProvider extends AbstractListDemograph
         keys.add(FieldKey.fromString("Id"));
         keys.add(FieldKey.fromString("conceptId"));
         keys.add(FieldKey.fromString("date"));
-        keys.add(FieldKey.fromString("conceptionDays"));
 
         return keys;
     }
