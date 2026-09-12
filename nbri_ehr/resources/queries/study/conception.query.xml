@@ -4,6 +4,8 @@
             <table tableName="conception" tableDbType="TABLE" useColumnOrder="true">
                 <javaCustomizer class="org.labkey.nbri_ehr.table.NBRI_EHRCustomizer"/>
                 <tableTitle>Conception Records</tableTitle>
+                <!-- Without this the lookup display falls back to the first string column, which is the dam -->
+                <titleColumn>conceptId</titleColumn>
                 <columns>
                     <column columnName="Id">
                         <columnTitle>Dam</columnTitle>
