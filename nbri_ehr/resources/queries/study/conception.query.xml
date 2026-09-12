@@ -2,7 +2,6 @@
     <metadata>
         <tables xmlns="http://labkey.org/data/xml">
             <table tableName="conception" tableDbType="TABLE" useColumnOrder="true">
-                <javaCustomizer class="org.labkey.nbri_ehr.table.NBRI_EHRCustomizer"/>
                 <tableTitle>Conception Records</tableTitle>
                 <tableUrl>/query/recordDetails.view?schemaName=study&amp;query.queryName=conception&amp;keyField=conceptId&amp;key=${conceptId}</tableUrl>
                 <!-- Without this the lookup display falls back to the first string column, which is the dam -->
