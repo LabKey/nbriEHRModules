@@ -66,7 +66,6 @@ import org.labkey.nbri_ehr.table.NBRI_EHRCustomizer;
 import java.io.File;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
 public class NBRI_EHRModule extends ExtendedSimpleModule
 {
@@ -181,7 +180,6 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         ehrService.registerActionOverride("participantView", this, "views/participantView.html");
         ehrService.registerActionOverride("enterData", this, "views/enterData.html");
 
-        ehrService.registerTriggerScriptOption("datasetsToCloseOnNewEntry", List.of("assignment", "protocolAssignment", "animal_group_members"));
         RoleManager.registerRole(new NBRIEHRVetTechRole());
 
         EHRService.get().registerMoreActionsButton(new ShowEditUIButton(this, "ehr", "observation_types", EHRDataAdminPermission.class), "ehr", "observation_types");
