@@ -97,7 +97,7 @@ EHR.model.DataModelManager.registerMetadata('Arrival', {
                 nullable: false,
                 columnConfig: {
                     fixed: true,
-                    width: 150
+                    width: 250
                 },
                 lookup: {
                     schemaName: 'ehr',

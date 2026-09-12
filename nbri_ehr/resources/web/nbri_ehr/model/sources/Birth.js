@@ -95,7 +95,7 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                 allowBlank: false,
                 nullable: false,
                 columnConfig: {
-                    width: 150
+                    width: 250
                 },
                 lookup: {
                     schemaName: 'ehr',

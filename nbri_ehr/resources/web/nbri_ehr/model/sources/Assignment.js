@@ -22,23 +22,9 @@ EHR.model.DataModelManager.registerMetadata('Assignment', {
                     filterArray: [
                         LABKEY.Filter.create('isActive', true, LABKEY.Filter.Types.EQUAL),
                     ]
-                },
-                editorConfig: {
-                    listeners: {
-                        select: function (combo, recs) {
-                            if (!recs || recs.length !== 1)
-                                return;
-
-                            EHR.DataEntryUtils.setSiblingFields(combo, {'project/account': recs[0].get('account')});
-                        },
-                        change: function (combo, newVal) {
-                            if (Ext4.isEmpty(newVal))
-                                EHR.DataEntryUtils.setSiblingFields(combo, {'project/account': null});
-                        }
-                    }
                 }
             },
-            // read-only echo of the selected project's account; the select listener above keeps it current
+            // read-only echo of the selected project's account; NBRI_EHR.data.AssignmentsClientStore keeps it current
             'project/account': {
                 header: 'Project Account',
                 label: 'Project Account',
@@ -69,23 +55,9 @@ EHR.model.DataModelManager.registerMetadata('Assignment', {
                     keyColumn: 'protocol',
                     displayColumn: 'displayText',
                     columns: 'protocol,description,displayText'
-                },
-                editorConfig: {
-                    listeners: {
-                        select: function (combo, recs) {
-                            if (!recs || recs.length !== 1)
-                                return;
-
-                            EHR.DataEntryUtils.setSiblingFields(combo, {'protocol/description': recs[0].get('description')});
-                        },
-                        change: function (combo, newVal) {
-                            if (Ext4.isEmpty(newVal))
-                                EHR.DataEntryUtils.setSiblingFields(combo, {'protocol/description': null});
-                        }
-                    }
                 }
             },
-            // read-only echo of the selected protocol's description; the select listener above keeps it current
+            // read-only echo of the selected protocol's description; NBRI_EHR.data.AssignmentsClientStore keeps it current
             'protocol/description': {
                 header: 'Protocol Description',
                 label: 'Protocol Description',

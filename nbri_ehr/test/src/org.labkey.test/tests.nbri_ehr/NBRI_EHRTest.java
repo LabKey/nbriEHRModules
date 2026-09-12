@@ -85,6 +85,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.labkey.test.components.html.Input.Input;
 
 @Category({EHR.class})
@@ -195,9 +196,15 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         Map<String, Object> investigatorIds = new HashMap<>();
         for (Map<String, Object> row : invesResponse.getRows())
-            investigatorIds.put((String) row.get("lastName"), row.get("rowid"));
+        {
+            Object rowId = row.get("rowid");
+            // A null id here reaches the protocols below as a null investigator, which only surfaces much later
+            // as a protocol dropdown missing the investigator half of its text.
+            assertNotNull("Investigator insert did not return a row id for " + row.get("lastName"), rowId);
+            investigatorIds.put((String) row.get("lastName"), rowId);
+        }
 
-        assertEquals("Investigator insert did not return a row id per investigator", 2, investigatorIds.size());
+        assertEquals("Investigator insert did not return a row per investigator", 2, investigatorIds.size());
 
         InsertRowsCommand insertCmd = new InsertRowsCommand("ehr", "protocol");
 
