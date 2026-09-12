@@ -795,7 +795,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         log("Creating conception record");
         InsertRowsCommand conception = new InsertRowsCommand("study", "conception");
         int conceptionDays = 160;
-        conception.addRow(Map.of("conceptId", conceptId, "date", now.minusDays(conceptionDays), "Id", damId, "sire", sireId, "QCStateLabel", "Completed"));
+        conception.addRow(Map.of("conceptId", conceptId, "date", now.minusDays(conceptionDays), "Id", damId, "sire", sireId, "QCStateLabel", "Completed", "performedby", 1004));
         conception.execute(getApiHelper().getConnection(), getContainerPath());
 
         log("Verifying the dam's Animal Details reports the open conception and its day count before the birth");
@@ -947,8 +947,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Creating two conception records for that pair");
         InsertRowsCommand conceptions = new InsertRowsCommand("study", "conception");
-        conceptions.addRow(Map.of("conceptId", firstConcept, "date", now.minusDays(200), "Id", damId, "sire", sireId, "QCStateLabel", "Completed"));
-        conceptions.addRow(Map.of("conceptId", secondConcept, "date", now.minusDays(160), "Id", damId, "sire", sireId, "QCStateLabel", "Completed"));
+        conceptions.addRow(Map.of("conceptId", firstConcept, "date", now.minusDays(200), "Id", damId, "sire", sireId, "QCStateLabel", "Completed", "performedby", 1004));
+        conceptions.addRow(Map.of("conceptId", secondConcept, "date", now.minusDays(160), "Id", damId, "sire", sireId, "QCStateLabel", "Completed", "performedby", 1004));
         conceptions.execute(getApiHelper().getConnection(), getContainerPath());
 
         gotoEnterData();
@@ -1020,8 +1020,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         createBreedingPair(secondDam, secondSire, secondSpeciesCode, secondDamGeneration);
 
         InsertRowsCommand conceptions = new InsertRowsCommand("study", "conception");
-        conceptions.addRow(Map.of("conceptId", firstConcept, "date", now.minusDays(200), "Id", firstDam, "sire", firstSire, "QCStateLabel", "Completed"));
-        conceptions.addRow(Map.of("conceptId", secondConcept, "date", now.minusDays(190), "Id", secondDam, "sire", secondSire, "QCStateLabel", "Completed"));
+        conceptions.addRow(Map.of("conceptId", firstConcept, "date", now.minusDays(200), "Id", firstDam, "sire", firstSire, "QCStateLabel", "Completed", "performedby", 1004));
+        conceptions.addRow(Map.of("conceptId", secondConcept, "date", now.minusDays(190), "Id", secondDam, "sire", secondSire, "QCStateLabel", "Completed", "performedby", 1004));
         conceptions.execute(getApiHelper().getConnection(), getContainerPath());
 
         gotoEnterData();
@@ -1104,7 +1104,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Creating conception record");
         InsertRowsCommand conception = new InsertRowsCommand("study", "conception");
-        conception.addRow(Map.of("conceptId", conceptId, "date", now.minusDays(90), "Id", animalId, "QCStateLabel", "Completed"));
+        conception.addRow(Map.of("conceptId", conceptId, "date", now.minusDays(90), "Id", animalId, "QCStateLabel", "Completed", "performedby", 1004));
         conception.execute(getApiHelper().getConnection(), getContainerPath());
 
         gotoEnterData();
