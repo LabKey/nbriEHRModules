@@ -797,12 +797,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         createBreedingPair(damId, sireId, damSpeciesCode, damGeneration);
 
         log("Creating conception record");
-        InsertRowsCommand conception = new InsertRowsCommand("nbri_ehr", "Conception");
-        conception.addRow(Map.of("ConceptId", conceptId, "ConceptDate", now.minusDays(160), "Dam", damId, "Sire", sireId));
+        InsertRowsCommand conception = new InsertRowsCommand("study", "conception");
+        int conceptionDays = 160;
+        conception.addRow(Map.of("conceptId", conceptId, "date", now.minusDays(conceptionDays), "Id", damId, "sire", sireId, "QCStateLabel", "Completed", "performedby", 1004));
         conception.execute(getApiHelper().getConnection(), getContainerPath());
 
-        log("Verifying the dam's Animal Details reports the open conception before the birth");
-        assertEquals("Animal Details did not report the open conception", conceptId, getSnapshotFieldValue(damId, "Pregnant"));
+        log("Verifying the dam's Animal Details reports the open conception and its day count before the birth");
+        assertEquals("Animal Details did not report the open conception", conceptId + " (" + conceptionDays + " days)",
+                getSnapshotFieldValue(damId, "Pregnant"));
 
         gotoEnterData();
         waitAndClickAndWait(Locator.linkWithText("Birth"));
@@ -915,8 +917,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Verifying conception outcome and offspring in ConceptionsByDam");
         goToSchemaBrowser();
-        DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
-        report.setFilter("ConceptId", "Equals", conceptId);
+        DataRegionTable report = viewQueryData("study", "ConceptionsByDam");
+        report.setFilter("conceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(damId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Live Birth"), report.getRowDataAsText(0, "conceptionOutcome"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(bornAnimal), report.getRowDataAsText(0, "offspring"));
@@ -948,9 +950,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         createBreedingPair(damId, sireId, damSpeciesCode);
 
         log("Creating two conception records for that pair");
-        InsertRowsCommand conceptions = new InsertRowsCommand("nbri_ehr", "Conception");
-        conceptions.addRow(Map.of("ConceptId", firstConcept, "ConceptDate", now.minusDays(200), "Dam", damId, "Sire", sireId));
-        conceptions.addRow(Map.of("ConceptId", secondConcept, "ConceptDate", now.minusDays(160), "Dam", damId, "Sire", sireId));
+        InsertRowsCommand conceptions = new InsertRowsCommand("study", "conception");
+        conceptions.addRow(Map.of("conceptId", firstConcept, "date", now.minusDays(200), "Id", damId, "sire", sireId, "QCStateLabel", "Completed", "performedby", 1004));
+        conceptions.addRow(Map.of("conceptId", secondConcept, "date", now.minusDays(160), "Id", damId, "sire", sireId, "QCStateLabel", "Completed", "performedby", 1004));
         conceptions.execute(getApiHelper().getConnection(), getContainerPath());
 
         gotoEnterData();
@@ -1021,9 +1023,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         createBreedingPair(firstDam, firstSire, firstSpeciesCode, firstDamGeneration);
         createBreedingPair(secondDam, secondSire, secondSpeciesCode, secondDamGeneration);
 
-        InsertRowsCommand conceptions = new InsertRowsCommand("nbri_ehr", "Conception");
-        conceptions.addRow(Map.of("ConceptId", firstConcept, "ConceptDate", now.minusDays(200), "Dam", firstDam, "Sire", firstSire));
-        conceptions.addRow(Map.of("ConceptId", secondConcept, "ConceptDate", now.minusDays(190), "Dam", secondDam, "Sire", secondSire));
+        InsertRowsCommand conceptions = new InsertRowsCommand("study", "conception");
+        conceptions.addRow(Map.of("conceptId", firstConcept, "date", now.minusDays(200), "Id", firstDam, "sire", firstSire, "QCStateLabel", "Completed", "performedby", 1004));
+        conceptions.addRow(Map.of("conceptId", secondConcept, "date", now.minusDays(190), "Id", secondDam, "sire", secondSire, "QCStateLabel", "Completed", "performedby", 1004));
         conceptions.execute(getApiHelper().getConnection(), getContainerPath());
 
         gotoEnterData();
@@ -1105,8 +1107,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating conception record");
-        InsertRowsCommand conception = new InsertRowsCommand("nbri_ehr", "Conception");
-        conception.addRow(Map.of("ConceptId", conceptId, "ConceptDate", now.minusDays(90), "Dam", animalId));
+        InsertRowsCommand conception = new InsertRowsCommand("study", "conception");
+        conception.addRow(Map.of("conceptId", conceptId, "date", now.minusDays(90), "Id", animalId, "QCStateLabel", "Completed", "performedby", 1004));
         conception.execute(getApiHelper().getConnection(), getContainerPath());
 
         gotoEnterData();
@@ -1132,8 +1134,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Verifying conception outcome in ConceptionsByDam");
         goToSchemaBrowser();
-        DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
-        report.setFilter("ConceptId", "Equals", conceptId);
+        DataRegionTable report = viewQueryData("study", "ConceptionsByDam");
+        report.setFilter("conceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(animalId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(result), report.getRowDataAsText(0, "conceptionOutcome"));
         Assert.assertEquals("A conception claimed by a pregnancy outcome should not be active",
@@ -1162,29 +1164,29 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
                 conceptions.isColumnPresent("breedingType", false));
 
         _helper.addRecordToGrid(conceptions);
-        conceptions.setGridCell(1, "ConceptId", conceptId);
-        conceptions.setGridCellJS(1, "ConceptDate", now.minusDays(30).format(_dateFormat));
-        conceptions.setGridCellJS(1, "Estimated", true);
-        conceptions.setGridCell(1, "Dam", damId);
-        conceptions.setGridCell(1, "Sire", sireId);
+        conceptions.setGridCell(1, "conceptId", conceptId);
+        conceptions.setGridCellJS(1, "date", now.minusDays(30).format(_dateFormat));
+        conceptions.setGridCellJS(1, "estimated", true);
+        conceptions.setGridCell(1, "Id", damId);
+        conceptions.setGridCell(1, "sire", sireId);
         // Remark renders as a textarea, which Ext4GridRef's cell editor helpers cannot drive: they only recognize
         // an <input> as the active editor, so the click that opens the textarea is followed by a retry click that
         // the open textarea intercepts. Set it through the store instead.
-        conceptions.setGridCellJS(1, "Remark", "Conception entry test");
+        conceptions.setGridCellJS(1, "remark", "Conception entry test");
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
-        DataRegionTable table = viewQueryData("nbri_ehr", "Conception");
-        table.setFilter("ConceptId", "Equals", conceptId);
-        Assert.assertEquals("Invalid Conception record", Arrays.asList(damId), table.getRowDataAsText(0, "Dam"));
-        Assert.assertEquals("Invalid Conception record", Arrays.asList(sireId), table.getRowDataAsText(0, "Sire"));
-        Assert.assertEquals("Invalid Conception record", Arrays.asList("true"), table.getRowDataAsText(0, "Estimated"));
-        Assert.assertEquals("Invalid Conception record", Arrays.asList("Conception entry test"), table.getRowDataAsText(0, "Remark"));
+        DataRegionTable table = viewQueryData("study", "conception");
+        table.setFilter("conceptId", "Equals", conceptId);
+        Assert.assertEquals("Invalid Conception record", Arrays.asList(damId), table.getRowDataAsText(0, "Id"));
+        Assert.assertEquals("Invalid Conception record", Arrays.asList(sireId), table.getRowDataAsText(0, "sire"));
+        Assert.assertEquals("Invalid Conception record", Arrays.asList("true"), table.getRowDataAsText(0, "estimated"));
+        Assert.assertEquals("Invalid Conception record", Arrays.asList("Conception entry test"), table.getRowDataAsText(0, "remark"));
 
         log("Verifying unmatched conception appears as Unknown in ConceptionsByDam");
         goToSchemaBrowser();
-        DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
-        report.setFilter("ConceptId", "Equals", conceptId);
+        DataRegionTable report = viewQueryData("study", "ConceptionsByDam");
+        report.setFilter("conceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(damId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Unknown"), report.getRowDataAsText(0, "conceptionOutcome"));
         Assert.assertEquals("A conception with no birth or pregnancy outcome should be active",
