@@ -85,6 +85,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.labkey.test.components.html.Input.Input;
 
 @Category({EHR.class})
@@ -143,6 +144,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     // cannot change what the snapshot reports.
     private static final String[] LOCATION_ANIMALS = {"LOC0001"};
 
+    // protocol.investigatorId looks up ehr.investigators rather than the user table, so a protocol shows an
+    // investigator only when a row there carries its id.
+    private static final String INVES_LAST_NAME = "Marsh";
+    private static final String DUMMY_INVES_LAST_NAME = "Okafor";
+    private static final String PROTOCOL_DESCRIPTION = "Chronic implant study";
+    private static final String DUMMY_PROTOCOL_DESCRIPTION = "Placeholder protocol for the arrival and assignment fixtures";
+
     private final String[] weightFields = {"Id", "date", "enddate", "project", "weight", FIELD_QCSTATELABEL, FIELD_OBJECTID, FIELD_LSID, "_recordid", "performedby"};
     private final Object[] weightData1 = {getExpectedAnimalIDCasing("TESTSUBJECT1"), EHRClientAPIHelper.DATE_SUBSTITUTION, null, null, "12", EHRQCState.IN_PROGRESS.label, null, null, "_recordID", 1004};
 
@@ -181,17 +189,36 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         _permissionsHelper.addUserToProjGroup(inves1.getEmail(), getProjectName(), INVESTIGATOR.getGroup());
         _permissionsHelper.addUserToProjGroup(inves2.getEmail(), getProjectName(), INVESTIGATOR.getGroup());
 
+        InsertRowsCommand invesCmd = new InsertRowsCommand("ehr", "investigators");
+        invesCmd.addRow(Map.of("lastName", INVES_LAST_NAME, "firstName", "Robin", "userid", inves1.getUserId()));
+        invesCmd.addRow(Map.of("lastName", DUMMY_INVES_LAST_NAME, "firstName", "Alex", "userid", inves2.getUserId()));
+        RowsResponse invesResponse = invesCmd.execute(createDefaultConnection(), getContainerPath());
+
+        Map<String, Object> investigatorIds = new HashMap<>();
+        for (Map<String, Object> row : invesResponse.getRows())
+        {
+            Object rowId = row.get("rowid");
+            // A null id here reaches the protocols below as a null investigator, which only surfaces much later
+            // as a protocol dropdown missing the investigator half of its text.
+            assertNotNull("Investigator insert did not return a row id for " + row.get("lastName"), rowId);
+            investigatorIds.put((String) row.get("lastName"), rowId);
+        }
+
+        assertEquals("Investigator insert did not return a row per investigator", 2, investigatorIds.size());
+
         InsertRowsCommand insertCmd = new InsertRowsCommand("ehr", "protocol");
 
         Map<String, Object> rowMap = new HashMap<>();
         rowMap.put("protocol", PROTOCOL_ID);
-        rowMap.put("InvestigatorId", inves1.getUserId());
+        rowMap.put("InvestigatorId", investigatorIds.get(INVES_LAST_NAME));
         rowMap.put("title", PROTOCOL_ID);
+        rowMap.put("description", PROTOCOL_DESCRIPTION);
         insertCmd.addRow(rowMap);
         rowMap = new HashMap<>();
         rowMap.put("protocol", DUMMY_PROTOCOL);
-        rowMap.put("InvestigatorId", inves2.getUserId());
+        rowMap.put("InvestigatorId", investigatorIds.get(DUMMY_INVES_LAST_NAME));
         rowMap.put("title", DUMMY_PROTOCOL);
+        rowMap.put("description", DUMMY_PROTOCOL_DESCRIPTION);
         insertCmd.addRow(rowMap);
 
         insertCmd.execute(createDefaultConnection(), getContainerPath());
@@ -709,7 +736,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         // the animal's opening project, protocol and group are entered on the arrival row itself; the trigger script
         // opens the matching assignment record for each one
         arrivals.setGridCell(1, "project", "640991");
-        arrivals.setGridCell(1, "arrivalProtocol", "dummyprotocol");
+        arrivals.setGridCell(1, "arrivalProtocol", protocolChoice(DUMMY_PROTOCOL, DUMMY_INVES_LAST_NAME));
         arrivals.setGridCell(1, "groupId", animalGroup);
 
         log("Verifying the opening project, protocol and group are required");
@@ -719,7 +746,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         arrivals.setGridCellJS(1, "arrivalProtocol", null);
         waitForFormError("The field: Protocol is required");
-        arrivals.setGridCell(1, "arrivalProtocol", "dummyprotocol");
+        arrivals.setGridCell(1, "arrivalProtocol", protocolChoice(DUMMY_PROTOCOL, DUMMY_INVES_LAST_NAME));
 
         arrivals.setGridCellJS(1, "groupId", null);
         waitForFormError("The field: Group is required");
@@ -773,6 +800,75 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
                 arrivalBirthDay, getDatasetDay("birth", arrivedAnimal, "date"));
         assertEquals("Demographics birth date does not match the birth record",
                 arrivalBirthDay, getDatasetDay("demographics", arrivedAnimal, "birth"));
+    }
+
+    @Test
+    public void testAssignmentFormLookupColumns()
+    {
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Assignment"));
+        lockForm();
+
+        Ext4GridRef protocols = _helper.getExt4GridForFormSection("Protocol Assignment");
+        _helper.addRecordToGrid(protocols);
+        protocols.setGridCell(1, "Id", aliveAnimalId);
+
+        log("Verifying the protocol dropdown lists each protocol with its investigator");
+        // setGridCell clicks the list item whose text is exactly this, so selecting it is the check on the format
+        protocols.setGridCell(1, "protocol", protocolChoice(DUMMY_PROTOCOL, DUMMY_INVES_LAST_NAME));
+        Assert.assertEquals("Protocol dropdown stored something other than the protocol id",
+                DUMMY_PROTOCOL, protocols.getFieldValue(1, "protocol"));
+
+        log("Verifying the protocol description follows the selected protocol");
+        Assert.assertEquals("Protocol description did not follow the selected protocol",
+                DUMMY_PROTOCOL_DESCRIPTION, protocols.getFieldValue(1, "protocol/description"));
+        protocols.setGridCell(1, "protocol", protocolChoice(PROTOCOL_ID, INVES_LAST_NAME));
+        Assert.assertEquals("Protocol description did not follow a changed protocol",
+                PROTOCOL_DESCRIPTION, protocols.getFieldValue(1, "protocol/description"));
+
+        Assert.assertEquals("Protocol Description is not the last column",
+                "protocol/description", getLastVisibleColumn(protocols));
+        Assert.assertEquals("Wrong header over the protocol description",
+                "Protocol Description", getColumnProperty(protocols, "protocol/description", "text"));
+        Assert.assertEquals("Protocol Description should not be editable",
+                false, getColumnProperty(protocols, "protocol/description", "editable"));
+
+        Ext4GridRef projects = _helper.getExt4GridForFormSection("Project Assignment");
+        _helper.addRecordToGrid(projects);
+        projects.setGridCell(1, "Id", aliveAnimalId);
+        projects.setGridCell(1, "project", PROJECT_ID);
+
+        log("Verifying the project account follows the selected project");
+        Assert.assertEquals("Project account did not follow the selected project",
+                ACCOUNT_ID_2, projects.getFieldValue(1, "project/account"));
+        Assert.assertEquals("Project Account is not the last column",
+                "project/account", getLastVisibleColumn(projects));
+        Assert.assertEquals("Wrong header over the project account",
+                "Project Account", getColumnProperty(projects, "project/account", "text"));
+        Assert.assertEquals("Project Account should not be editable",
+                false, getColumnProperty(projects, "project/account", "editable"));
+
+        // every check above reads the unsaved row, so discard rather than submit and leave the animal's own
+        // assignments alone
+        _helper.discardForm();
+    }
+
+    /** The text every protocol dropdown displays for a protocol, built by ehr/activeProtocols.sql. */
+    private static String protocolChoice(String protocol, String investigatorLastName)
+    {
+        return protocol + " - " + investigatorLastName;
+    }
+
+    /** A column config property, such as the rendered header or editability, which only the config carries. Null when
+     * the grid has no such column, so an assertion against it fails rather than passing vacuously. */
+    private Object getColumnProperty(Ext4GridRef grid, String dataIndex, String property)
+    {
+        return grid.getFnEval("for (var i=0;i<this.columns.length;i++){if (this.columns[i].dataIndex == '" + dataIndex + "') return this.columns[i]['" + property + "'];} return null;");
+    }
+
+    private String getLastVisibleColumn(Ext4GridRef grid)
+    {
+        return (String) grid.getFnEval("var last = null; for (var i=0;i<this.columns.length;i++){if (!this.columns[i].hidden) last = this.columns[i].dataIndex;} return last;");
     }
 
     @Test
@@ -849,7 +945,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         // the animal's opening project, protocol and group are entered on the birth row itself; the trigger script
         // opens the matching assignment record for each one
         births.setGridCell(1, "project", "795644");
-        births.setGridCell(1, "birthProtocol", "protocol101");
+        births.setGridCell(1, "birthProtocol", protocolChoice(PROTOCOL_ID, INVES_LAST_NAME));
         births.setGridCell(1, "groupId", animalGroup);
 
         log("Verifying the opening project, protocol and group are required");
@@ -859,7 +955,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         births.setGridCellJS(1, "birthProtocol", null);
         waitForFormError("The field: Protocol is required");
-        births.setGridCell(1, "birthProtocol", "protocol101");
+        births.setGridCell(1, "birthProtocol", protocolChoice(PROTOCOL_ID, INVES_LAST_NAME));
 
         births.setGridCellJS(1, "groupId", null);
         waitForFormError("The field: Group is required");
@@ -2419,7 +2515,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         births.setGridCell(rowIdx, "Id/demographics/gender", "Female");
         births.setGridCell(rowIdx, "Id/demographics/socialCode", socialCode);
         births.setGridCell(rowIdx, "project", "795644");
-        births.setGridCell(rowIdx, "birthProtocol", "protocol101");
+        births.setGridCell(rowIdx, "birthProtocol", protocolChoice(PROTOCOL_ID, INVES_LAST_NAME));
         births.setGridCell(rowIdx, "groupId", animalGroup);
     }
 

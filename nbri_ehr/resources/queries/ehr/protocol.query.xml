@@ -15,6 +15,14 @@
                             <fkDisplayColumnName>lastName</fkDisplayColumnName>
                         </fk>
                     </column>
+                    <!-- ehr.xml hides both ibc_approval columns; un-hide rather than drop the tag -->
+                    <column columnName="ibc_approval_required">
+                        <isHidden>false</isHidden>
+                    </column>
+                    <column columnName="ibc_approval_num">
+                        <isHidden>false</isHidden>
+                    </column>
+                    <!-- inves is the free-text predecessor of investigatorId; kept for legacy rows only -->
                     <column columnName="inves">
                         <isHidden>true</isHidden>
                     </column>
