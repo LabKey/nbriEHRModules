@@ -50,4 +50,4 @@ behaviorRemarks	Behavior	query	Behavior Remarks	true		study	BehaviorClinRemarks	
 clinObsBehavior	Behavior	query	Observations	true		study	behaviorObservations			date	false	false		qcstate/publicdata	This report contains one record for each encounter with each animal, including surergies, exams, procedures, etc.
 clinremarks	Clinical	query	Clinical Remarks	true		study	ClinicalClinRemarks			date	false	false		qcstate/publicdata	This report contains the clinical remarks entered about each animal
 physicalExam	Clinical	query	Exam History	True		study	physicalExam			date	false	false		qcstate/publicdata	This report displays physical exam data for the selected animal
-conceptionsByDam	Reproductive Management	query	Conceptions by Dam	true		nbri_ehr	ConceptionsByDam			ConceptDate	false	false		qcstate/publicdata	This report displays conception records where the selected animal is the dam
+conceptionsByDam	Reproductive Management	query	Conceptions by Dam	true		study	ConceptionsByDam			date	false	false		qcstate/publicdata	This report displays conception records where the selected animal is the dam

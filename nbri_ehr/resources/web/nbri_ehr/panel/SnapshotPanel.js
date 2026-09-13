@@ -405,18 +405,42 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
 
         if (Ext4.isArray(records)){
             Ext4.each(records, function(record){
-                var conceptId = record['ConceptId'];
+                var conceptId = record['conceptId'];
                 if (conceptId){
                     var url = LABKEY.ActionURL.buildURL('query', 'executeQuery', ctx['EHRStudyContainer'], {
-                        schemaName: 'nbri_ehr',
-                        'query.queryName': 'Conception',
-                        'query.ConceptId~eq': conceptId
+                        schemaName: 'study',
+                        'query.queryName': 'conception',
+                        'query.conceptId~eq': conceptId
                     });
-                    values.push('<a href="' + url + '" target="_blank">' + LABKEY.Utils.encodeHtml(conceptId) + '</a>');
+                    var link = '<a href="' + url + '" target="_blank">' + LABKEY.Utils.encodeHtml(conceptId) + '</a>';
+
+                    // Counted here rather than read off the record because the demographics cache holds a record for up
+                    // to 25 hours, which would leave a cached count a day behind the same figure on the dam report
+                    var days = this.daysSinceConception(record['date']);
+                    if (days !== null){
+                        link += ' (' + days + (days === 1 ? ' day' : ' days') + ')';
+                    }
+
+                    values.push(link);
                 }
             }, this);
         }
 
         toSet['pregnant'] = values.length ? values.join('<br>') : 'No';
     },
+
+    // Whole days from the conception date to today, both truncated to local midnight so the count ticks over at the
+    // same moment the server's does.  Rounded, because a DST boundary leaves the difference an hour short of a multiple.
+    daysSinceConception: function(value){
+        var date = value ? LDK.ConvertUtils.parseDate(value) : null;
+        if (!Ext4.isDate(date)){
+            return null;
+        }
+
+        var conceptionDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        var now = new Date();
+        var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        return Math.round((today.getTime() - conceptionDay.getTime()) / 86400000);
+    }
 });

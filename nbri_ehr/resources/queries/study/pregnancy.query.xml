@@ -24,9 +24,9 @@
                     <column columnName="conceptId">
                         <columnTitle>Conception Id</columnTitle>
                         <fk>
-                            <fkDbSchema>nbri_ehr</fkDbSchema>
-                            <fkTable>Conception</fkTable>
-                            <fkColumnName>ConceptId</fkColumnName>
+                            <fkDbSchema>study</fkDbSchema>
+                            <fkTable>conception</fkTable>
+                            <fkColumnName>conceptId</fkColumnName>
                         </fk>
                     </column>
                     <column columnName="type">

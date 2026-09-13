@@ -30,7 +30,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'study', 'pregnancy', function(helper, scriptErrors, row, oldRow) {
     if (!helper.isETL() && row.conceptId) {
-        if (triggerHelper.totalRecords('nbri_ehr', 'Conception', 'ConceptId', row.conceptId) === 0) {
+        if (triggerHelper.totalRecords('study', 'conception', 'conceptId', row.conceptId) === 0) {
             EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id does not match any conception record', 'WARN');
         }
 
@@ -61,7 +61,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.COMPLETE, 'study', 'pregnancy', function(event, errors, helper){
     if (damsToSync.length) {
-        triggerHelper.reportDataChange('nbri_ehr', 'Conception', damsToSync);
+        triggerHelper.reportDataChange('study', 'conception', damsToSync);
         damsToSync = [];
     }
 });
