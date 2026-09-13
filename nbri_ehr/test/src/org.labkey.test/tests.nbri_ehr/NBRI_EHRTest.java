@@ -143,6 +143,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     // cannot change what the snapshot reports.
     private static final String[] LOCATION_ANIMALS = {"LOC0001"};
 
+    // Longest buffer DataEntryErrorPanel puts between a validation event and repainting the error summary
+    private static final int ERROR_PANEL_REPAINT_BUFFER = 1500;
+
     private final String[] weightFields = {"Id", "date", "enddate", "project", "weight", FIELD_QCSTATELABEL, FIELD_OBJECTID, FIELD_LSID, "_recordid", "performedby"};
     private final Object[] weightData1 = {getExpectedAnimalIDCasing("TESTSUBJECT1"), EHRClientAPIHelper.DATE_SUBSTITUTION, null, null, "12", EHRQCState.IN_PROGRESS.label, null, null, "_recordID", 1004};
 
@@ -2225,6 +2228,62 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
                 String.valueOf(cagemates.get("animals")).contains(expectedCompanion));
     }
 
+    /**
+     * Entering a group membership has to close the one the animal already holds, which the module asks for by listing
+     * animal_group_members in datasetsToCloseOnNewEntry. That option lives in a single server-wide map when registered
+     * from Java, so on a server carrying more than one EHR module it was whichever module started last that decided
+     * the list. Entering the memberships through the API rather than the form keeps this on the trigger script.
+     */
+    @Test
+    public void testGroupMembershipClosedOnNewEntry() throws Exception
+    {
+        String animalId = "GROUP0001";
+        String firstGroup = "P";  // Project Breeding
+        String secondGroup = "T"; // Time-Mated
+        LocalDateTime joinedFirst = LocalDateTime.now().minusDays(10);
+        LocalDateTime joinedSecond = LocalDateTime.now().minusDays(3);
+
+        createAliveAnimals(new String[]{animalId});
+
+        log("Assigning " + animalId + " to its first group");
+        insertGroupMembership(animalId, firstGroup, joinedFirst);
+        Assert.assertNull("A newly entered group membership should be left open",
+                getGroupMembershipEnd(animalId, firstGroup));
+
+        log("Assigning " + animalId + " to a second group");
+        insertGroupMembership(animalId, secondGroup, joinedSecond);
+
+        log("Verifying the earlier membership was closed at the new one's start date");
+        assertEquals("Entering a group membership did not close the one the animal already held",
+                joinedSecond.format(_dateFormat), getGroupMembershipEnd(animalId, firstGroup));
+        Assert.assertNull("The membership just entered should be left open",
+                getGroupMembershipEnd(animalId, secondGroup));
+    }
+
+    private void insertGroupMembership(String animalId, String groupId, LocalDateTime date)
+    {
+        String[] fields = new String[]{"Id", "date", "groupId", FIELD_QCSTATELABEL, FIELD_OBJECTID, "performedby"};
+        Object[][] data = new Object[][]{
+                {animalId, Date.from(date.atZone(ZoneId.systemDefault()).toInstant()), groupId,
+                        EHRQCState.COMPLETED.label, UUID.randomUUID().toString(), 1004}
+        };
+        SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "animal_group_members", "lsid", fields, data);
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+    }
+
+    /** @return the day the animal's membership of the given group ended, or null while it is still open */
+    private String getGroupMembershipEnd(String animalId, String groupId) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("study", "animal_group_members");
+        select.setColumns(List.of("Id", "groupId", "enddate"));
+        select.addFilter(new Filter("Id", animalId));
+        select.addFilter(new Filter("groupId", groupId));
+        SelectRowsResponse response = select.execute(getApiHelper().getConnection(), getContainerPath());
+
+        assertEquals("Expected exactly one " + groupId + " membership for " + animalId, 1, response.getRows().size());
+        return toDay(response.getRows().getFirst().get("enddate"));
+    }
+
     @Test
     public void testLookupPage() throws Exception
     {
@@ -2474,12 +2533,41 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
      */
     private void waitForValidationToClear(String message)
     {
-        if (waitFor(() -> !isTextPresent(message), WAIT_FOR_JAVASCRIPT))
+        if (waitForValidationToSettleWithout(message))
             return;
 
         log("Form kept reporting '" + message + "', re-validating");
         revalidateForm();
-        waitFor(() -> !isTextPresent(message), "Form kept reporting after re-validating: " + message, WAIT_FOR_JAVASCRIPT);
+        if (!waitForValidationToSettleWithout(message))
+            Assert.fail("Form kept reporting after re-validating: " + message);
+    }
+
+    /**
+     * Waits for the form to go quiet without reporting the given message. DataEntryErrorPanel repaints on a buffered
+     * event rather than when the validation response lands, so the summary trails the form's actual state by up to a
+     * second: a message can read as absent before validation has reported it, and read as present after the value
+     * that raised it was accepted. Neither is worth acting on, so require no validation in flight and the message
+     * absent, then re-check after the repaint window to confirm the absence survives it.
+     */
+    private boolean waitForValidationToSettleWithout(String message)
+    {
+        return waitFor(() -> {
+            if (getValidationRequestsInFlight() > 0 || isTextPresent(message))
+                return false;
+
+            sleep(ERROR_PANEL_REPAINT_BUFFER);
+            return getValidationRequestsInFlight() == 0 && !isTextPresent(message);
+        }, WAIT_FOR_JAVASCRIPT);
+    }
+
+    // Server validations the form is still waiting on. StoreCollection counts these itself; the form has no
+    // rendered "validating" state to watch instead.
+    private int getValidationRequestsInFlight()
+    {
+        Object inFlight = executeScript("var panel = Ext4.ComponentQuery.query('ehr-dataentrypanel')[0];" +
+                "return panel && panel.storeCollection ? panel.storeCollection.validationRequestsInFlight : 0;");
+
+        return inFlight == null ? 0 : ((Number) inFlight).intValue();
     }
 
     // More Actions -> Re-Validate: re-runs server-side validation on every record in the form
@@ -2499,7 +2587,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
      */
     private String getDatasetDay(String queryName, String animalId, String column) throws IOException, CommandException
     {
-        Object value = getSingleRowForAnimal(queryName, animalId, List.of("Id", column)).get(column);
+        return toDay(getSingleRowForAnimal(queryName, animalId, List.of("Id", column)).get(column));
+    }
+
+    /** @return a stored date value as yyyy-MM-dd, or null when it is empty */
+    private String toDay(Object value)
+    {
         if (value == null)
             return null;
 
