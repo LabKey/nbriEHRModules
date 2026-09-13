@@ -1309,7 +1309,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         switchToWindow(2);
 
         waitForText(animalId);
-        waitForTextToDisappear("Id is required");
+        waitForValidationToClear("Id is required");
         setCaseSubjective("Closing the case");
         waitAndClick(Ext4Helper.Locators.ext4Button("Edit"));
         _helper.getExt4FieldForFormSection("Clinical Case", "Close Date").setValue(LocalDateTime.now().format(_dateFormat));
@@ -1946,7 +1946,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         _helper.setDataEntryField("remark", "Clinical Remarks - Test");
         if (null == _helper.getExt4FieldForFormSection("Clinical Remarks", "Remark").getValue())
             _helper.setDataEntryField("remark", "Clinical Remarks - Test");
-        waitForTextToDisappear("Remark: WARN: Must enter at least one comment");
+        waitForValidationToClear("Remark: WARN: Must enter at least one comment");
 
         Ext4GridRef weight = _helper.getExt4GridForFormSection("Weights");
         _helper.addRecordToGrid(weight);
@@ -1986,7 +1986,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         waitForText("Diazepam");
         waitForText(animalId);
-        waitForTextToDisappear("Id is required");
+        waitForValidationToClear("Id is required");
         _helper.getExt4GridForFormSection("Medications/Treatments Given");
         submitForm("Submit Final", "Finalize");
         stopImpersonating();
@@ -2008,7 +2008,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         //Fill out Close Date
         waitForText(animalId);
-        waitForTextToDisappear("Id is required");
+        waitForValidationToClear("Id is required");
         setCaseSubjective("Closing the case");
 
         waitForElement(Ext4Helper.Locators.ext4Button("Edit"));
@@ -2360,9 +2360,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         switchToWindow(2);
 
         waitForText(animalId1);
-        waitForTextToDisappear("Id is required");
+        waitForValidationToClear("Id is required");
         _helper.setDataEntryField("remark", "Closing the case");
-        waitForTextToDisappear("Subjective: WARN: Must enter at least one comment");
+        waitForValidationToClear("Subjective: WARN: Must enter at least one comment");
         waitAndClick(Ext4Helper.Locators.ext4Button("Edit"));
 
         // Verify close remark required
@@ -2465,6 +2465,29 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private void waitForFormError(String message)
     {
         waitFor(() -> isTextPresent(message), "Form did not report: " + message, WAIT_FOR_JAVASCRIPT);
+    }
+
+    /**
+     * Waits for a validation message to clear, re-running server-side validation once if it does not. A value can be
+     * accepted at the field while the form's error summary still lists it, which the form itself handles by pointing
+     * the user at More Actions -> Re-Validate.
+     */
+    private void waitForValidationToClear(String message)
+    {
+        if (waitFor(() -> !isTextPresent(message), WAIT_FOR_JAVASCRIPT))
+            return;
+
+        log("Form kept reporting '" + message + "', re-validating");
+        revalidateForm();
+        waitFor(() -> !isTextPresent(message), "Form kept reporting after re-validating: " + message, WAIT_FOR_JAVASCRIPT);
+    }
+
+    // More Actions -> Re-Validate: re-runs server-side validation on every record in the form
+    private void revalidateForm()
+    {
+        WebElement moreActions = _helper.getDataEntryButton("More Actions").findElement(getDriver());
+        scrollIntoView(moreActions);
+        _ext4Helper.clickExt4MenuButton(false, moreActions, false, "Re-Validate");
     }
 
     /**
