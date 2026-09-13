@@ -977,8 +977,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Verifying the save is accepted once the second birth points at its own conception");
         births.setGridCellJS(2, "conceptId", secondConcept);
-        waitForNoFormError(duplicateError);
 
+        // Nothing to wait on before submitting: the rule never reaches the grid, and the dismissed error dialog keeps
+        // its text in the DOM where isTextPresent still finds it. The submit succeeding is the check.
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -2466,11 +2467,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitFor(() -> isTextPresent(message), "Form did not report: " + message, WAIT_FOR_JAVASCRIPT);
     }
 
-    private void waitForNoFormError(String message)
-    {
-        waitFor(() -> !isTextPresent(message), "Form kept reporting: " + message, WAIT_FOR_JAVASCRIPT);
-    }
-
     /**
      * Reads a date field for one animal through the API rather than off a grid, so assertions compare stored values
      * instead of formatted display text, and normalizes to the day: event dates are entered with the time stripped,
@@ -2593,7 +2589,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     {
         submitForm("Submit Final", "Finalize", false);
         waitForFormError(message);
-        new Window.WindowFinder(getDriver()).withTitle("Error").waitFor().clickButton("OK", 0);
+        new Window.WindowFinder(getDriver()).withTitle("Error").waitFor().clickButton("OK", true);
     }
 
     private void gotoEnterData()
