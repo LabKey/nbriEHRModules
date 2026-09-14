@@ -144,6 +144,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     // cannot change what the snapshot reports.
     private static final String[] LOCATION_ANIMALS = {"LOC0001"};
 
+    // Longest buffer DataEntryErrorPanel puts between a validation event and repainting the error summary
+    private static final int ERROR_PANEL_REPAINT_BUFFER = 1500;
+
     // protocol.investigatorId looks up ehr.investigators rather than the user table, so a protocol shows an
     // investigator only when a row there carries its id.
     private static final String INVES_LAST_NAME = "Marsh";
@@ -1073,8 +1076,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Verifying the save is accepted once the second birth points at its own conception");
         births.setGridCellJS(2, "conceptId", secondConcept);
-        waitForNoFormError(duplicateError);
 
+        // This rule only ever fires at submit, so waitForValidationToClear has no form error to wait out. Waiting on
+        // the message itself is no better: dismissing the error dialog leaves its text in the DOM, so a wait for it
+        // to disappear never passes. The submit succeeding is the only signal that the fix took.
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -1404,7 +1409,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         switchToWindow(2);
 
         waitForText(animalId);
-        waitForTextToDisappear("Id is required");
+        waitForValidationToClear("Id is required");
         setCaseSubjective("Closing the case");
         waitAndClick(Ext4Helper.Locators.ext4Button("Edit"));
         _helper.getExt4FieldForFormSection("Clinical Case", "Close Date").setValue(LocalDateTime.now().format(_dateFormat));
@@ -2041,7 +2046,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         _helper.setDataEntryField("remark", "Clinical Remarks - Test");
         if (null == _helper.getExt4FieldForFormSection("Clinical Remarks", "Remark").getValue())
             _helper.setDataEntryField("remark", "Clinical Remarks - Test");
-        waitForTextToDisappear("Remark: WARN: Must enter at least one comment");
+        waitForValidationToClear("Remark: WARN: Must enter at least one comment");
 
         Ext4GridRef weight = _helper.getExt4GridForFormSection("Weights");
         _helper.addRecordToGrid(weight);
@@ -2081,7 +2086,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         waitForText("Diazepam");
         waitForText(animalId);
-        waitForTextToDisappear("Id is required");
+        waitForValidationToClear("Id is required");
         _helper.getExt4GridForFormSection("Medications/Treatments Given");
         submitForm("Submit Final", "Finalize");
         stopImpersonating();
@@ -2103,7 +2108,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         //Fill out Close Date
         waitForText(animalId);
-        waitForTextToDisappear("Id is required");
+        waitForValidationToClear("Id is required");
         setCaseSubjective("Closing the case");
 
         waitForElement(Ext4Helper.Locators.ext4Button("Edit"));
@@ -2320,6 +2325,62 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
                 String.valueOf(cagemates.get("animals")).contains(expectedCompanion));
     }
 
+    /**
+     * Entering a group membership has to close the one the animal already holds, which the module asks for by listing
+     * animal_group_members in datasetsToCloseOnNewEntry. That option lives in a single server-wide map when registered
+     * from Java, so on a server carrying more than one EHR module it was whichever module started last that decided
+     * the list. Entering the memberships through the API rather than the form keeps this on the trigger script.
+     */
+    @Test
+    public void testGroupMembershipClosedOnNewEntry() throws Exception
+    {
+        String animalId = "GROUP0001";
+        String firstGroup = "P";  // Project Breeding
+        String secondGroup = "T"; // Time-Mated
+        LocalDateTime joinedFirst = LocalDateTime.now().minusDays(10);
+        LocalDateTime joinedSecond = LocalDateTime.now().minusDays(3);
+
+        createAliveAnimals(new String[]{animalId});
+
+        log("Assigning " + animalId + " to its first group");
+        insertGroupMembership(animalId, firstGroup, joinedFirst);
+        Assert.assertNull("A newly entered group membership should be left open",
+                getGroupMembershipEnd(animalId, firstGroup));
+
+        log("Assigning " + animalId + " to a second group");
+        insertGroupMembership(animalId, secondGroup, joinedSecond);
+
+        log("Verifying the earlier membership was closed at the new one's start date");
+        assertEquals("Entering a group membership did not close the one the animal already held",
+                joinedSecond.format(_dateFormat), getGroupMembershipEnd(animalId, firstGroup));
+        Assert.assertNull("The membership just entered should be left open",
+                getGroupMembershipEnd(animalId, secondGroup));
+    }
+
+    private void insertGroupMembership(String animalId, String groupId, LocalDateTime date)
+    {
+        String[] fields = new String[]{"Id", "date", "groupId", FIELD_QCSTATELABEL, FIELD_OBJECTID, "performedby"};
+        Object[][] data = new Object[][]{
+                {animalId, Date.from(date.atZone(ZoneId.systemDefault()).toInstant()), groupId,
+                        EHRQCState.COMPLETED.label, UUID.randomUUID().toString(), 1004}
+        };
+        SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "animal_group_members", "lsid", fields, data);
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+    }
+
+    /** @return the day the animal's membership of the given group ended, or null while it is still open */
+    private String getGroupMembershipEnd(String animalId, String groupId) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("study", "animal_group_members");
+        select.setColumns(List.of("Id", "groupId", "enddate"));
+        select.addFilter(new Filter("Id", animalId));
+        select.addFilter(new Filter("groupId", groupId));
+        SelectRowsResponse response = select.execute(getApiHelper().getConnection(), getContainerPath());
+
+        assertEquals("Expected exactly one " + groupId + " membership for " + animalId, 1, response.getRows().size());
+        return toDay(response.getRows().getFirst().get("enddate"));
+    }
+
     @Test
     public void testLookupPage() throws Exception
     {
@@ -2455,9 +2516,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         switchToWindow(2);
 
         waitForText(animalId1);
-        waitForTextToDisappear("Id is required");
+        waitForValidationToClear("Id is required");
         _helper.setDataEntryField("remark", "Closing the case");
-        waitForTextToDisappear("Subjective: WARN: Must enter at least one comment");
+        waitForValidationToClear("Subjective: WARN: Must enter at least one comment");
         waitAndClick(Ext4Helper.Locators.ext4Button("Edit"));
 
         // Verify close remark required
@@ -2562,9 +2623,56 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitFor(() -> isTextPresent(message), "Form did not report: " + message, WAIT_FOR_JAVASCRIPT);
     }
 
-    private void waitForNoFormError(String message)
+    /**
+     * Waits for a validation message to clear, re-running server-side validation once if it does not. A value can be
+     * accepted at the field while the form's error summary still lists it, which the form itself handles by pointing
+     * the user at More Actions -> Re-Validate.
+     */
+    private void waitForValidationToClear(String message)
     {
-        waitFor(() -> !isTextPresent(message), "Form kept reporting: " + message, WAIT_FOR_JAVASCRIPT);
+        if (waitForValidationToSettleWithout(message))
+            return;
+
+        log("Form kept reporting '" + message + "', re-validating");
+        revalidateForm();
+        if (!waitForValidationToSettleWithout(message))
+            Assert.fail("Form kept reporting after re-validating: " + message);
+    }
+
+    /**
+     * Waits for the form to go quiet without reporting the given message. DataEntryErrorPanel repaints on a buffered
+     * event rather than when the validation response lands, so the summary trails the form's actual state by up to a
+     * second: a message can read as absent before validation has reported it, and read as present after the value
+     * that raised it was accepted. Neither is worth acting on, so require no validation in flight and the message
+     * absent, then re-check after the repaint window to confirm the absence survives it.
+     */
+    private boolean waitForValidationToSettleWithout(String message)
+    {
+        return waitFor(() -> {
+            if (getValidationRequestsInFlight() > 0 || isTextPresent(message))
+                return false;
+
+            sleep(ERROR_PANEL_REPAINT_BUFFER);
+            return getValidationRequestsInFlight() == 0 && !isTextPresent(message);
+        }, WAIT_FOR_JAVASCRIPT);
+    }
+
+    // Server validations the form is still waiting on. StoreCollection counts these itself; the form has no
+    // rendered "validating" state to watch instead.
+    private int getValidationRequestsInFlight()
+    {
+        Object inFlight = executeScript("var panel = Ext4.ComponentQuery.query('ehr-dataentrypanel')[0];" +
+                "return panel && panel.storeCollection ? panel.storeCollection.validationRequestsInFlight : 0;");
+
+        return inFlight == null ? 0 : ((Number) inFlight).intValue();
+    }
+
+    // More Actions -> Re-Validate: re-runs server-side validation on every record in the form
+    private void revalidateForm()
+    {
+        WebElement moreActions = _helper.getDataEntryButton("More Actions").findElement(getDriver());
+        scrollIntoView(moreActions);
+        _ext4Helper.clickExt4MenuButton(false, moreActions, false, "Re-Validate");
     }
 
     /**
@@ -2576,7 +2684,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
      */
     private String getDatasetDay(String queryName, String animalId, String column) throws IOException, CommandException
     {
-        Object value = getSingleRowForAnimal(queryName, animalId, List.of("Id", column)).get(column);
+        return toDay(getSingleRowForAnimal(queryName, animalId, List.of("Id", column)).get(column));
+    }
+
+    /** @return a stored date value as yyyy-MM-dd, or null when it is empty */
+    private String toDay(Object value)
+    {
         if (value == null)
             return null;
 
@@ -2689,7 +2802,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     {
         submitForm("Submit Final", "Finalize", false);
         waitForFormError(message);
-        new Window.WindowFinder(getDriver()).withTitle("Error").waitFor().clickButton("OK", 0);
+        new Window.WindowFinder(getDriver()).withTitle("Error").waitFor().clickButton("OK", true);
     }
 
     private void gotoEnterData()
