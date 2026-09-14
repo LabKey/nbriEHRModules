@@ -1077,8 +1077,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         log("Verifying the save is accepted once the second birth points at its own conception");
         births.setGridCellJS(2, "conceptId", secondConcept);
 
-        // Nothing to wait on before submitting: the rule never reaches the grid, and the dismissed error dialog keeps
-        // its text in the DOM where isTextPresent still finds it. The submit succeeding is the check.
+        // This rule only ever fires at submit, so waitForValidationToClear has no form error to wait out. Waiting on
+        // the message itself is no better: dismissing the error dialog leaves its text in the DOM, so a wait for it
+        // to disappear never passes. The submit succeeding is the only signal that the fix took.
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
