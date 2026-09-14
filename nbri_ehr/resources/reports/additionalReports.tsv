@@ -10,6 +10,7 @@ projects	Colony Management	query	Project Assignment	TRUE		study	assignment				FA
 chemistry	Clinical	query	Chemistry	TRUE		study	chemistryResults				FALSE	FALSE		qcstate/publicdata	This is for chemistry results
 alias	Colony Management	query	Aliases	true		study	demographicsAliases				false	false		qcstate/publicdata	This report shows the animal aliases
 notes	Colony Management	query	Notes	true		study	notes				false	false		qcstate/publicdata	This report shows the animal notes
+animalGroups	Colony Management	query	Groups	true		study	animal_group_members				false	false		qcstate/publicdata	This report shows what groups the animal belongs to
 activeClinTreatmentOrders	Clinical	query	Active Clinical Medication Orders	true		study	treatment_order	Clinical Active Treatment Orders		date	false	false		qcstate/publicdata	This report contains the treatment orders entered for each animal
 activeBehaviorTreatmentOrders	Behavior	query	Active Behavior Medication Orders	true		study	treatment_order	Behavior Active Treatment Orders		date	false	false		qcstate/publicdata	This report contains the treatment orders entered for each animal
 allTreatments	Clinical	query	All Treatment Orders	true		study	treatment_order				false	false		qcstate/publicdata	This report shows all treatment orders
@@ -49,4 +50,4 @@ behaviorRemarks	Behavior	query	Behavior Remarks	true		study	BehaviorClinRemarks	
 clinObsBehavior	Behavior	query	Observations	true		study	behaviorObservations			date	false	false		qcstate/publicdata	This report contains one record for each encounter with each animal, including surergies, exams, procedures, etc.
 clinremarks	Clinical	query	Clinical Remarks	true		study	ClinicalClinRemarks			date	false	false		qcstate/publicdata	This report contains the clinical remarks entered about each animal
 physicalExam	Clinical	query	Exam History	True		study	physicalExam			date	false	false		qcstate/publicdata	This report displays physical exam data for the selected animal
-conceptionsByDam	Reproductive Management	query	Conceptions by Dam	true		nbri_ehr	ConceptionsByDam			ConceptDate	false	false		qcstate/publicdata	This report displays conception records where the selected animal is the dam
+conceptionsByDam	Reproductive Management	query	Conceptions by Dam	true		study	ConceptionsByDam			date	false	false		qcstate/publicdata	This report displays conception records where the selected animal is the dam

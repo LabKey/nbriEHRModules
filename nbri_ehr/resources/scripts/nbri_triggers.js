@@ -27,7 +27,9 @@ exports.init = function (EHR) {
         EHR.Server.TriggerManager.unregisterAllHandlersForQueryNameAndEvent('study', 'cases', EHR.Server.TriggerManager.Events.AFTER_DELETE);
 
         helper.setScriptOptions({
-            datasetsToClose: ['assignment', 'protocolAssignment' , 'housing', 'treatment_order', 'observation_order', 'cases', 'pairings', 'exemptions', 'flags', 'animal_group_members']
+            datasetsToClose: ['assignment', 'protocolAssignment' , 'housing', 'treatment_order', 'observation_order', 'cases', 'pairings', 'exemptions', 'flags', 'animal_group_members'],
+            // registerTriggerScriptOption writes to one server-wide map, so the last EHR module to start decides this list for every container; set it per-request here instead
+            datasetsToCloseOnNewEntry: ['assignment', 'protocolAssignment', 'animal_group_members']
         });
     });
 

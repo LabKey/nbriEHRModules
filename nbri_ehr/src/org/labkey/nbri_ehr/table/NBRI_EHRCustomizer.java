@@ -17,6 +17,7 @@ package org.labkey.nbri_ehr.table;
 
 import io.micrometer.common.util.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.AbstractTableInfo;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.Container;
@@ -28,6 +29,7 @@ import org.labkey.api.data.JdbcType;
 import org.labkey.api.data.MutableColumnInfo;
 import org.labkey.api.data.RenderContext;
 import org.labkey.api.data.SQLFragment;
+import org.labkey.api.data.dialect.SqlDialect;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.WrappedColumn;
 import org.labkey.api.ehr.EHRService;
@@ -646,9 +648,10 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         {
             addIsActiveForProject(ti, EHRService.EndingOption.activeAfterMidnightTonight);
         }
-        if (matches(ti, "nbri_ehr", "Conception"))
+        if (matches(ti, "study", "conception"))
         {
             addIsActiveForConception(ti);
+            addConceptionDaysCol(ti);
         }
         if (matches(ti, "study", "protocolAssignment"))
         {
@@ -694,31 +697,15 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
     private void addIsActiveForConception(AbstractTableInfo ti)
     {
         String name = "isActive";
-        // both columns back the expression below, so neither may be missing
-        if (ti.getColumn(name) != null || ti.getColumn("conceptid") == null || ti.getColumn("qcstate") == null)
+        if (ti.getColumn(name) != null)
             return;
 
-        UserSchema us = ti.getUserSchema();
-        Container ehrContainer = us == null ? null : EHRService.get().getEHRStudyContainer(us.getContainer());
-        if (ehrContainer == null)
+        String isOpen = openConceptionSql(ti);
+        if (isOpen == null)
             return;
 
-        String birthTable = getDatasetStorageTableName(ehrContainer, "birth");
-        String pregnancyTable = getDatasetStorageTableName(ehrContainer, "pregnancy");
-        if (birthTable == null || pregnancyTable == null)
-            return;
-
-        String alias = ExprColumn.STR_TABLE_ALIAS;
-        String isFalse = ti.getSqlDialect().getBooleanFALSE();
-
-        // ConceptId is globally unique, so the subqueries need no container filter
-        SQLFragment sql = new SQLFragment("(CASE WHEN (" +
-                isPublicSql(alias, isFalse) +
-                " AND NOT EXISTS (SELECT 1 FROM studydataset." + birthTable + " b WHERE b.conceptid = " + alias + ".conceptid AND " + isPublicSql("b", isFalse) + ")" +
-                " AND NOT EXISTS (SELECT 1 FROM studydataset." + pregnancyTable + " p WHERE p.conceptid = " + alias + ".conceptid AND " + isPublicSql("p", isFalse) + ")" +
-                ") THEN " + ti.getSqlDialect().getBooleanTRUE() +
-                " ELSE " + isFalse +
-                " END)");
+        SqlDialect dialect = ti.getSqlDialect();
+        SQLFragment sql = new SQLFragment("(CASE WHEN (" + isOpen + ") THEN " + dialect.getBooleanTRUE() + " ELSE " + dialect.getBooleanFALSE() + " END)");
 
         ExprColumn col = new ExprColumn(ti, name, sql, JdbcType.BOOLEAN, ti.getColumn("conceptid"), ti.getColumn("qcstate"));
         col.setLabel("Is Active?");
@@ -730,6 +717,67 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         visible.remove(col.getFieldKey());
         int sireIndex = visible.indexOf(FieldKey.fromParts("Sire"));
         visible.add(sireIndex < 0 ? visible.size() : sireIndex + 1, col.getFieldKey());
+        ti.setDefaultVisibleColumns(visible);
+    }
+
+    // The condition behind isActive, shared with conceptionDays: this conception is public and no public birth or
+    // pregnancy outcome record claims its Id.  Null when a piece it needs is missing, which drops both calculated
+    // columns rather than leaving one of them lying about the other.
+    private @Nullable String openConceptionSql(AbstractTableInfo ti)
+    {
+        // both columns back the expression below, so neither may be missing
+        if (ti.getColumn("conceptid") == null || ti.getColumn("qcstate") == null)
+            return null;
+
+        UserSchema us = ti.getUserSchema();
+        Container ehrContainer = us == null ? null : EHRService.get().getEHRStudyContainer(us.getContainer());
+        if (ehrContainer == null)
+            return null;
+
+        String birthTable = getDatasetStorageTableName(ehrContainer, "birth");
+        String pregnancyTable = getDatasetStorageTableName(ehrContainer, "pregnancy");
+        if (birthTable == null || pregnancyTable == null)
+            return null;
+
+        String alias = ExprColumn.STR_TABLE_ALIAS;
+        String isFalse = ti.getSqlDialect().getBooleanFALSE();
+
+        // ConceptId is globally unique, so the subqueries need no container filter
+        return isPublicSql(alias, isFalse) +
+                " AND NOT EXISTS (SELECT 1 FROM studydataset." + birthTable + " b WHERE b.conceptid = " + alias + ".conceptid AND " + isPublicSql("b", isFalse) + ")" +
+                " AND NOT EXISTS (SELECT 1 FROM studydataset." + pregnancyTable + " p WHERE p.conceptid = " + alias + ".conceptid AND " + isPublicSql("p", isFalse) + ")";
+    }
+
+    private void addConceptionDaysCol(AbstractTableInfo ti)
+    {
+        String name = "conceptionDays";
+        if (ti.getColumn(name) != null || ti.getColumn("date") == null)
+            return;
+
+        String isOpen = openConceptionSql(ti);
+        if (isOpen == null)
+            return;
+
+        // The stored date carries a time, so truncate it: differencing it against midnight today otherwise leaves a
+        // conception entered today a fraction of a day in the future, which the dialect's rounding cast turns into -1.
+        // Cast back to a timestamp because date minus date is an integer in postgres, which EXTRACT(EPOCH) rejects.
+        SqlDialect dialect = ti.getSqlDialect();
+        String conceptionDay = "CAST(" + dialect.getDateTimeToDateCast(ExprColumn.STR_TABLE_ALIAS + ".date") + " AS " + dialect.getDefaultDateTimeDataType() + ")";
+        String elapsed = dialect.getDateDiff(Calendar.DATE, "{fn curdate()}", conceptionDay);
+
+        // Null once a birth or pregnancy outcome claims the conception: the count otherwise keeps climbing and reads as
+        // a gestation age on a record that closed years ago.
+        SQLFragment sql = new SQLFragment("(CASE WHEN (" + isOpen + ") THEN " + elapsed + " END)");
+        ExprColumn col = new ExprColumn(ti, name, sql, JdbcType.INTEGER, ti.getColumn("date"), ti.getColumn("conceptid"), ti.getColumn("qcstate"));
+        col.setLabel("Conception Days");
+        col.setDescription("Days elapsed from the conception date to today, until a birth or pregnancy outcome claims the conception.");
+        ti.addColumn(col);
+
+        // Customizers run after the query XML column reorder, so listing conceptionDays there does nothing and it lands last
+        List<FieldKey> visible = new ArrayList<>(ti.getDefaultVisibleColumns());
+        visible.remove(col.getFieldKey());
+        int dateIndex = visible.indexOf(FieldKey.fromParts("date"));
+        visible.add(dateIndex < 0 ? visible.size() : dateIndex + 1, col.getFieldKey());
         ti.setDefaultVisibleColumns(visible);
     }
 

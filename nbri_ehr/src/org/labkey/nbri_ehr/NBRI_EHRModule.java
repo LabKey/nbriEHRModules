@@ -67,7 +67,6 @@ import org.labkey.nbri_ehr.table.NBRI_EHRCustomizer;
 import java.io.File;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
 public class NBRI_EHRModule extends ExtendedSimpleModule
 {
@@ -82,7 +81,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 26.005;
+        return 26.004;
     }
 
     @Override
@@ -183,7 +182,6 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         ehrService.registerActionOverride("enterData", this, "views/enterData.html");
         ehrService.registerActionOverride("protocolDetails", this, "views/protocolDetails.html");
 
-        ehrService.registerTriggerScriptOption("datasetsToCloseOnNewEntry", List.of("assignment", "protocolAssignment", "animal_group_members"));
         RoleManager.registerRole(new NBRIEHRVetTechRole());
         RoleManager.registerRole(new NBRIProtocolAmendmentApproverRole());
 
@@ -223,6 +221,9 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIDeathFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIHousingFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIMedicationTreatmentFormType.class, this));
+        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProjectFormType.class, this));
+        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProtocolFormType.class, this));
+        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIInvestigatorsFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIPregnancyFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIWeightFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIFlagsFormType.class, this));

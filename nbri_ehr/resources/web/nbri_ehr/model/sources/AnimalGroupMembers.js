@@ -25,15 +25,7 @@ EHR.model.DataModelManager.registerMetadata('AnimalGroupMembers', {
                 allowBlank: false,
                 nullable: false,
                 noSaveInTemplateByDefault: true,
-                hidden: false,
-                getInitialValue: function(v, rec){
-                    if (v)
-                        return v;
-
-                    let curDate = new Date();
-                    curDate.setHours(0, 0, 0, 0);
-                    return curDate;
-                }
+                hidden: false
             },
             enddate: {
                 shownInGrid: false,
