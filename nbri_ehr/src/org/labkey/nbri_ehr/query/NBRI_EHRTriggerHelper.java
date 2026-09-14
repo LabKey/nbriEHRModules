@@ -979,12 +979,15 @@ public class NBRI_EHRTriggerHelper
         String observation = ConvertHelper.convert(row.get("observation"), String.class);
         String performedBy = ConvertHelper.convert(row.get("performedBy"), String.class);
         String taskid = ConvertHelper.convert(row.get("taskid"), String.class);
+        String id = ConvertHelper.convert(row.get("Id"), String.class);
 
-        // Get observation orders for these tasks
+        // Get this animal's observation orders for these tasks. An order taskid is shared by every animal
+        // ordered in the same session, so without the animal filter the entry spills onto those animals too.
         TableInfo ti = getTableInfo("study", "observationOrdersByDate");
         SimpleFilter filter = new SimpleFilter(FieldKey.fromString("taskid"), orderTasks, CompareType.IN);
         filter.addCondition(FieldKey.fromString("category"), category);
         filter.addCondition(FieldKey.fromString("date"), scheduledDate);
+        filter.addCondition(FieldKey.fromString("animalId"), id);
         TableSelector ts = new TableSelector(ti, PageFlowUtil.set("category","caseId","animalId","area","objectid","type","taskid"), filter, null);
         ts.setNamedParameters(Map.of("StartDate", scheduledDate, "NumDays", "1"));
 
