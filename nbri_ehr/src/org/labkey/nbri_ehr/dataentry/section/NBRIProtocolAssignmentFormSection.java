@@ -15,7 +15,12 @@
  */
 package org.labkey.nbri_ehr.dataentry.section;
 
+import org.labkey.api.data.TableInfo;
+import org.labkey.api.query.FieldKey;
 import org.labkey.api.view.template.ClientDependency;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class NBRIProtocolAssignmentFormSection extends BaseFormSection
 {
@@ -33,5 +38,14 @@ public class NBRIProtocolAssignmentFormSection extends BaseFormSection
         {
             setClientStoreClass("NBRI_EHR.data.AssignmentsClientStore");
         }
+    }
+
+    @Override
+    protected List<FieldKey> getFieldKeys(TableInfo ti)
+    {
+        List<FieldKey> keys = new ArrayList<>(super.getFieldKeys(ti));
+        keys.add(FieldKey.fromString("protocol/description"));
+
+        return keys;
     }
 }

@@ -36,8 +36,8 @@ public class ActiveConceptionsDemographicsProvider extends AbstractListDemograph
     @Override
     public boolean requiresRecalc(String schema, String query)
     {
-        return ("study".equalsIgnoreCase(schema) && ("birth".equalsIgnoreCase(query) || "pregnancy".equalsIgnoreCase(query))) ||
-                ("nbri_ehr".equalsIgnoreCase(schema) && "Conception".equalsIgnoreCase(query));
+        return "study".equalsIgnoreCase(schema) &&
+                ("birth".equalsIgnoreCase(query) || "pregnancy".equalsIgnoreCase(query) || "conception".equalsIgnoreCase(query));
     }
 
     @Override
@@ -45,8 +45,8 @@ public class ActiveConceptionsDemographicsProvider extends AbstractListDemograph
     {
         Set<FieldKey> keys = new HashSet<>();
         keys.add(FieldKey.fromString("Id"));
-        keys.add(FieldKey.fromString("ConceptId"));
-        keys.add(FieldKey.fromString("ConceptDate"));
+        keys.add(FieldKey.fromString("conceptId"));
+        keys.add(FieldKey.fromString("date"));
 
         return keys;
     }
@@ -54,6 +54,6 @@ public class ActiveConceptionsDemographicsProvider extends AbstractListDemograph
     @Override
     protected Sort getSort()
     {
-        return new Sort("-ConceptDate");
+        return new Sort("-date");
     }
 }

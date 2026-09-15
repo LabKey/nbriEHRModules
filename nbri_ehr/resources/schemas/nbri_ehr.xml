@@ -1,28 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tables xsi:schemaLocation="http://labkey.org/data/xml ..\..\..\..\..\schemas\tableInfo.xsd"
         xmlns="http://labkey.org/data/xml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-
-    <table tableName="Conception" tableDbType="TABLE">
-        <tableTitle>Conception</tableTitle>
-        <auditLogging>DETAILED</auditLogging>
-        <columns>
-            <column columnName="RowId"/>
-            <column columnName="ConceptId"/>
-            <column columnName="ConceptDate">
-                <formatString>Date</formatString>
-            </column>
-            <column columnName="Estimated"/>
-            <column columnName="Remark"/>
-            <column columnName="Dam"/>
-            <column columnName="Sire"/>
-            <column columnName="TaskId"/>
-            <column columnName="QCState"/>
-            <column columnName="Container"/>
-            <column columnName="Created"/>
-            <column columnName="CreatedBy"/>
-            <column columnName="Modified"/>
-            <column columnName="ModifiedBy"/>
-        </columns>
-    </table>
-
 </tables>

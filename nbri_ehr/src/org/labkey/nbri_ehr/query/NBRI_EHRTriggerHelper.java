@@ -841,16 +841,17 @@ public class NBRI_EHRTriggerHelper
         return ts.getRowCount();
     }
 
-    // The Conception table has no Id column, so its trigger cannot announce a modified participant on its own
+    // A birth or pregnancy outcome row announces its own animal, which is the offspring rather than the dam, so the
+    // dam has to be read back off the conception the row claims
     public String getConceptionDam(String conceptId)
     {
         if (conceptId == null)
             return null;
 
-        TableInfo ti = getTableInfo("nbri_ehr", "Conception");
-        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("ConceptId"), conceptId);
+        TableInfo ti = getTableInfo("study", "conception");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("conceptId"), conceptId);
 
-        return new TableSelector(ti, Collections.singleton("Dam"), filter, null).getObject(String.class);
+        return new TableSelector(ti, Collections.singleton("Id"), filter, null).getObject(String.class);
     }
 
     public boolean canCloseCase()

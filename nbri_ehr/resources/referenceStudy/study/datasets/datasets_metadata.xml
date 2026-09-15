@@ -442,6 +442,42 @@
             </column>
         </columns>
     </table>
+    <table tableName="conception" tableDbType="TABLE">
+        <tableTitle>Conception Records</tableTitle>
+        <description>Records a conception, filed against the dam. The outcome is claimed later by a birth or pregnancy outcome record carrying the same conception Id.</description>
+        <columns>
+            <column columnName="Id">
+                <columnTitle>Dam</columnTitle>
+                <datatype>varchar</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#ParticipantId</propertyURI>
+                <importAliases>
+                    <importAlias>ptid</importAlias>
+                    <importAlias>dam</importAlias>
+                </importAliases>
+            </column>
+            <column columnName="date">
+                <columnTitle>Conception Date</columnTitle>
+                <datatype>timestamp</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
+                <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
+                <importAliases>
+                    <importAlias>conceptDate</importAlias>
+                </importAliases>
+            </column>
+            <column columnName="conceptId">
+                <columnTitle>Conception Id</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="estimated">
+                <columnTitle>Estimated</columnTitle>
+                <datatype>boolean</datatype>
+            </column>
+            <column columnName="sire">
+                <columnTitle>Sire</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+        </columns>
+    </table>
     <table tableName="demographics" tableDbType="TABLE">
         <tableTitle>Demographics</tableTitle>
         <description>Contains core demographic information for each primate, including species, sex, parentage, birth and death dates, and colony status.</description>

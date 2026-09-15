@@ -41,18 +41,18 @@ Ext4.define('NBRI_EHR.window.StartWithConceptionWindow', {
                 itemId: 'conceptionField',
                 fieldLabel: 'Conception Id',
                 value: isExistingRow ? this.targetRecord.get('conceptId') : null,
-                displayField: 'ConceptId',
-                valueField: 'ConceptId',
+                displayField: 'conceptId',
+                valueField: 'conceptId',
                 forceSelection: true,
                 queryMode: 'local',
                 anyMatch: true,
                 caseSensitive: false,
                 store: {
                     type: 'labkey-store',
-                    schemaName: 'nbri_ehr',
-                    queryName: 'Conception',
-                    columns: 'ConceptId,ConceptDate,Dam,Sire',
-                    sort: '-ConceptDate',
+                    schemaName: 'study',
+                    queryName: 'conception',
+                    columns: 'conceptId,date,Id,sire',
+                    sort: '-date',
                     autoLoad: true
                 }
             }],
@@ -85,8 +85,8 @@ Ext4.define('NBRI_EHR.window.StartWithConceptionWindow', {
             return;
         }
 
-        var dam = record.get('Dam');
-        var sire = record.get('Sire');
+        var dam = record.get('Id');
+        var sire = record.get('sire');
 
         btn.disable();
         this.getDamAttributes(dam, function(damAttributes, speciesError){

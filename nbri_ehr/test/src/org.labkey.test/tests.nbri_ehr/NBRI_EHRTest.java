@@ -84,6 +84,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.labkey.test.components.html.Input.Input;
 
 @Category({EHR.class})
@@ -138,6 +139,20 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     private static final String ROOMLESS_CAGE = cageLocation("R1", ROOMLESS_CAGE_NAME);
     private static final String[] ROOMLESS_ANIMALS = {"CAGE0001", "CAGE0002"};
 
+    // Housed by testSnapshotShowsFullLocation against its own animal, so a sibling test relocating a shared one
+    // cannot change what the snapshot reports.
+    private static final String[] LOCATION_ANIMALS = {"LOC0001"};
+
+    // Longest buffer DataEntryErrorPanel puts between a validation event and repainting the error summary
+    private static final int ERROR_PANEL_REPAINT_BUFFER = 1500;
+
+    // protocol.investigatorId looks up ehr.investigators rather than the user table, so a protocol shows an
+    // investigator only when a row there carries its id.
+    private static final String INVES_LAST_NAME = "Marsh";
+    private static final String DUMMY_INVES_LAST_NAME = "Okafor";
+    private static final String PROTOCOL_DESCRIPTION = "Chronic implant study";
+    private static final String DUMMY_PROTOCOL_DESCRIPTION = "Placeholder protocol for the arrival and assignment fixtures";
+
     private final String[] weightFields = {"Id", "date", "enddate", "project", "weight", FIELD_QCSTATELABEL, FIELD_OBJECTID, FIELD_LSID, "_recordid", "performedby"};
     private final Object[] weightData1 = {getExpectedAnimalIDCasing("TESTSUBJECT1"), EHRClientAPIHelper.DATE_SUBSTITUTION, null, null, "12", EHRQCState.IN_PROGRESS.label, null, null, "_recordID", 1004};
 
@@ -176,17 +191,36 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         _permissionsHelper.addUserToProjGroup(inves1.getEmail(), getProjectName(), INVESTIGATOR.getGroup());
         _permissionsHelper.addUserToProjGroup(inves2.getEmail(), getProjectName(), INVESTIGATOR.getGroup());
 
+        InsertRowsCommand invesCmd = new InsertRowsCommand("ehr", "investigators");
+        invesCmd.addRow(Map.of("lastName", INVES_LAST_NAME, "firstName", "Robin", "userid", inves1.getUserId()));
+        invesCmd.addRow(Map.of("lastName", DUMMY_INVES_LAST_NAME, "firstName", "Alex", "userid", inves2.getUserId()));
+        RowsResponse invesResponse = invesCmd.execute(createDefaultConnection(), getContainerPath());
+
+        Map<String, Object> investigatorIds = new HashMap<>();
+        for (Map<String, Object> row : invesResponse.getRows())
+        {
+            Object rowId = row.get("rowid");
+            // A null id here reaches the protocols below as a null investigator, which only surfaces much later
+            // as a protocol dropdown missing the investigator half of its text.
+            assertNotNull("Investigator insert did not return a row id for " + row.get("lastName"), rowId);
+            investigatorIds.put((String) row.get("lastName"), rowId);
+        }
+
+        assertEquals("Investigator insert did not return a row per investigator", 2, investigatorIds.size());
+
         InsertRowsCommand insertCmd = new InsertRowsCommand("ehr", "protocol");
 
         Map<String, Object> rowMap = new HashMap<>();
         rowMap.put("protocol", PROTOCOL_ID);
-        rowMap.put("InvestigatorId", inves1.getUserId());
+        rowMap.put("InvestigatorId", investigatorIds.get(INVES_LAST_NAME));
         rowMap.put("title", PROTOCOL_ID);
+        rowMap.put("description", PROTOCOL_DESCRIPTION);
         insertCmd.addRow(rowMap);
         rowMap = new HashMap<>();
         rowMap.put("protocol", DUMMY_PROTOCOL);
-        rowMap.put("InvestigatorId", inves2.getUserId());
+        rowMap.put("InvestigatorId", investigatorIds.get(DUMMY_INVES_LAST_NAME));
         rowMap.put("title", DUMMY_PROTOCOL);
+        rowMap.put("description", DUMMY_PROTOCOL_DESCRIPTION);
         insertCmd.addRow(rowMap);
 
         insertCmd.execute(createDefaultConnection(), getContainerPath());
@@ -704,7 +738,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         // the animal's opening project, protocol and group are entered on the arrival row itself; the trigger script
         // opens the matching assignment record for each one
         arrivals.setGridCell(1, "project", "640991");
-        arrivals.setGridCell(1, "arrivalProtocol", "dummyprotocol");
+        arrivals.setGridCell(1, "arrivalProtocol", protocolChoice(DUMMY_PROTOCOL, DUMMY_INVES_LAST_NAME));
         arrivals.setGridCell(1, "groupId", animalGroup);
 
         log("Verifying the opening project, protocol and group are required");
@@ -714,7 +748,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         arrivals.setGridCellJS(1, "arrivalProtocol", null);
         waitForFormError("The field: Protocol is required");
-        arrivals.setGridCell(1, "arrivalProtocol", "dummyprotocol");
+        arrivals.setGridCell(1, "arrivalProtocol", protocolChoice(DUMMY_PROTOCOL, DUMMY_INVES_LAST_NAME));
 
         arrivals.setGridCellJS(1, "groupId", null);
         waitForFormError("The field: Group is required");
@@ -771,6 +805,75 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     }
 
     @Test
+    public void testAssignmentFormLookupColumns()
+    {
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Assignment"));
+        lockForm();
+
+        Ext4GridRef protocols = _helper.getExt4GridForFormSection("Protocol Assignment");
+        _helper.addRecordToGrid(protocols);
+        protocols.setGridCell(1, "Id", aliveAnimalId);
+
+        log("Verifying the protocol dropdown lists each protocol with its investigator");
+        // setGridCell clicks the list item whose text is exactly this, so selecting it is the check on the format
+        protocols.setGridCell(1, "protocol", protocolChoice(DUMMY_PROTOCOL, DUMMY_INVES_LAST_NAME));
+        Assert.assertEquals("Protocol dropdown stored something other than the protocol id",
+                DUMMY_PROTOCOL, protocols.getFieldValue(1, "protocol"));
+
+        log("Verifying the protocol description follows the selected protocol");
+        Assert.assertEquals("Protocol description did not follow the selected protocol",
+                DUMMY_PROTOCOL_DESCRIPTION, protocols.getFieldValue(1, "protocol/description"));
+        protocols.setGridCell(1, "protocol", protocolChoice(PROTOCOL_ID, INVES_LAST_NAME));
+        Assert.assertEquals("Protocol description did not follow a changed protocol",
+                PROTOCOL_DESCRIPTION, protocols.getFieldValue(1, "protocol/description"));
+
+        Assert.assertEquals("Protocol Description is not the last column",
+                "protocol/description", getLastVisibleColumn(protocols));
+        Assert.assertEquals("Wrong header over the protocol description",
+                "Protocol Description", getColumnProperty(protocols, "protocol/description", "text"));
+        Assert.assertEquals("Protocol Description should not be editable",
+                false, getColumnProperty(protocols, "protocol/description", "editable"));
+
+        Ext4GridRef projects = _helper.getExt4GridForFormSection("Project Assignment");
+        _helper.addRecordToGrid(projects);
+        projects.setGridCell(1, "Id", aliveAnimalId);
+        projects.setGridCell(1, "project", PROJECT_ID);
+
+        log("Verifying the project account follows the selected project");
+        Assert.assertEquals("Project account did not follow the selected project",
+                ACCOUNT_ID_2, projects.getFieldValue(1, "project/account"));
+        Assert.assertEquals("Project Account is not the last column",
+                "project/account", getLastVisibleColumn(projects));
+        Assert.assertEquals("Wrong header over the project account",
+                "Project Account", getColumnProperty(projects, "project/account", "text"));
+        Assert.assertEquals("Project Account should not be editable",
+                false, getColumnProperty(projects, "project/account", "editable"));
+
+        // every check above reads the unsaved row, so discard rather than submit and leave the animal's own
+        // assignments alone
+        _helper.discardForm();
+    }
+
+    /** The text every protocol dropdown displays for a protocol, built by ehr/activeProtocols.sql. */
+    private static String protocolChoice(String protocol, String investigatorLastName)
+    {
+        return protocol + " - " + investigatorLastName;
+    }
+
+    /** A column config property, such as the rendered header or editability, which only the config carries. Null when
+     * the grid has no such column, so an assertion against it fails rather than passing vacuously. */
+    private Object getColumnProperty(Ext4GridRef grid, String dataIndex, String property)
+    {
+        return grid.getFnEval("for (var i=0;i<this.columns.length;i++){if (this.columns[i].dataIndex == '" + dataIndex + "') return this.columns[i]['" + property + "'];} return null;");
+    }
+
+    private String getLastVisibleColumn(Ext4GridRef grid)
+    {
+        return (String) grid.getFnEval("var last = null; for (var i=0;i<this.columns.length;i++){if (!this.columns[i].hidden) last = this.columns[i].dataIndex;} return last;");
+    }
+
+    @Test
     public void testBirthForm() throws Exception
     {
         String bornAnimal = "80801";
@@ -792,12 +895,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         createBreedingPair(damId, sireId, damSpeciesCode, damGeneration);
 
         log("Creating conception record");
-        InsertRowsCommand conception = new InsertRowsCommand("nbri_ehr", "Conception");
-        conception.addRow(Map.of("ConceptId", conceptId, "ConceptDate", now.minusDays(160), "Dam", damId, "Sire", sireId));
+        InsertRowsCommand conception = new InsertRowsCommand("study", "conception");
+        int conceptionDays = 160;
+        conception.addRow(Map.of("conceptId", conceptId, "date", now.minusDays(conceptionDays), "Id", damId, "sire", sireId, "QCStateLabel", "Completed", "performedby", 1004));
         conception.execute(getApiHelper().getConnection(), getContainerPath());
 
-        log("Verifying the dam's Animal Details reports the open conception before the birth");
-        assertEquals("Animal Details did not report the open conception", conceptId, getSnapshotFieldValue(damId, "Pregnant"));
+        log("Verifying the dam's Animal Details reports the open conception and its day count before the birth");
+        assertEquals("Animal Details did not report the open conception", conceptId + " (" + conceptionDays + " days)",
+                getSnapshotFieldValue(damId, "Pregnant"));
 
         gotoEnterData();
         waitAndClickAndWait(Locator.linkWithText("Birth"));
@@ -842,7 +947,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         // the animal's opening project, protocol and group are entered on the birth row itself; the trigger script
         // opens the matching assignment record for each one
         births.setGridCell(1, "project", "795644");
-        births.setGridCell(1, "birthProtocol", "protocol101");
+        births.setGridCell(1, "birthProtocol", protocolChoice(PROTOCOL_ID, INVES_LAST_NAME));
         births.setGridCell(1, "groupId", animalGroup);
 
         log("Verifying the opening project, protocol and group are required");
@@ -852,7 +957,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         births.setGridCellJS(1, "birthProtocol", null);
         waitForFormError("The field: Protocol is required");
-        births.setGridCell(1, "birthProtocol", "protocol101");
+        births.setGridCell(1, "birthProtocol", protocolChoice(PROTOCOL_ID, INVES_LAST_NAME));
 
         births.setGridCellJS(1, "groupId", null);
         waitForFormError("The field: Group is required");
@@ -910,8 +1015,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         log("Verifying conception outcome and offspring in ConceptionsByDam");
         goToSchemaBrowser();
-        DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
-        report.setFilter("ConceptId", "Equals", conceptId);
+        DataRegionTable report = viewQueryData("study", "ConceptionsByDam");
+        report.setFilter("conceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(damId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Live Birth"), report.getRowDataAsText(0, "conceptionOutcome"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(bornAnimal), report.getRowDataAsText(0, "offspring"));
@@ -943,9 +1048,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         createBreedingPair(damId, sireId, damSpeciesCode);
 
         log("Creating two conception records for that pair");
-        InsertRowsCommand conceptions = new InsertRowsCommand("nbri_ehr", "Conception");
-        conceptions.addRow(Map.of("ConceptId", firstConcept, "ConceptDate", now.minusDays(200), "Dam", damId, "Sire", sireId));
-        conceptions.addRow(Map.of("ConceptId", secondConcept, "ConceptDate", now.minusDays(160), "Dam", damId, "Sire", sireId));
+        InsertRowsCommand conceptions = new InsertRowsCommand("study", "conception");
+        conceptions.addRow(Map.of("conceptId", firstConcept, "date", now.minusDays(200), "Id", damId, "sire", sireId, "QCStateLabel", "Completed", "performedby", 1004));
+        conceptions.addRow(Map.of("conceptId", secondConcept, "date", now.minusDays(160), "Id", damId, "sire", sireId, "QCStateLabel", "Completed", "performedby", 1004));
         conceptions.execute(getApiHelper().getConnection(), getContainerPath());
 
         gotoEnterData();
@@ -970,8 +1075,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         log("Verifying the save is accepted once the second birth points at its own conception");
         births.setGridCellJS(2, "conceptId", secondConcept);
-        waitForNoFormError(duplicateError);
 
+        // This rule only ever fires at submit, so waitForValidationToClear has no form error to wait out. Waiting on
+        // the message itself is no better: dismissing the error dialog leaves its text in the DOM, so a wait for it
+        // to disappear never passes. The submit succeeding is the only signal that the fix took.
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -1016,9 +1123,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         createBreedingPair(firstDam, firstSire, firstSpeciesCode, firstDamGeneration);
         createBreedingPair(secondDam, secondSire, secondSpeciesCode, secondDamGeneration);
 
-        InsertRowsCommand conceptions = new InsertRowsCommand("nbri_ehr", "Conception");
-        conceptions.addRow(Map.of("ConceptId", firstConcept, "ConceptDate", now.minusDays(200), "Dam", firstDam, "Sire", firstSire));
-        conceptions.addRow(Map.of("ConceptId", secondConcept, "ConceptDate", now.minusDays(190), "Dam", secondDam, "Sire", secondSire));
+        InsertRowsCommand conceptions = new InsertRowsCommand("study", "conception");
+        conceptions.addRow(Map.of("conceptId", firstConcept, "date", now.minusDays(200), "Id", firstDam, "sire", firstSire, "QCStateLabel", "Completed", "performedby", 1004));
+        conceptions.addRow(Map.of("conceptId", secondConcept, "date", now.minusDays(190), "Id", secondDam, "sire", secondSire, "QCStateLabel", "Completed", "performedby", 1004));
         conceptions.execute(getApiHelper().getConnection(), getContainerPath());
 
         gotoEnterData();
@@ -1100,8 +1207,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating conception record");
-        InsertRowsCommand conception = new InsertRowsCommand("nbri_ehr", "Conception");
-        conception.addRow(Map.of("ConceptId", conceptId, "ConceptDate", now.minusDays(90), "Dam", animalId));
+        InsertRowsCommand conception = new InsertRowsCommand("study", "conception");
+        conception.addRow(Map.of("conceptId", conceptId, "date", now.minusDays(90), "Id", animalId, "QCStateLabel", "Completed", "performedby", 1004));
         conception.execute(getApiHelper().getConnection(), getContainerPath());
 
         gotoEnterData();
@@ -1127,8 +1234,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         log("Verifying conception outcome in ConceptionsByDam");
         goToSchemaBrowser();
-        DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
-        report.setFilter("ConceptId", "Equals", conceptId);
+        DataRegionTable report = viewQueryData("study", "ConceptionsByDam");
+        report.setFilter("conceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(animalId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(result), report.getRowDataAsText(0, "conceptionOutcome"));
         Assert.assertEquals("A conception claimed by a pregnancy outcome should not be active",
@@ -1157,29 +1264,29 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
                 conceptions.isColumnPresent("breedingType", false));
 
         _helper.addRecordToGrid(conceptions);
-        conceptions.setGridCell(1, "ConceptId", conceptId);
-        conceptions.setGridCellJS(1, "ConceptDate", now.minusDays(30).format(_dateFormat));
-        conceptions.setGridCellJS(1, "Estimated", true);
-        conceptions.setGridCell(1, "Dam", damId);
-        conceptions.setGridCell(1, "Sire", sireId);
+        conceptions.setGridCell(1, "conceptId", conceptId);
+        conceptions.setGridCellJS(1, "date", now.minusDays(30).format(_dateFormat));
+        conceptions.setGridCellJS(1, "estimated", true);
+        conceptions.setGridCell(1, "Id", damId);
+        conceptions.setGridCell(1, "sire", sireId);
         // Remark renders as a textarea, which Ext4GridRef's cell editor helpers cannot drive: they only recognize
         // an <input> as the active editor, so the click that opens the textarea is followed by a retry click that
         // the open textarea intercepts. Set it through the store instead.
-        conceptions.setGridCellJS(1, "Remark", "Conception entry test");
+        conceptions.setGridCellJS(1, "remark", "Conception entry test");
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
-        DataRegionTable table = viewQueryData("nbri_ehr", "Conception");
-        table.setFilter("ConceptId", "Equals", conceptId);
-        Assert.assertEquals("Invalid Conception record", Arrays.asList(damId), table.getRowDataAsText(0, "Dam"));
-        Assert.assertEquals("Invalid Conception record", Arrays.asList(sireId), table.getRowDataAsText(0, "Sire"));
-        Assert.assertEquals("Invalid Conception record", Arrays.asList("true"), table.getRowDataAsText(0, "Estimated"));
-        Assert.assertEquals("Invalid Conception record", Arrays.asList("Conception entry test"), table.getRowDataAsText(0, "Remark"));
+        DataRegionTable table = viewQueryData("study", "conception");
+        table.setFilter("conceptId", "Equals", conceptId);
+        Assert.assertEquals("Invalid Conception record", Arrays.asList(damId), table.getRowDataAsText(0, "Id"));
+        Assert.assertEquals("Invalid Conception record", Arrays.asList(sireId), table.getRowDataAsText(0, "sire"));
+        Assert.assertEquals("Invalid Conception record", Arrays.asList("true"), table.getRowDataAsText(0, "estimated"));
+        Assert.assertEquals("Invalid Conception record", Arrays.asList("Conception entry test"), table.getRowDataAsText(0, "remark"));
 
         log("Verifying unmatched conception appears as Unknown in ConceptionsByDam");
         goToSchemaBrowser();
-        DataRegionTable report = viewQueryData("nbri_ehr", "ConceptionsByDam");
-        report.setFilter("ConceptId", "Equals", conceptId);
+        DataRegionTable report = viewQueryData("study", "ConceptionsByDam");
+        report.setFilter("conceptId", "Equals", conceptId);
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList(damId), report.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid ConceptionsByDam row", Arrays.asList("Unknown"), report.getRowDataAsText(0, "conceptionOutcome"));
         Assert.assertEquals("A conception with no birth or pregnancy outcome should be active",
@@ -1301,7 +1408,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         switchToWindow(2);
 
         waitForText(animalId);
-        waitForTextToDisappear("Id is required");
+        waitForValidationToClear("Id is required");
         setCaseSubjective("Closing the case");
         waitAndClick(Ext4Helper.Locators.ext4Button("Edit"));
         _helper.getExt4FieldForFormSection("Clinical Case", "Close Date").setValue(LocalDateTime.now().format(_dateFormat));
@@ -1938,7 +2045,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         _helper.setDataEntryField("remark", "Clinical Remarks - Test");
         if (null == _helper.getExt4FieldForFormSection("Clinical Remarks", "Remark").getValue())
             _helper.setDataEntryField("remark", "Clinical Remarks - Test");
-        waitForTextToDisappear("Remark: WARN: Must enter at least one comment");
+        waitForValidationToClear("Remark: WARN: Must enter at least one comment");
 
         Ext4GridRef weight = _helper.getExt4GridForFormSection("Weights");
         _helper.addRecordToGrid(weight);
@@ -1978,7 +2085,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         waitForText("Diazepam");
         waitForText(animalId);
-        waitForTextToDisappear("Id is required");
+        waitForValidationToClear("Id is required");
         _helper.getExt4GridForFormSection("Medications/Treatments Given");
         submitForm("Submit Final", "Finalize");
         stopImpersonating();
@@ -2000,7 +2107,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         //Fill out Close Date
         waitForText(animalId);
-        waitForTextToDisappear("Id is required");
+        waitForValidationToClear("Id is required");
         setCaseSubjective("Closing the case");
 
         waitForElement(Ext4Helper.Locators.ext4Button("Edit"));
@@ -2147,6 +2254,21 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         assertCagemates(ROOMLESS_ANIMALS[0], 2, ROOMLESS_ANIMALS[1]);
     }
 
+    @Test
+    public void testSnapshotShowsFullLocation() throws Exception
+    {
+        createAliveAnimals(LOCATION_ANIMALS);
+
+        log("Housing an animal against a cage location");
+        houseAnimals(LOCATION_ANIMALS, CAGE_IN_R1);
+
+        log("Verifying Animal Details reports the room-qualified location rather than the bare cage");
+        // The panel appends the housing date, so the location is a prefix of the field rather than the whole of it.
+        String location = getSnapshotFieldValue(LOCATION_ANIMALS[0], "Location");
+        Assert.assertTrue("Animal Details reported an unexpected location: " + location,
+                location.startsWith(CAGE_IN_R1));
+    }
+
     /**
      * Creates living demographics records for the given animals, replacing any left behind by an earlier run.
      */
@@ -2200,6 +2322,62 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         Assert.assertEquals("Unexpected cagemate count for " + animalId, expectedTotal, ((Number) cagemates.get("total")).intValue());
         Assert.assertTrue("Cagemate list should name " + expectedCompanion + ", was: " + cagemates.get("animals"),
                 String.valueOf(cagemates.get("animals")).contains(expectedCompanion));
+    }
+
+    /**
+     * Entering a group membership has to close the one the animal already holds, which the module asks for by listing
+     * animal_group_members in datasetsToCloseOnNewEntry. That option lives in a single server-wide map when registered
+     * from Java, so on a server carrying more than one EHR module it was whichever module started last that decided
+     * the list. Entering the memberships through the API rather than the form keeps this on the trigger script.
+     */
+    @Test
+    public void testGroupMembershipClosedOnNewEntry() throws Exception
+    {
+        String animalId = "GROUP0001";
+        String firstGroup = "P";  // Project Breeding
+        String secondGroup = "T"; // Time-Mated
+        LocalDateTime joinedFirst = LocalDateTime.now().minusDays(10);
+        LocalDateTime joinedSecond = LocalDateTime.now().minusDays(3);
+
+        createAliveAnimals(new String[]{animalId});
+
+        log("Assigning " + animalId + " to its first group");
+        insertGroupMembership(animalId, firstGroup, joinedFirst);
+        Assert.assertNull("A newly entered group membership should be left open",
+                getGroupMembershipEnd(animalId, firstGroup));
+
+        log("Assigning " + animalId + " to a second group");
+        insertGroupMembership(animalId, secondGroup, joinedSecond);
+
+        log("Verifying the earlier membership was closed at the new one's start date");
+        assertEquals("Entering a group membership did not close the one the animal already held",
+                joinedSecond.format(_dateFormat), getGroupMembershipEnd(animalId, firstGroup));
+        Assert.assertNull("The membership just entered should be left open",
+                getGroupMembershipEnd(animalId, secondGroup));
+    }
+
+    private void insertGroupMembership(String animalId, String groupId, LocalDateTime date)
+    {
+        String[] fields = new String[]{"Id", "date", "groupId", FIELD_QCSTATELABEL, FIELD_OBJECTID, "performedby"};
+        Object[][] data = new Object[][]{
+                {animalId, Date.from(date.atZone(ZoneId.systemDefault()).toInstant()), groupId,
+                        EHRQCState.COMPLETED.label, UUID.randomUUID().toString(), 1004}
+        };
+        SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "animal_group_members", "lsid", fields, data);
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+    }
+
+    /** @return the day the animal's membership of the given group ended, or null while it is still open */
+    private String getGroupMembershipEnd(String animalId, String groupId) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("study", "animal_group_members");
+        select.setColumns(List.of("Id", "groupId", "enddate"));
+        select.addFilter(new Filter("Id", animalId));
+        select.addFilter(new Filter("groupId", groupId));
+        SelectRowsResponse response = select.execute(getApiHelper().getConnection(), getContainerPath());
+
+        assertEquals("Expected exactly one " + groupId + " membership for " + animalId, 1, response.getRows().size());
+        return toDay(response.getRows().getFirst().get("enddate"));
     }
 
     @Test
@@ -2337,9 +2515,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         switchToWindow(2);
 
         waitForText(animalId1);
-        waitForTextToDisappear("Id is required");
+        waitForValidationToClear("Id is required");
         _helper.setDataEntryField("remark", "Closing the case");
-        waitForTextToDisappear("Subjective: WARN: Must enter at least one comment");
+        waitForValidationToClear("Subjective: WARN: Must enter at least one comment");
         waitAndClick(Ext4Helper.Locators.ext4Button("Edit"));
 
         // Verify close remark required
@@ -2397,7 +2575,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         births.setGridCell(rowIdx, "Id/demographics/gender", "Female");
         births.setGridCell(rowIdx, "Id/demographics/socialCode", socialCode);
         births.setGridCell(rowIdx, "project", "795644");
-        births.setGridCell(rowIdx, "birthProtocol", "protocol101");
+        births.setGridCell(rowIdx, "birthProtocol", protocolChoice(PROTOCOL_ID, INVES_LAST_NAME));
         births.setGridCell(rowIdx, "groupId", animalGroup);
     }
 
@@ -2444,9 +2622,56 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         waitFor(() -> isTextPresent(message), "Form did not report: " + message, WAIT_FOR_JAVASCRIPT);
     }
 
-    private void waitForNoFormError(String message)
+    /**
+     * Waits for a validation message to clear, re-running server-side validation once if it does not. A value can be
+     * accepted at the field while the form's error summary still lists it, which the form itself handles by pointing
+     * the user at More Actions -> Re-Validate.
+     */
+    private void waitForValidationToClear(String message)
     {
-        waitFor(() -> !isTextPresent(message), "Form kept reporting: " + message, WAIT_FOR_JAVASCRIPT);
+        if (waitForValidationToSettleWithout(message))
+            return;
+
+        log("Form kept reporting '" + message + "', re-validating");
+        revalidateForm();
+        if (!waitForValidationToSettleWithout(message))
+            Assert.fail("Form kept reporting after re-validating: " + message);
+    }
+
+    /**
+     * Waits for the form to go quiet without reporting the given message. DataEntryErrorPanel repaints on a buffered
+     * event rather than when the validation response lands, so the summary trails the form's actual state by up to a
+     * second: a message can read as absent before validation has reported it, and read as present after the value
+     * that raised it was accepted. Neither is worth acting on, so require no validation in flight and the message
+     * absent, then re-check after the repaint window to confirm the absence survives it.
+     */
+    private boolean waitForValidationToSettleWithout(String message)
+    {
+        return waitFor(() -> {
+            if (getValidationRequestsInFlight() > 0 || isTextPresent(message))
+                return false;
+
+            sleep(ERROR_PANEL_REPAINT_BUFFER);
+            return getValidationRequestsInFlight() == 0 && !isTextPresent(message);
+        }, WAIT_FOR_JAVASCRIPT);
+    }
+
+    // Server validations the form is still waiting on. StoreCollection counts these itself; the form has no
+    // rendered "validating" state to watch instead.
+    private int getValidationRequestsInFlight()
+    {
+        Object inFlight = executeScript("var panel = Ext4.ComponentQuery.query('ehr-dataentrypanel')[0];" +
+                "return panel && panel.storeCollection ? panel.storeCollection.validationRequestsInFlight : 0;");
+
+        return inFlight == null ? 0 : ((Number) inFlight).intValue();
+    }
+
+    // More Actions -> Re-Validate: re-runs server-side validation on every record in the form
+    private void revalidateForm()
+    {
+        WebElement moreActions = _helper.getDataEntryButton("More Actions").findElement(getDriver());
+        scrollIntoView(moreActions);
+        _ext4Helper.clickExt4MenuButton(false, moreActions, false, "Re-Validate");
     }
 
     /**
@@ -2458,7 +2683,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
      */
     private String getDatasetDay(String queryName, String animalId, String column) throws IOException, CommandException
     {
-        Object value = getSingleRowForAnimal(queryName, animalId, List.of("Id", column)).get(column);
+        return toDay(getSingleRowForAnimal(queryName, animalId, List.of("Id", column)).get(column));
+    }
+
+    /** @return a stored date value as yyyy-MM-dd, or null when it is empty */
+    private String toDay(Object value)
+    {
         if (value == null)
             return null;
 
@@ -2571,7 +2801,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     {
         submitForm("Submit Final", "Finalize", false);
         waitForFormError(message);
-        new Window.WindowFinder(getDriver()).withTitle("Error").waitFor().clickButton("OK", 0);
+        new Window.WindowFinder(getDriver()).withTitle("Error").waitFor().clickButton("OK", true);
     }
 
     private void gotoEnterData()
