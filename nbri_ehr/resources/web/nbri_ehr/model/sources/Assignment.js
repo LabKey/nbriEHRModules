@@ -18,10 +18,20 @@ EHR.model.DataModelManager.registerMetadata('Assignment', {
                     schemaName: 'ehr',
                     queryName: 'project',
                     keyColumn: 'project',
-                    columns: 'project,name',
+                    columns: 'project,name,account',
                     filterArray: [
                         LABKEY.Filter.create('isActive', true, LABKEY.Filter.Types.EQUAL),
                     ]
+                }
+            },
+            // read-only echo of the selected project's account; NBRI_EHR.data.AssignmentsClientStore keeps it current
+            'project/account': {
+                header: 'Project Account',
+                label: 'Project Account',
+                editable: false,
+                columnConfig: {
+                    editable: false,
+                    width: 200
                 }
             }
         },
@@ -37,15 +47,24 @@ EHR.model.DataModelManager.registerMetadata('Assignment', {
                 nullable: false,
                 columnConfig: {
                     fixed: true,
-                    width: 150
+                    width: 250
                 },
-                // set displayColumn: ehr.protocol's title column (displayName) is not returned by this query
                 lookup: {
                     schemaName: 'ehr',
                     queryName: 'activeProtocols',
                     keyColumn: 'protocol',
-                    displayColumn: 'protocol',
-                    columns: 'protocol,title'
+                    displayColumn: 'displayText',
+                    columns: 'protocol,description,displayText'
+                }
+            },
+            // read-only echo of the selected protocol's description; NBRI_EHR.data.AssignmentsClientStore keeps it current
+            'protocol/description': {
+                header: 'Protocol Description',
+                label: 'Protocol Description',
+                editable: false,
+                columnConfig: {
+                    editable: false,
+                    width: 300
                 }
             }
         }
