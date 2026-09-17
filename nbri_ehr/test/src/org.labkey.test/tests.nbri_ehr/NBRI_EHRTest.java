@@ -16,9 +16,7 @@
 
 package org.labkey.test.tests.nbri_ehr;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -40,7 +38,6 @@ import org.labkey.remoteapi.security.CreateUserResponse;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
 import org.labkey.test.WebTestHelper;
-import org.labkey.test.categories.EHR;
 import org.labkey.test.components.CustomizeView;
 import org.labkey.test.components.dumbster.EmailRecordTable;
 import org.labkey.test.components.ext4.Window;
@@ -87,7 +84,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.labkey.test.components.html.Input.Input;
 
-@Category({EHR.class})
+@Category({})
 public class NBRI_EHRTest extends AbstractGenericEHRTest
 {
     private static final String PROJECT_NAME = "NBRI";
