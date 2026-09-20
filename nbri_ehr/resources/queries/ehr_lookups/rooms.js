@@ -34,8 +34,8 @@ function onUpsert(row, oldRow, errors){
         }
 
         if (!row.room) {
-            if (oldRow && oldRow.room && oldRow.room[0]) {
-                row.room = oldRow.room[0];
+            if (oldRow && oldRow.room) {
+                row.room = oldRow.room;
                 return;
             }
 
