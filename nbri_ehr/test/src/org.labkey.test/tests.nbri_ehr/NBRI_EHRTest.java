@@ -2256,7 +2256,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         log("Verifying a room that still holds an animal is rejected, and names it");
         goToRoomsGrid().clickEditRow(occupiedRoom)
                 .setField("dateDisabled", today)
-                .submitExpectingErrorContaining("still housed here", OCCUPIED_ROOM_ANIMALS[0]);
+                .submitExpectingErrorContaining("still housed there", OCCUPIED_ROOM_ANIMALS[0]);
 
         // A record still in data entry is not yet an occupancy, so it must not hold the room open.
         log("Verifying a draft housing record does not block the room");

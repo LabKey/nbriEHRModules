@@ -894,9 +894,7 @@ public class NBRI_EHRTriggerHelper
         StringBuilder message = new StringBuilder("Cannot disable this room: ")
                 .append(ids.size())
                 .append(ids.size() == 1 ? " animal is" : " animals are")
-                .append(" still housed here after ")
-                .append(_dateFormat.format(disabled))
-                .append(": ")
+                .append(" still housed there: ")
                 .append(String.join(", ", named));
 
         if (ids.size() > named.size())
