@@ -2283,8 +2283,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
      */
     private DataRegionTable goToRoomsGrid()
     {
+        // The grid targets its links at a new tab unless told otherwise, leaving clickEditRow waiting on a
+        // navigation the original window never makes.
         beginAt(WebTestHelper.buildURL("ehr", getContainerPath(), "updateTable",
-                Map.of("schemaName", "ehr_lookups", "query.queryName", "rooms")));
+                Map.of("schemaName", "ehr_lookups", "query.queryName", "rooms", "linkTarget", "_self")));
         return new DataRegionTable("query", this);
     }
 
