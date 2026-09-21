@@ -33,8 +33,8 @@ function onUpsert(row, oldRow, errors){
         }
 
         if (!row.name) {
-            if (oldRow && oldRow.name && oldRow.name[0]) {
-                row.name = oldRow.name[0];
+            if (oldRow && oldRow.name) {
+                row.name = oldRow.name;
                 return;
             }
 
