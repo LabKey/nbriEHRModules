@@ -648,6 +648,10 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         {
             addIsActiveForProject(ti, EHRService.EndingOption.activeAfterMidnightTonight);
         }
+        if (matches(ti, "ehr", "protocolExemptions"))
+        {
+            customizeProtocolExemptions(ti);
+        }
         if (matches(ti, "study", "conception"))
         {
             addIsActiveForConception(ti);
@@ -1086,6 +1090,13 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         var descriptionCol = ti.getMutableColumn("description");
         if (null != descriptionCol)
             descriptionCol.setDisplayColumnFactory(new HtmlDisplayColumnFactory());
+    }
+
+    private void customizeProtocolExemptions(AbstractTableInfo ti)
+    {
+        // ehr's coalescedProtocol falls back to the row's project's protocol; exemptions here are keyed on protocol alone
+        if (ti.getMutableColumn("coalescedProtocol") instanceof ExprColumn col)
+            col.setValueSQL(new SQLFragment().append(ExprColumn.STR_TABLE_ALIAS).append(".protocol"));
     }
 
     private MutableColumnInfo getWrappedCol(UserSchema us, AbstractTableInfo ds, String name, String queryName, String colName, String targetCol)
