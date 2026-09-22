@@ -20,8 +20,8 @@ function onUpsert(row, oldRow, errors){
         }
 
         if (!row.floor) {
-            if (oldRow && oldRow.floor && oldRow.floor[0]) {
-                row.floor = oldRow.floor[0];
+            if (oldRow && oldRow.floor) {
+                row.floor = oldRow.floor;
                 return;
             }
 

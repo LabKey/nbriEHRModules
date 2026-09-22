@@ -65,6 +65,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -73,6 +74,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 
 public class NBRI_EHRTriggerHelper
 {
@@ -87,6 +89,9 @@ public class NBRI_EHRTriggerHelper
     private final Map<String,String> _scheduledObsTaskMap = new HashMap<>();
 
     private final SimpleDateFormat _dateFormat;
+
+    // Animals named in the occupancy error before it switches to a count.
+    private static final int MAX_NAMED_ANIMALS = 10;
 
     public NBRI_EHRTriggerHelper(int userId, String containerId)
     {
@@ -841,6 +846,153 @@ public class NBRI_EHRTriggerHelper
         return ts.getRowCount();
     }
 
+    // Rooms and cages are scoped to the trigger's own container, but housing lives in the EHR study folder, which is
+    // often an ancestor. Read from _container instead and the occupancy check finds nothing and passes vacuously.
+    private TableInfo getHousingTableInfo()
+    {
+        Container studyContainer = EHRService.get().getEHRStudyContainer(_container);
+        if (studyContainer == null)
+            throw new IllegalStateException("No EHR study container is configured for: " + _container.getPath());
+
+        UserSchema us = QueryService.get().getUserSchema(_user, studyContainer, "study");
+        if (us == null)
+            throw new IllegalArgumentException("Unable to find schema: study");
+
+        TableInfo ti = us.getTable("housing");
+        if (ti == null)
+            throw new IllegalArgumentException("Unable to find table: study.housing");
+
+        return ti;
+    }
+
+    /** Message naming the animals whose housing outlasts a room's proposed disabled date, or null when it is clear. */
+    public String animalsRemainingInRoom(String room, Object dateDisabled)
+    {
+        Date disabled = toDate(dateDisabled);
+        if (room == null || disabled == null)
+            return null;
+
+        FieldKey enddate = FieldKey.fromString("enddate");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("room"), room);
+        // A record still in data entry is not yet an occupancy, so it must not block the room.
+        filter.addCondition(FieldKey.fromParts("QCState", "PublicData"), true);
+        filter.addClause(new SimpleFilter.OrClause(
+                CompareType.ISBLANK.createFilterClause(enddate, null),
+                CompareType.DATE_GT.createFilterClause(enddate, disabled)));
+
+        Set<String> ids = new TreeSet<>();
+        for (String id : new TableSelector(getHousingTableInfo(), PageFlowUtil.set("Id"), filter, null).getArrayList(String.class))
+        {
+            if (id != null)
+                ids.add(id);
+        }
+
+        if (ids.isEmpty())
+            return null;
+
+        List<String> named = ids.stream().limit(MAX_NAMED_ANIMALS).toList();
+        StringBuilder message = new StringBuilder("Cannot disable this room: ")
+                .append(ids.size())
+                .append(ids.size() == 1 ? " animal is" : " animals are")
+                .append(" still housed there: ")
+                .append(String.join(", ", named));
+
+        if (ids.size() > named.size())
+            message.append(", and ").append(ids.size() - named.size()).append(" more");
+
+        return message.append(".").toString();
+    }
+
+    /**
+     * Applies a room's disabled date to its cages. A cage carrying a date of its own keeps it; only cages with no date,
+     * or with the date this room last cascaded, follow the room.
+     */
+    public int cascadeCageDateDisabled(String room, Object newValue, Object priorValue) throws QueryUpdateServiceException, SQLException, BatchValidationException, InvalidKeyException
+    {
+        Date newDate = toDate(newValue);
+        Date priorDate = toDate(priorValue);
+
+        if (room == null || sameInstant(newDate, priorDate))
+            return 0;
+
+        FieldKey dateDisabled = FieldKey.fromString("dateDisabled");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("room"), room);
+
+        if (newDate == null)
+        {
+            // Clearing a room only undoes the cascade it previously applied.
+            if (priorDate == null)
+                return 0;
+
+            filter.addCondition(dateDisabled, priorDate, CompareType.DATE_EQUAL);
+        }
+        else if (priorDate == null)
+        {
+            filter.addCondition(dateDisabled, null, CompareType.ISBLANK);
+        }
+        else
+        {
+            filter.addClause(new SimpleFilter.OrClause(
+                    CompareType.ISBLANK.createFilterClause(dateDisabled, null),
+                    CompareType.DATE_EQUAL.createFilterClause(dateDisabled, priorDate)));
+        }
+
+        TableInfo ti = getTableInfo("ehr_lookups", "cage");
+        List<String> locations = new TableSelector(ti, PageFlowUtil.set("location"), filter, null).getArrayList(String.class);
+        if (locations.isEmpty())
+            return 0;
+
+        List<Map<String, Object>> rows = new ArrayList<>();
+        List<Map<String, Object>> keys = new ArrayList<>();
+        for (String location : locations)
+        {
+            Map<String, Object> row = new CaseInsensitiveHashMap<>();
+            row.put("location", location);
+            row.put("dateDisabled", newDate);
+            rows.add(row);
+
+            Map<String, Object> key = new CaseInsensitiveHashMap<>();
+            key.put("location", location);
+            keys.add(key);
+        }
+
+        BatchValidationException errors = new BatchValidationException();
+        ti.getUpdateService().updateRows(_user, _container, rows, keys, errors, null, getExtraContext());
+
+        if (errors.hasErrors())
+            throw errors;
+
+        return rows.size();
+    }
+
+    /** A date of today is not in the future, whatever its time. */
+    public boolean isAfterToday(Object value)
+    {
+        Date date = toDate(value);
+
+        return date != null && DateUtils.truncate(date, Calendar.DATE).after(DateUtils.truncate(new Date(), Calendar.DATE));
+    }
+
+    // An absent field reaches a trigger helper as Rhino's Undefined, which ConvertHelper stringifies to "undefined"
+    // and then fails to parse. Only null and a real value get past here.
+    private Date toDate(Object value)
+    {
+        if (value == null || "undefined".equals(value.toString()))
+            return null;
+
+        return ConvertHelper.convert(value, Date.class);
+    }
+
+    // Timestamp.equals(Date) is asymmetric, so the same instant read from a row map and from the database can compare
+    // unequal.
+    private boolean sameInstant(Date a, Date b)
+    {
+        if (a == null || b == null)
+            return a == b;
+
+        return a.getTime() == b.getTime();
+    }
+
     // A birth or pregnancy outcome row announces its own animal, which is the offspring rather than the dam, so the
     // dam has to be read back off the conception the row claims
     public String getConceptionDam(String conceptId)
@@ -979,12 +1131,15 @@ public class NBRI_EHRTriggerHelper
         String observation = ConvertHelper.convert(row.get("observation"), String.class);
         String performedBy = ConvertHelper.convert(row.get("performedBy"), String.class);
         String taskid = ConvertHelper.convert(row.get("taskid"), String.class);
+        String id = ConvertHelper.convert(row.get("Id"), String.class);
 
-        // Get observation orders for these tasks
+        // Get this animal's observation orders for these tasks. An order taskid is shared by every animal
+        // ordered in the same session, so without the animal filter the entry spills onto those animals too.
         TableInfo ti = getTableInfo("study", "observationOrdersByDate");
         SimpleFilter filter = new SimpleFilter(FieldKey.fromString("taskid"), orderTasks, CompareType.IN);
         filter.addCondition(FieldKey.fromString("category"), category);
         filter.addCondition(FieldKey.fromString("date"), scheduledDate);
+        filter.addCondition(FieldKey.fromString("animalId"), id);
         TableSelector ts = new TableSelector(ti, PageFlowUtil.set("category","caseId","animalId","area","objectid","type","taskid"), filter, null);
         ts.setNamedParameters(Map.of("StartDate", scheduledDate, "NumDays", "1"));
 

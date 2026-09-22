@@ -8,5 +8,8 @@
         <column name="length"/>
         <column name="width"/>
         <column name="height"/>
+        <column name="hasTunnel"/>
+        <column name="status"/>
+        <column name="dateDisabled"/>
     </columns>
 </customView>

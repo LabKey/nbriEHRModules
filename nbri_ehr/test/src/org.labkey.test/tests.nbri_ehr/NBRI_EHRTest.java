@@ -140,8 +140,17 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     // cannot change what the snapshot reports.
     private static final String[] LOCATION_ANIMALS = {"LOC0001"};
 
-    // Longest buffer DataEntryErrorPanel puts between a validation event and repainting the error summary
-    private static final int ERROR_PANEL_REPAINT_BUFFER = 1500;
+    // Rooms for testRoomDateDisabledCascade, dedicated to it so a sibling housing an animal or retiring a shared room
+    // cannot change what it observes.
+    private static final String RETIRED_ROOM_NAME = "DIS1";
+    private static final String OCCUPIED_ROOM_NAME = "DIS2";
+    private static final String DRAFT_ROOM_NAME = "DIS3";
+    private static final String[] OCCUPIED_ROOM_ANIMALS = {"DIS0001"};
+    private static final String[] DRAFT_ROOM_ANIMALS = {"DIS0002"};
+    private static final String FOLLOWING_CAGE_NAME = "C1";
+    private static final String INDEPENDENT_CAGE_NAME = "C2";
+    // Predates every date this test retires a room on, so a cascade that wrongly overwrote it would be visible.
+    private static final String INDEPENDENT_CAGE_DATE = "2020-01-15";
 
     // protocol.investigatorId looks up ehr.investigators rather than the user table, so a protocol shows an
     // investigator only when a row there carries its id.
@@ -2207,6 +2216,102 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     }
 
     @Test
+    public void testRoomDateDisabledCascade() throws Exception
+    {
+        String retiredRoom = roomKey(RETIRED_ROOM_NAME);
+        String occupiedRoom = roomKey(OCCUPIED_ROOM_NAME);
+        String draftRoom = roomKey(DRAFT_ROOM_NAME);
+        String today = LocalDateTime.now().format(_dateFormat);
+        String tomorrow = LocalDateTime.now().plusDays(1).format(_dateFormat);
+
+        log("Creating a room to retire, one still holding an animal, and one holding only a draft record");
+        InsertRowsCommand roomCmd = new InsertRowsCommand("ehr_lookups", "rooms");
+        roomCmd.addRow(Map.of("name", RETIRED_ROOM_NAME, "building", BUILDING_ID));
+        roomCmd.addRow(Map.of("name", OCCUPIED_ROOM_NAME, "building", BUILDING_ID));
+        roomCmd.addRow(Map.of("name", DRAFT_ROOM_NAME, "building", BUILDING_ID));
+        roomCmd.execute(getApiHelper().getConnection(), getContainerPath());
+
+        InsertRowsCommand cageCmd = new InsertRowsCommand("ehr_lookups", "cage");
+        cageCmd.addRow(Map.of("cage", FOLLOWING_CAGE_NAME, "room", retiredRoom));
+        cageCmd.addRow(Map.of("cage", INDEPENDENT_CAGE_NAME, "room", retiredRoom, "dateDisabled", INDEPENDENT_CAGE_DATE));
+        // No cage name, so the trigger derives each occupied room's location as the room key alone.
+        cageCmd.addRow(Map.of("room", occupiedRoom));
+        cageCmd.addRow(Map.of("room", draftRoom));
+        cageCmd.execute(getApiHelper().getConnection(), getContainerPath());
+
+        createAliveAnimals(OCCUPIED_ROOM_ANIMALS);
+        houseAnimals(OCCUPIED_ROOM_ANIMALS, occupiedRoom);
+        createAliveAnimals(DRAFT_ROOM_ANIMALS);
+        houseAnimals(DRAFT_ROOM_ANIMALS, draftRoom, EHRQCState.IN_PROGRESS);
+
+        log("Verifying a future disabled date is rejected");
+        goToRoomsGrid().clickEditRow(retiredRoom)
+                .setField("dateDisabled", tomorrow)
+                .submitExpectingErrorContaining("A room cannot be disabled on a future date.");
+
+        log("Verifying a room that still holds an animal is rejected, and names it");
+        goToRoomsGrid().clickEditRow(occupiedRoom)
+                .setField("dateDisabled", today)
+                .submitExpectingErrorContaining("still housed there", OCCUPIED_ROOM_ANIMALS[0]);
+
+        // A record still in data entry is not yet an occupancy, so it must not hold the room open.
+        log("Verifying a draft housing record does not block the room");
+        goToRoomsGrid().clickEditRow(draftRoom).update(Map.of("dateDisabled", today));
+        assertRoomDateDisabled(draftRoom, today);
+
+        log("Retiring the empty room from the grid");
+        goToRoomsGrid().clickEditRow(retiredRoom).update(Map.of("dateDisabled", today));
+
+        assertRoomDateDisabled(retiredRoom, today);
+        assertCageDateDisabled(cageLocation(RETIRED_ROOM_NAME, FOLLOWING_CAGE_NAME), today);
+        assertCageDateDisabled(cageLocation(RETIRED_ROOM_NAME, INDEPENDENT_CAGE_NAME), INDEPENDENT_CAGE_DATE);
+
+        log("Verifying clearing the room's date undoes only the cascade it applied");
+        goToRoomsGrid().clickEditRow(retiredRoom).update(Map.of("dateDisabled", ""));
+
+        assertRoomDateDisabled(retiredRoom, null);
+        assertCageDateDisabled(cageLocation(RETIRED_ROOM_NAME, FOLLOWING_CAGE_NAME), null);
+        assertCageDateDisabled(cageLocation(RETIRED_ROOM_NAME, INDEPENDENT_CAGE_NAME), INDEPENDENT_CAGE_DATE);
+    }
+
+    /**
+     * The editable rooms grid, which is where a room is retired.
+     */
+    private DataRegionTable goToRoomsGrid()
+    {
+        // The grid targets its links at a new tab unless told otherwise, leaving clickEditRow waiting on a
+        // navigation the original window never makes.
+        beginAt(WebTestHelper.buildURL("ehr", getContainerPath(), "updateTable",
+                Map.of("schemaName", "ehr_lookups", "query.queryName", "rooms", "linkTarget", "_self")));
+        return new DataRegionTable("query", this);
+    }
+
+    private void assertRoomDateDisabled(String room, @Nullable String expectedDay) throws Exception
+    {
+        assertDateDisabled("rooms", "room", room, expectedDay);
+    }
+
+    private void assertCageDateDisabled(String location, @Nullable String expectedDay) throws Exception
+    {
+        assertDateDisabled("cage", "location", location, expectedDay);
+    }
+
+    /**
+     * Asserts the row keyed by the given value carries the expected disabled date as yyyy-MM-dd, or none when
+     * expectedDay is null.
+     */
+    private void assertDateDisabled(String queryName, String keyColumn, String key, @Nullable String expectedDay) throws Exception
+    {
+        SelectRowsCommand select = new SelectRowsCommand("ehr_lookups", queryName);
+        select.setColumns(List.of(keyColumn, "dateDisabled"));
+        select.addFilter(new Filter(keyColumn, key));
+        SelectRowsResponse response = select.execute(getApiHelper().getConnection(), getContainerPath());
+
+        assertEquals("Expected exactly one " + queryName + " row keyed " + key, 1, response.getRows().size());
+        assertEquals("Unexpected disabled date on " + key, expectedDay, toDay(response.getRows().getFirst().get("dateDisabled")));
+    }
+
+    @Test
     public void testGroupPenCagemates() throws Exception
     {
         String penRoom = roomKey(PEN_ROOM_NAME);
@@ -2291,11 +2396,16 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
      */
     private void houseAnimals(String[] animalIds, String cage) throws Exception
     {
+        houseAnimals(animalIds, cage, EHRQCState.COMPLETED);
+    }
+
+    private void houseAnimals(String[] animalIds, String cage, EHRQCState qcState) throws Exception
+    {
         String[] fields = new String[]{"Id", "date", "enddate", "cage", "QCStateLabel", "performedby"};
         Object[][] data = new Object[animalIds.length][];
         for (int i = 0; i < animalIds.length; i++)
         {
-            data[i] = new Object[]{animalIds[i], new Date(), null, cage, EHRQCState.COMPLETED.label, 1004};
+            data[i] = new Object[]{animalIds[i], new Date(), null, cage, qcState.label, 1004};
         }
 
         SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "Housing", "lsid", fields, data);
@@ -2620,58 +2730,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     }
 
     /**
-     * Waits for a validation message to clear, re-running server-side validation once if it does not. A value can be
-     * accepted at the field while the form's error summary still lists it, which the form itself handles by pointing
-     * the user at More Actions -> Re-Validate.
-     */
-    private void waitForValidationToClear(String message)
-    {
-        if (waitForValidationToSettleWithout(message))
-            return;
-
-        log("Form kept reporting '" + message + "', re-validating");
-        revalidateForm();
-        if (!waitForValidationToSettleWithout(message))
-            Assert.fail("Form kept reporting after re-validating: " + message);
-    }
-
-    /**
-     * Waits for the form to go quiet without reporting the given message. DataEntryErrorPanel repaints on a buffered
-     * event rather than when the validation response lands, so the summary trails the form's actual state by up to a
-     * second: a message can read as absent before validation has reported it, and read as present after the value
-     * that raised it was accepted. Neither is worth acting on, so require no validation in flight and the message
-     * absent, then re-check after the repaint window to confirm the absence survives it.
-     */
-    private boolean waitForValidationToSettleWithout(String message)
-    {
-        return waitFor(() -> {
-            if (getValidationRequestsInFlight() > 0 || isTextPresent(message))
-                return false;
-
-            sleep(ERROR_PANEL_REPAINT_BUFFER);
-            return getValidationRequestsInFlight() == 0 && !isTextPresent(message);
-        }, WAIT_FOR_JAVASCRIPT);
-    }
-
-    // Server validations the form is still waiting on. StoreCollection counts these itself; the form has no
-    // rendered "validating" state to watch instead.
-    private int getValidationRequestsInFlight()
-    {
-        Object inFlight = executeScript("var panel = Ext4.ComponentQuery.query('ehr-dataentrypanel')[0];" +
-                "return panel && panel.storeCollection ? panel.storeCollection.validationRequestsInFlight : 0;");
-
-        return inFlight == null ? 0 : ((Number) inFlight).intValue();
-    }
-
-    // More Actions -> Re-Validate: re-runs server-side validation on every record in the form
-    private void revalidateForm()
-    {
-        WebElement moreActions = _helper.getDataEntryButton("More Actions").findElement(getDriver());
-        scrollIntoView(moreActions);
-        _ext4Helper.clickExt4MenuButton(false, moreActions, false, "Re-Validate");
-    }
-
-    /**
      * Reads a date field for one animal through the API rather than off a grid, so assertions compare stored values
      * instead of formatted display text, and normalizes to the day: event dates are entered with the time stripped,
      * but values reaching demographics by other paths can carry a time component.
@@ -2763,9 +2821,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
     private void submitForm(String buttonText, String windowTitle, boolean expectNavigation)
     {
-        //Give time for errors to disappear after validation
-        Locator.tagContainingText("div", "The form has the following errors and warnings:")
-                .waitForElementToDisappear(longWait());
+        waitForFormValidationToClear();
         Locator submitFinalBtn = Locator.linkWithText(buttonText);
         shortWait().until(ExpectedConditions.elementToBeClickable(submitFinalBtn));
         Window<?> msgWindow;

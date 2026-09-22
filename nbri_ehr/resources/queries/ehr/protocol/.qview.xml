@@ -17,7 +17,6 @@
         <column name="lastAnnualReview"/>
         <column name="last_modification"/>
         <column name="enddate"/>
-        <column name="inactiveDate"/>
         <column name="exemptFood"/>
         <column name="exemptHousing"/>
         <column name="exemptPairing"/>
