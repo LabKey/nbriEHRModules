@@ -33,6 +33,9 @@
                             <fkColumnName>value</fkColumnName>
                         </fk>
                     </column>
+                    <column columnName="perDiem">
+                        <columnTitle>Per Diem</columnTitle>
+                    </column>
                 </columns>
             </table>
         </tables>

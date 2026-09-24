@@ -55,6 +55,10 @@
                 <dat:column columnName="indoor_outdoor">
                     <dat:rangeURI>string</dat:rangeURI>
                 </dat:column>
+                <dat:column columnName="perDiem">
+                    <dat:rangeURI>string</dat:rangeURI>
+                    <dat:scale>10</dat:scale>
+                </dat:column>
                 <dat:column columnName="dateDisabled">
                     <dat:rangeURI>dateTime</dat:rangeURI>
                 </dat:column>
