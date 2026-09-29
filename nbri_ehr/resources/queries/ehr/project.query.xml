@@ -17,6 +17,9 @@
                     </column>
                     <column columnName="project">
                         <columnTitle>Project Id</columnTitle>
+                        <!-- project.js assigns the id; a blank required field would block the Ext form's submit -->
+                        <shownInInsertView>false</shownInInsertView>
+                        <shownInUpdateView>false</shownInUpdateView>
                     </column>
                     <column columnName="account" />
                     <column columnName="title" />
