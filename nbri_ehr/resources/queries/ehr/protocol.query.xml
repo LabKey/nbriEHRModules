@@ -29,6 +29,14 @@
                     <column columnName="Approve">
                         <columnTitle>Approval Date</columnTitle>
                     </column>
+                    <column columnName="project_type">
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>protocol_type</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
+                    </column>
                 </columns>
             </table>
         </tables>
