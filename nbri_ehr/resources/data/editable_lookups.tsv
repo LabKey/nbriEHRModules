@@ -27,6 +27,7 @@ ehr_lookups	breeding_type	Colony Management	Breeding Type	Breeding group assignm
 ehr_lookups	buildings	Housing	Buildings	Buildings within an area.
 ehr_lookups	cage	Housing	Cages	Cage locations within a room.
 ehr_lookups	cage_type	Colony Management	Cage Type	Used in cage details.
+ehr_lookups	cageclass	Housing	Cage Class	Cage size requirements by weight. Used in cage size calculations.
 ehr_lookups	calculated_status_codes	Colony Management	Calculated Status	Animal status values.
 ehr_lookups	capillary_refill_time	Clinical	Capillary Refill Times	Used clinical observations.
 ehr_lookups	card_format	Colony Management	Card Format	

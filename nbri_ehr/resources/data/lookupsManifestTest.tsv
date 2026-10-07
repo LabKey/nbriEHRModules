@@ -23,6 +23,7 @@ blood_sample_type
 blood_tube_volumes
 breeding_type
 cage_type
+cageclass
 calculated_status_codes
 capillary_refill_time
 card_format
