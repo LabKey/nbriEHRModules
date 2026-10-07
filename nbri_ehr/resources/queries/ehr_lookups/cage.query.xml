@@ -35,6 +35,12 @@
                     </column>
                     <column columnName="perDiem">
                         <columnTitle>Per Diem</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>per_diem</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                            <fkDisplayColumnName>title</fkDisplayColumnName>
+                        </fk>
                     </column>
                 </columns>
             </table>

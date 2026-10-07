@@ -101,6 +101,7 @@ ehr_lookups	pairing_goal	Behavior	Pairing Goal	Used in pairing dataset.
 ehr_lookups	pairing_reason	Behavior	Introduction Reason	Used in pairing dataset.
 ehr_lookups	pairing_observation	Behavior	Interaction Summary	Used in pairing dataset.
 ehr_lookups	pairing_separation_reason	Colony Management	Pairing Status Change Reason	Pairing Status Change Reason Fixed Values.
+ehr_lookups	per_diem	Housing	Per Diem	Per diem housing categories for cages.
 ehr_lookups	preferences	Behavior	Preferences	Behavior observation fixed values.
 ehr_lookups	pregnancy_result	Colony Management	Pregancy Result	
 ehr_lookups	procedure_category	Clinical	Procedure Category	Used in procedures to group procedures.
