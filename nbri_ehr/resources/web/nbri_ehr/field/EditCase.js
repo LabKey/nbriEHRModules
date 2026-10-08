@@ -74,10 +74,14 @@ Ext4.define('NBRI_EHR.form.EditCases', {
     fieldEnableChange: function(disable){
         var panel = this.up('panel');
         panel.items.each(function(item){
-            if (item.name != 'objectid'){
-                this.disableItem(item, disable);
-                this.disabledDisplay(item, disable);
-            }
+            if (item.name === 'objectid')
+                return;
+
+            // A saved case stays bound to its animal, so Edit must never reopen the Id.
+            var itemDisable = disable || (this.editing && item.name === 'Id');
+
+            this.disableItem(item, itemDisable);
+            this.disabledDisplay(item, itemDisable);
         }, this);
     },
 
@@ -93,11 +97,11 @@ Ext4.define('NBRI_EHR.form.EditCases', {
     },
 
     onCaseSelect: function(){
+        this.editing = true;
         this.fieldEnableChange(true);
         if (this.readonly) {
             return;
         }
-        this.editing = true;
         this.disabled = true;
         this.editBtn.show();
     },

@@ -11,6 +11,6 @@ SELECT
     r.area,
 FROM ehr_lookups.rooms r
 LEFT JOIN study.housing h
-ON r.room = h.room
+ON r.room = h.room AND h.isActive = true AND h.qcstate.publicdata = true
 
 GROUP BY r.room, r.building, r.area

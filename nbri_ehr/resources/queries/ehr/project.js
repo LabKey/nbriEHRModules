@@ -26,7 +26,7 @@ function onInit(event, helper){
 function onUpsert(helper, scriptErrors, row, oldRow) {
     if (!helper.isETL()) {
         if (!row.project) {
-            row.project = nextProjectNum;
+            row.project = nextProjectNum++;
         }
     }
 }

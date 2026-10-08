@@ -3,10 +3,14 @@
         <column name="cage"/>
         <column name="room"/>
         <column name="indoor_outdoor"/>
+        <column name="perDiem"/>
         <column name="cage_type"/>
         <column name="divider"/>
         <column name="length"/>
         <column name="width"/>
         <column name="height"/>
+        <column name="hasTunnel"/>
+        <column name="status"/>
+        <column name="dateDisabled"/>
     </columns>
 </customView>

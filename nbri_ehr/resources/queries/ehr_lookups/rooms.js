@@ -33,9 +33,14 @@ function onUpsert(row, oldRow, errors){
             return;
         }
 
+        if (triggerHelper.isAfterToday(row.dateDisabled)) {
+            errors['dateDisabled'] = 'A room cannot be disabled on a future date.';
+            return;
+        }
+
         if (!row.room) {
-            if (oldRow && oldRow.room && oldRow.room[0]) {
-                row.room = oldRow.room[0];
+            if (oldRow && oldRow.room) {
+                row.room = oldRow.room;
                 return;
             }
 
@@ -50,12 +55,36 @@ function onUpsert(row, oldRow, errors){
     }
 }
 
+// A room's key is fixed once it exists, so the stored value identifies it whatever the form posted.
+function roomKey(row, oldRow) {
+    return oldRow && oldRow.room ? oldRow.room : row.room;
+}
+
 function beforeInsert(row, errors){
     onUpsert(row, undefined, errors);
 }
 
 function beforeUpdate(row, oldRow, errors){
     onUpsert(row, oldRow, errors);
+
+    if (extraContext.dataSource !== "etl" && row.dateDisabled) {
+        // A future date is already rejected; skip the lookup rather than reporting two errors for one value.
+        if (triggerHelper.isAfterToday(row.dateDisabled)) {
+            return;
+        }
+
+        let occupied = triggerHelper.animalsRemainingInRoom(roomKey(row, oldRow), row.dateDisabled);
+        if (occupied) {
+            errors['dateDisabled'] = occupied;
+        }
+    }
+}
+
+function afterUpdate(row, oldRow){
+    if (extraContext.dataSource !== "etl") {
+        // Runs ahead of the shared module's room-key cascade, so the cages still carry the key read here.
+        triggerHelper.cascadeCageDateDisabled(roomKey(row, oldRow), row.dateDisabled, oldRow ? oldRow.dateDisabled : null);
+    }
 }
 
 function beforeDelete(row, errors) {

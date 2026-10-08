@@ -2,5 +2,10 @@
     <columns>
         <column name="name"/>
         <column name="building"/>
+        <column name="housingType"/>
+        <column name="housingCondition"/>
+        <column name="maxCages"/>
+        <column name="morningHealth"/>
+        <column name="dateDisabled"/>
     </columns>
 </customView>

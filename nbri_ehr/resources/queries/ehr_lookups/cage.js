@@ -23,8 +23,8 @@ function managedColumns() {
 function onUpsert(row, oldRow, errors){
     if (extraContext.dataSource != "etl") {
         if (!row.location) {
-            if (oldRow && oldRow.location && oldRow.location[0]) {
-                row.location = oldRow.location[0];
+            if (oldRow && oldRow.location) {
+                row.location = oldRow.location;
                 return;
             }
 

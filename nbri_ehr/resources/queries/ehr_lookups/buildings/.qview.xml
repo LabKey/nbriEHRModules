@@ -2,5 +2,6 @@
     <columns>
         <column name="description"/>
         <column name="area"/>
+        <column name="dateDisabled"/>
     </columns>
 </customView>
