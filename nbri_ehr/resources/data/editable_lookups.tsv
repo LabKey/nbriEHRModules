@@ -27,6 +27,7 @@ ehr_lookups	breeding_type	Colony Management	Breeding Type	Breeding group assignm
 ehr_lookups	buildings	Housing	Buildings	Buildings within an area.
 ehr_lookups	cage	Housing	Cages	Cage locations within a room.
 ehr_lookups	cage_type	Colony Management	Cage Type	Used in cage details.
+ehr_lookups	cageclass	Housing	Cage Class	Cage size requirements by weight. Used in cage size calculations.
 ehr_lookups	calculated_status_codes	Colony Management	Calculated Status	Animal status values.
 ehr_lookups	capillary_refill_time	Clinical	Capillary Refill Times	Used clinical observations.
 ehr_lookups	card_format	Colony Management	Card Format	
@@ -100,6 +101,7 @@ ehr_lookups	pairing_goal	Behavior	Pairing Goal	Used in pairing dataset.
 ehr_lookups	pairing_reason	Behavior	Introduction Reason	Used in pairing dataset.
 ehr_lookups	pairing_observation	Behavior	Interaction Summary	Used in pairing dataset.
 ehr_lookups	pairing_separation_reason	Colony Management	Pairing Status Change Reason	Pairing Status Change Reason Fixed Values.
+ehr_lookups	per_diem	Housing	Per Diem	Per diem housing categories for cages.
 ehr_lookups	preferences	Behavior	Preferences	Behavior observation fixed values.
 ehr_lookups	pregnancy_result	Colony Management	Pregancy Result	
 ehr_lookups	procedure_category	Clinical	Procedure Category	Used in procedures to group procedures.
