@@ -304,6 +304,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitFor(() -> Input(Locator.textarea("populateLookupResults"), getDriver()).waitFor().getValue().contains("Loading reports is complete."),
                 "Reports didn't finish loading", 60000);
         populateFormulary();
+
+        // The study import's trigger scripts query template columns such as protocol_counts.amendmentId
+        addExtensibleCols();
     }
 
     private void populateFormulary() throws IOException, CommandException
@@ -388,7 +391,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         goToEHRFolder();
         createTestSubjects();
         addNBRIEhrLinks();
-        addExtensibleCols();
         enableSiteNotification();
         populateLocations();
         addUsersAndPermissions();//create users and assign roles, created for Death/Necropsy form, but users can be repurposed for other forms.
