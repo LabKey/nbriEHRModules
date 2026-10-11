@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+-- parents rather than the raw columns, which drops the UNKNOWN placeholder parent
 SELECT
   d.Id,
   d.date,
-  d.dam as parent,
+  d.Id.parents.dam as parent,
   'Dam' as relationship,
   'Observed' as method
 
@@ -28,7 +29,7 @@ UNION ALL
 SELECT
   d.Id,
   d.date,
-  d.sire as parent,
+  d.Id.parents.sire as parent,
   'Sire' as relationship,
   'Observed' as method
 

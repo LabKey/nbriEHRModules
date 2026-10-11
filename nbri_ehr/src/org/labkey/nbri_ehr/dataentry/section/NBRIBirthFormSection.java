@@ -53,6 +53,8 @@ public class NBRIBirthFormSection extends NewAnimalFormSection
         super("study", "birth", "Births", false);
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/window/StartWithConceptionWindow.js"));
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/field/ConceptionField.js"));
+        addClientDependency(ClientDependency.supplierFromPath("ehr/window/FormBulkAddWindow.js"));
+        addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/window/FormBulkAddWindow.js"));
     }
 
     @Override
@@ -98,6 +100,7 @@ public class NBRIBirthFormSection extends NewAnimalFormSection
     {
         List<String> defaultButtons = super.getTbarMoreActionButtons();
         defaultButtons.remove("GUESSPROJECT");
+        defaultButtons.add("NBRI_FORM_BULK_ADD");
         return defaultButtons;
     }
 }
