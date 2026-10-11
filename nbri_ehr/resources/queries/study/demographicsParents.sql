@@ -14,17 +14,24 @@
  * limitations under the License.
  */
 SELECT
-    d.id,
-    d.dam as dam,
+    p.id,
+    p.dam,
     'Observed' as damType,
-    d.sire as sire,
+    p.sire,
     'Observed' as sireType,
     CASE
-        WHEN d.dam IS NOT NULL AND d.sire IS NOT NULL THEN 2
-        WHEN d.dam IS NOT NULL OR d.sire IS NOT NULL THEN 1
+        WHEN p.dam IS NOT NULL AND p.sire IS NOT NULL THEN 2
+        WHEN p.dam IS NOT NULL OR p.sire IS NOT NULL THEN 1
         ELSE 0
         END as numParents
-FROM study.demographics d
+FROM (
+    -- UNKNOWN is a placeholder parent; left in, every query joining on Id/parents would treat its offspring as siblings
+    SELECT
+        d.id,
+        CASE WHEN UPPER(d.dam) = 'UNKNOWN' THEN NULL ELSE d.dam END as dam,
+        CASE WHEN UPPER(d.sire) = 'UNKNOWN' THEN NULL ELSE d.sire END as sire
+    FROM study.demographics d
+) p
 
 -- TODO: Incorporate fostering? Genetic testing?
 
