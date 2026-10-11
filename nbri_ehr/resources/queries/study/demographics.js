@@ -54,4 +54,12 @@ function onUpsert(helper, scriptErrors, row, oldRow){
             }
         }
     }
+
+    // UNKNOWN is a placeholder parent; stored, every parent-based query would treat the animals recorded against it as siblings
+    if (row.dam && String(row.dam).toUpperCase() === 'UNKNOWN') {
+        row.dam = null;
+    }
+    if (row.sire && String(row.sire).toUpperCase() === 'UNKNOWN') {
+        row.sire = null;
+    }
 }
