@@ -52,8 +52,8 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
         // saved template carries a type left over from a different category.
         row.type = triggerHelper.getObservationTypeCategory(row.category) === 'Behavior' ? 'Behavior' : 'Clinical';
 
-        // Handle scheduled observations. Insert only: re-saving a draft would fan out again and reassign orderid.
-        if (!helper.isValidateOnly() && !oldRow && row.scheduledDate) {
+        // Handle scheduled observations. Fan out on insert only: re-saving a draft would fan out again and reassign orderid.
+        if (!helper.isValidateOnly() && row.scheduledDate) {
             var qc;
             if (row.QCStateLabel) {
                 qc = EHR.Server.Security.getQCStateByLabel(row.QCStateLabel);
@@ -64,6 +64,9 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
 
             if (!qc) {
                 console.error('Unable to find QCState: ' + row.QCState + '/' + row.QCStateLabel);
+            }
+            else if (oldRow) {
+                triggerHelper.updateScheduledObservationCopies(row, oldRow, qc.RowId);
             }
             else {
                 var orderTasks = helper.getProperty('orderTasksInTransaction');

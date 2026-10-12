@@ -1198,6 +1198,7 @@ public class NBRI_EHRTriggerHelper
             obsRow.put("scheduledDate", scheduledDate);
             obsRow.put("area", order.get("area"));
             obsRow.put("observation", observation);
+            obsRow.put("remark", row.get("remark"));
             obsRow.put("performedBy", performedBy);
             obsRow.put("orderId", order.get("objectid"));
             obsRow.put("type", order.get("type"));
@@ -1214,6 +1215,62 @@ public class NBRI_EHRTriggerHelper
         }
 
         return triggerOrder;
+    }
+
+    // The copies handleScheduledObservations inserts sit outside the form, so a later save of the entry must carry its edits onto them.
+    public void updateScheduledObservationCopies(Map<String, Object> row, Map<String, Object> oldRow, String qcstate) throws SQLException, BatchValidationException, QueryUpdateServiceException, InvalidKeyException
+    {
+        Map<String, Object> newValues = new CaseInsensitiveHashMap<>(row);
+        Map<String, Object> oldValues = new CaseInsensitiveHashMap<>(oldRow);
+        String objectId = ConvertHelper.convert(oldValues.get("objectid"), String.class);
+        String taskId = ConvertHelper.convert(newValues.get("taskid"), String.class);
+
+        // Copies match the entry's previous values exactly, which keeps separate entries for the same slot apart.
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("objectid"), objectId, CompareType.NEQ);
+        for (String col : List.of("Id", "category", "scheduledDate", "date", "observation", "performedBy", "qcstate"))
+        {
+            Object value = oldValues.get(col);
+            if (value == null)
+                filter.addCondition(FieldKey.fromString(col), null, CompareType.ISBLANK);
+            else
+                filter.addCondition(FieldKey.fromString(col), col.equalsIgnoreCase("date") || col.equalsIgnoreCase("scheduledDate") ? ConvertHelper.convert(value, Date.class) : value);
+        }
+
+        TableInfo obsTi = getTableInfo("study", "clinical_observations");
+        List<Map<String, Object>> copies = new ArrayList<>(new TableSelector(obsTi, PageFlowUtil.set("objectid", "taskid"), filter, null).getMapCollection());
+        if (copies.isEmpty())
+            return;
+
+        List<Map<String, Object>> obsRows = copies.stream().map(copy -> {
+            Map<String, Object> obsRow = new CaseInsensitiveHashMap<>();
+            obsRow.put("objectid", copy.get("objectid"));
+            obsRow.put("qcstate", qcstate);
+            obsRow.put("date", ConvertHelper.convert(newValues.get("date"), Date.class));
+            obsRow.put("observation", newValues.get("observation"));
+            obsRow.put("remark", newValues.get("remark"));
+            obsRow.put("performedBy", newValues.get("performedBy"));
+            return obsRow;
+        }).collect(Collectors.toList());
+        BatchValidationException errors = new BatchValidationException();
+        Objects.requireNonNull(obsTi.getUpdateService()).updateRows(_user, _container, obsRows, null, errors, null, getExtraContext());
+        if (errors.hasErrors())
+            throw errors;
+
+        List<Map<String, Object>> taskRows = copies.stream()
+                .map(copy -> ConvertHelper.convert(copy.get("taskid"), String.class))
+                .filter(copyTaskId -> copyTaskId != null && !copyTaskId.equals(taskId))
+                .distinct()
+                .map(copyTaskId -> {
+                    Map<String, Object> taskRow = new CaseInsensitiveHashMap<>();
+                    taskRow.put("taskid", copyTaskId);
+                    taskRow.put("qcstate", qcstate);
+                    return taskRow;
+                })
+                .collect(Collectors.toList());
+        if (!taskRows.isEmpty())
+            Objects.requireNonNull(getTableInfo("ehr", "tasks").getUpdateService()).updateRows(_user, _container, taskRows, null, errors, null, getExtraContext());
+        if (errors.hasErrors())
+            throw errors;
     }
 
     /**
