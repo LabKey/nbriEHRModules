@@ -70,11 +70,13 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 public class NBRI_EHRTriggerHelper
 {
@@ -1040,7 +1042,7 @@ public class NBRI_EHRTriggerHelper
     public void ensureDailyClinicalObservationOrders(String id, String caseid, final Date date, String performedby, String qcstate, String taskid, List<Map<String, Object>> ordersInTransaction)
     {
         TableInfo ti = getTableInfo("study", "observation_order");
-        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("category","value"), "Activity");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("category"), NBRI_EHRManager.DAILY_CLINICAL_OBS, CompareType.IN);
         filter.addCondition(FieldKey.fromString("caseid"), caseid);
         filter.addCondition(FieldKey.fromParts("frequency"), "SID");
         TableSelector ts = new TableSelector(ti, PageFlowUtil.set("category","frequency"), filter, null);
@@ -1143,12 +1145,32 @@ public class NBRI_EHRTriggerHelper
         TableSelector ts = new TableSelector(ti, PageFlowUtil.set("category","caseId","animalId","area","objectid","type","taskid"), filter, null);
         ts.setNamedParameters(Map.of("StartDate", scheduledDate, "NumDays", "1"));
 
-        Map<String, Object>[] orders = ts.getMapArray();
+        // The view LEFT JOINs clinical_observations, so an order repeats once per observation already recorded for it.
+        Map<String, Map<String, Object>> ordersById = new LinkedHashMap<>();
+        for (Map<String, Object> order : ts.getMapArray())
+            ordersById.putIfAbsent(ConvertHelper.convert(order.get("objectid"), String.class), order);
+
+        if (ordersById.isEmpty())
+            return null;
+
+        SimpleFilter observedFilter = new SimpleFilter(FieldKey.fromString("orderId"), ordersById.keySet(), CompareType.IN);
+        observedFilter.addCondition(FieldKey.fromString("scheduledDate"), scheduledDate);
+        Set<String> observedOrderIds = new HashSet<>(new TableSelector(getTableInfo("study", "clinical_observations"), Collections.singleton("orderId"), observedFilter, null).getArrayList(String.class));
+
+        List<Map<String, Object>> orders = ordersById.entrySet().stream()
+                .filter(e -> !observedOrderIds.contains(e.getKey()))
+                .map(Map.Entry::getValue)
+                .collect(Collectors.toList());
+
+        // Every order in this slot is already observed; link the entry to the first so it is not left orphaned.
+        if (orders.isEmpty())
+            orders.add(ordersById.values().iterator().next());
+
         Map<String, Object> triggerOrder = null;
 
-        for (int i = 0; i < orders.length; i++)
+        for (int i = 0; i < orders.size(); i++)
         {
-            Map<String, Object> order = orders[i];
+            Map<String, Object> order = orders.get(i);
 
             // Group every entry by the originating order's taskid into a new task per group.
             String orderTaskId = ConvertHelper.convert(order.get("taskid"), String.class);

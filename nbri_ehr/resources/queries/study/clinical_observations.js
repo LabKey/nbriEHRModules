@@ -52,8 +52,8 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
         // saved template carries a type left over from a different category.
         row.type = triggerHelper.getObservationTypeCategory(row.category) === 'Behavior' ? 'Behavior' : 'Clinical';
 
-        // Handle scheduled observations
-        if (!helper.isValidateOnly() && row.scheduledDate) {
+        // Handle scheduled observations. Insert only: re-saving a draft would fan out again and reassign orderid.
+        if (!helper.isValidateOnly() && !oldRow && row.scheduledDate) {
             var qc;
             if (row.QCStateLabel) {
                 qc = EHR.Server.Security.getQCStateByLabel(row.QCStateLabel);
