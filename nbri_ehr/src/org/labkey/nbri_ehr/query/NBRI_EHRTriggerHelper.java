@@ -1225,9 +1225,9 @@ public class NBRI_EHRTriggerHelper
         String objectId = ConvertHelper.convert(oldValues.get("objectid"), String.class);
         String taskId = ConvertHelper.convert(newValues.get("taskid"), String.class);
 
-        // Copies match the entry's previous values exactly, which keeps separate entries for the same slot apart.
+        // Copies match the entry's previous values exactly, which keeps separate entries for the same slot apart. oldRow carries no QCState rowid, so QC is not matched.
         SimpleFilter filter = new SimpleFilter(FieldKey.fromString("objectid"), objectId, CompareType.NEQ);
-        for (String col : List.of("Id", "category", "scheduledDate", "date", "observation", "performedBy", "qcstate"))
+        for (String col : List.of("Id", "category", "scheduledDate", "date", "observation", "performedBy"))
         {
             Object value = oldValues.get(col);
             if (value == null)
