@@ -1201,6 +1201,7 @@ public class NBRI_EHRTriggerHelper
             obsRow.put("remark", row.get("remark"));
             obsRow.put("performedBy", performedBy);
             obsRow.put("orderId", order.get("objectid"));
+            obsRow.put("observationGroupId", row.get("observationGroupId"));
             obsRow.put("type", order.get("type"));
             obsRow.put("taskid", groupTaskId);
 
@@ -1217,24 +1218,20 @@ public class NBRI_EHRTriggerHelper
         return triggerOrder;
     }
 
-    // The copies handleScheduledObservations inserts sit outside the form, so a later save of the entry must carry its edits onto them.
-    public void updateScheduledObservationCopies(Map<String, Object> row, Map<String, Object> oldRow, String qcstate) throws SQLException, BatchValidationException, QueryUpdateServiceException, InvalidKeyException
+    // Each row in a scheduled entry's group sits on its own order's task, so an edit to any of them is carried onto the rest.
+    public void updateScheduledObservationGroup(Map<String, Object> row, Map<String, Object> oldRow, String qcstate) throws SQLException, BatchValidationException, QueryUpdateServiceException, InvalidKeyException
     {
         Map<String, Object> newValues = new CaseInsensitiveHashMap<>(row);
         Map<String, Object> oldValues = new CaseInsensitiveHashMap<>(oldRow);
         String objectId = ConvertHelper.convert(oldValues.get("objectid"), String.class);
         String taskId = ConvertHelper.convert(newValues.get("taskid"), String.class);
+        String groupId = ConvertHelper.convert(oldValues.get("observationGroupId"), String.class);
 
-        // Copies match the entry's previous values exactly, which keeps separate entries for the same slot apart. oldRow carries no QCState rowid, so QC is not matched.
         SimpleFilter filter = new SimpleFilter(FieldKey.fromString("objectid"), objectId, CompareType.NEQ);
-        for (String col : List.of("Id", "category", "scheduledDate", "date", "observation", "performedBy"))
-        {
-            Object value = oldValues.get(col);
-            if (value == null)
-                filter.addCondition(FieldKey.fromString(col), null, CompareType.ISBLANK);
-            else
-                filter.addCondition(FieldKey.fromString(col), col.equalsIgnoreCase("date") || col.equalsIgnoreCase("scheduledDate") ? ConvertHelper.convert(value, Date.class) : value);
-        }
+        if (groupId != null)
+            filter.addCondition(FieldKey.fromString("observationGroupId"), groupId);
+        else
+            addPreviousValueConditions(filter, oldValues);
 
         TableInfo obsTi = getTableInfo("study", "clinical_observations");
         List<Map<String, Object>> copies = new ArrayList<>(new TableSelector(obsTi, PageFlowUtil.set("objectid", "taskid"), filter, null).getMapCollection());
@@ -1271,6 +1268,55 @@ public class NBRI_EHRTriggerHelper
             Objects.requireNonNull(getTableInfo("ehr", "tasks").getUpdateService()).updateRows(_user, _container, taskRows, null, errors, null, getExtraContext());
         if (errors.hasErrors())
             throw errors;
+    }
+
+    // Rows saved before observationGroupId existed are only recognizable as copies by carrying the entry's previous values. oldRow carries no QCState rowid, so QC is not matched.
+    private void addPreviousValueConditions(SimpleFilter filter, Map<String, Object> oldValues)
+    {
+        for (String col : List.of("Id", "category", "scheduledDate", "date", "observation", "performedBy"))
+        {
+            Object value = oldValues.get(col);
+            if (value == null)
+                filter.addCondition(FieldKey.fromString(col), null, CompareType.ISBLANK);
+            else
+                filter.addCondition(FieldKey.fromString(col), col.equalsIgnoreCase("date") || col.equalsIgnoreCase("scheduledDate") ? ConvertHelper.convert(value, Date.class) : value);
+        }
+    }
+
+    // Deleting any row of a scheduled entry's group removes the rest, and any task a copy leaves empty, which would otherwise linger in My Tasks.
+    public void deleteScheduledObservationGroup(String groupId, String objectId, String taskId) throws SQLException, BatchValidationException, QueryUpdateServiceException, InvalidKeyException
+    {
+        TableInfo obsTi = getTableInfo("study", "clinical_observations");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("observationGroupId"), groupId);
+        filter.addCondition(FieldKey.fromString("objectid"), objectId, CompareType.NEQ);
+        List<Map<String, Object>> copies = new ArrayList<>(new TableSelector(obsTi, PageFlowUtil.set("objectid", "taskid"), filter, null).getMapCollection());
+        if (copies.isEmpty())
+            return;
+
+        List<Map<String, Object>> keys = copies.stream()
+                .map(copy -> {
+                    Map<String, Object> key = new CaseInsensitiveHashMap<>();
+                    key.put("objectid", copy.get("objectid"));
+                    return key;
+                })
+                .collect(Collectors.toList());
+        Objects.requireNonNull(obsTi.getUpdateService()).deleteRows(_user, _container, keys, null, getExtraContext());
+
+        // The deleted row's own task is left to whoever deleted it; StudyData spans every dataset, so a task with weights or other rows is kept.
+        TableInfo studyData = getTableInfo("study", "StudyData");
+        List<Map<String, Object>> emptyTasks = copies.stream()
+                .map(copy -> ConvertHelper.convert(copy.get("taskid"), String.class))
+                .filter(copyTaskId -> copyTaskId != null && !copyTaskId.equals(taskId))
+                .distinct()
+                .filter(copyTaskId -> !new TableSelector(studyData, new SimpleFilter(FieldKey.fromString("taskid"), copyTaskId), null).exists())
+                .map(copyTaskId -> {
+                    Map<String, Object> taskKey = new CaseInsensitiveHashMap<>();
+                    taskKey.put("taskid", copyTaskId);
+                    return taskKey;
+                })
+                .collect(Collectors.toList());
+        if (!emptyTasks.isEmpty())
+            Objects.requireNonNull(getTableInfo("ehr", "tasks").getUpdateService()).deleteRows(_user, _container, emptyTasks, null, getExtraContext());
     }
 
     /**

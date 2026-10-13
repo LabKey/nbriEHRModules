@@ -66,11 +66,14 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
                 console.error('Unable to find QCState: ' + row.QCState + '/' + row.QCStateLabel);
             }
             else if (oldRow) {
-                triggerHelper.updateScheduledObservationCopies(row, oldRow, qc.RowId);
+                triggerHelper.updateScheduledObservationGroup(row, oldRow, qc.RowId);
             }
             else {
                 var orderTasks = helper.getProperty('orderTasksInTransaction');
                 if (orderTasks && orderTasks.length > 0) {
+                    // Each scheduled entry heads its own group; the copies made for the slot's other orders join it.
+                    row.objectid = row.objectid || LABKEY.Utils.generateUUID();
+                    row.observationGroupId = row.objectid;
                     var orderData = triggerHelper.handleScheduledObservations(row, qc.RowId, orderTasks[0]);
 
                     if (orderData) {
@@ -83,5 +86,11 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
                 }
             }
         }
+    }
+}
+
+function onAfterDelete(helper, errors, row) {
+    if (!helper.isGeneratedByServer() && row.observationGroupId) {
+        triggerHelper.deleteScheduledObservationGroup(row.observationGroupId, row.objectid, row.taskid);
     }
 }
