@@ -1228,6 +1228,9 @@ public class NBRI_EHRTriggerHelper
         String groupId = ConvertHelper.convert(oldValues.get("observationGroupId"), String.class);
 
         SimpleFilter filter = new SimpleFilter(FieldKey.fromString("objectid"), objectId, CompareType.NEQ);
+        // Rows on this row's own task are saved by this same batch; pushing to them lets whichever is saved last overwrite the rest.
+        if (taskId != null)
+            filter.addCondition(FieldKey.fromString("taskid"), taskId, CompareType.NEQ_OR_NULL);
         if (groupId != null)
             filter.addCondition(FieldKey.fromString("observationGroupId"), groupId);
         else
@@ -1238,14 +1241,20 @@ public class NBRI_EHRTriggerHelper
         if (copies.isEmpty())
             return;
 
+        // Carry only what this row changed, so an untouched row later in the batch can't revert another row's edit.
+        Map<String, Object> changed = new CaseInsensitiveHashMap<>();
+        for (String col : List.of("date", "observation", "remark", "performedBy"))
+        {
+            Object newValue = col.equals("date") ? ConvertHelper.convert(newValues.get(col), Date.class) : newValues.get(col);
+            Object oldValue = col.equals("date") ? ConvertHelper.convert(oldValues.get(col), Date.class) : oldValues.get(col);
+            if (!Objects.equals(newValue, oldValue))
+                changed.put(col, newValue);
+        }
+
         List<Map<String, Object>> obsRows = copies.stream().map(copy -> {
-            Map<String, Object> obsRow = new CaseInsensitiveHashMap<>();
+            Map<String, Object> obsRow = new CaseInsensitiveHashMap<>(changed);
             obsRow.put("objectid", copy.get("objectid"));
             obsRow.put("qcstate", qcstate);
-            obsRow.put("date", ConvertHelper.convert(newValues.get("date"), Date.class));
-            obsRow.put("observation", newValues.get("observation"));
-            obsRow.put("remark", newValues.get("remark"));
-            obsRow.put("performedBy", newValues.get("performedBy"));
             return obsRow;
         }).collect(Collectors.toList());
         BatchValidationException errors = new BatchValidationException();
@@ -1253,10 +1262,18 @@ public class NBRI_EHRTriggerHelper
         if (errors.hasErrors())
             throw errors;
 
+        // A copy's task can also hold weights or unscheduled entries, so move it only once every record on it has reached this QC state.
+        TableInfo studyData = getTableInfo("study", "StudyData");
+        Integer qcRowId = ConvertHelper.convert(qcstate, Integer.class);
         List<Map<String, Object>> taskRows = copies.stream()
                 .map(copy -> ConvertHelper.convert(copy.get("taskid"), String.class))
                 .filter(copyTaskId -> copyTaskId != null && !copyTaskId.equals(taskId))
                 .distinct()
+                .filter(copyTaskId -> {
+                    SimpleFilter pending = new SimpleFilter(FieldKey.fromString("taskid"), copyTaskId);
+                    pending.addCondition(FieldKey.fromString("QCState"), qcRowId, CompareType.NEQ_OR_NULL);
+                    return !new TableSelector(studyData, pending, null).exists();
+                })
                 .map(copyTaskId -> {
                     Map<String, Object> taskRow = new CaseInsensitiveHashMap<>();
                     taskRow.put("taskid", copyTaskId);
