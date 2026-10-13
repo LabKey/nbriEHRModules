@@ -23,6 +23,7 @@ blood_sample_type
 blood_tube_volumes
 breeding_type
 cage_type
+cageclass
 calculated_status_codes
 capillary_refill_time
 card_format
@@ -83,6 +84,7 @@ pairing_goal
 pairing_reason
 pairing_observation
 pairing_separation_reason
+per_diem
 preferences
 pregnancy_result
 procedure_category

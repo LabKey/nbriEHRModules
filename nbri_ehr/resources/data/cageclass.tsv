@@ -1,0 +1,8 @@
+requirementset	low	high	sqft
+AAALAC Guide	0	0.99	2.1
+AWA	0.99	1.5	3
+AWA, AAALAC Guide	1.5	3	3
+AWA, AAALAC Guide	3	10	4.3
+AWA, AAALAC Guide	10	15	6
+AWA, AAALAC Guide	15	20	8
+AAALAC Guide	20	25	10

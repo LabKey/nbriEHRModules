@@ -1,8 +1,12 @@
-cagetype	height	sqft	cageslots	verticalSlots	supportsTunnel
-Double - 1	40	7	2	1	false
-Double - 2	40	6	2	1	false
-Quad - A	50	8	4	1	false
-Quad - B	50	9	4	1	false
-Quad - C	50	10	4	1	false
-Tunnel - I	30	12	2	1	true
-Tunnel - II	30	11	2	1	true
+cagetype	length	width	height	sqft	cageslots	description
+3M (modified quad)			54	9	1	Right side vertical access; 3 floor surfaces; height 27/54
+4 (female)	24	27	32	4.5	1	
+4M (modified female 4-pack)			64	13.5	1	Right side vertical access; 3 floor surfaces; height 32/64
+4M (modified female 6-pack #1)			64	18	1	Right & left vertical access; 4 floor surfaces; height 32/64
+4M (modified female 6-pack #2)			64	22.5	1	Right side vertical access; 5 floor surfaces; height 32/64
+6 (male)	34	27	32	6.4	1	
+6M (modified male 4-pack)			64	19.2	1	Right side vertical access; 3 floor surfaces; height 32/64
+8	44	27	32	8.3	1	
+8T	44	27	36	8.3	1	
+Incubator	12	12	12	1	1	
+Quad	18	24	27	3	1	
