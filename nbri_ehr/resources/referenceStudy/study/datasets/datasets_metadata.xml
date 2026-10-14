@@ -383,6 +383,9 @@
             <column columnName="orderId">
                 <datatype>varchar</datatype>
             </column>
+            <column columnName="observationGroupId">
+                <datatype>varchar</datatype>
+            </column>
         </columns>
     </table>
     <table tableName="clinremarks" tableDbType="TABLE">

@@ -70,11 +70,13 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 public class NBRI_EHRTriggerHelper
 {
@@ -1040,7 +1042,7 @@ public class NBRI_EHRTriggerHelper
     public void ensureDailyClinicalObservationOrders(String id, String caseid, final Date date, String performedby, String qcstate, String taskid, List<Map<String, Object>> ordersInTransaction)
     {
         TableInfo ti = getTableInfo("study", "observation_order");
-        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("category","value"), "Activity");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("category"), NBRI_EHRManager.DAILY_CLINICAL_OBS, CompareType.IN);
         filter.addCondition(FieldKey.fromString("caseid"), caseid);
         filter.addCondition(FieldKey.fromParts("frequency"), "SID");
         TableSelector ts = new TableSelector(ti, PageFlowUtil.set("category","frequency"), filter, null);
@@ -1143,12 +1145,32 @@ public class NBRI_EHRTriggerHelper
         TableSelector ts = new TableSelector(ti, PageFlowUtil.set("category","caseId","animalId","area","objectid","type","taskid"), filter, null);
         ts.setNamedParameters(Map.of("StartDate", scheduledDate, "NumDays", "1"));
 
-        Map<String, Object>[] orders = ts.getMapArray();
+        // The view LEFT JOINs clinical_observations, so an order repeats once per observation already recorded for it.
+        Map<String, Map<String, Object>> ordersById = new LinkedHashMap<>();
+        for (Map<String, Object> order : ts.getMapArray())
+            ordersById.putIfAbsent(ConvertHelper.convert(order.get("objectid"), String.class), order);
+
+        if (ordersById.isEmpty())
+            return null;
+
+        SimpleFilter observedFilter = new SimpleFilter(FieldKey.fromString("orderId"), ordersById.keySet(), CompareType.IN);
+        observedFilter.addCondition(FieldKey.fromString("scheduledDate"), scheduledDate);
+        Set<String> observedOrderIds = new HashSet<>(new TableSelector(getTableInfo("study", "clinical_observations"), Collections.singleton("orderId"), observedFilter, null).getArrayList(String.class));
+
+        List<Map<String, Object>> orders = ordersById.entrySet().stream()
+                .filter(e -> !observedOrderIds.contains(e.getKey()))
+                .map(Map.Entry::getValue)
+                .collect(Collectors.toList());
+
+        // Every order in this slot is already observed; link the entry to the first so it is not left orphaned.
+        if (orders.isEmpty())
+            orders.add(ordersById.values().iterator().next());
+
         Map<String, Object> triggerOrder = null;
 
-        for (int i = 0; i < orders.length; i++)
+        for (int i = 0; i < orders.size(); i++)
         {
-            Map<String, Object> order = orders[i];
+            Map<String, Object> order = orders.get(i);
 
             // Group every entry by the originating order's taskid into a new task per group.
             String orderTaskId = ConvertHelper.convert(order.get("taskid"), String.class);
@@ -1176,8 +1198,10 @@ public class NBRI_EHRTriggerHelper
             obsRow.put("scheduledDate", scheduledDate);
             obsRow.put("area", order.get("area"));
             obsRow.put("observation", observation);
+            obsRow.put("remark", row.get("remark"));
             obsRow.put("performedBy", performedBy);
             obsRow.put("orderId", order.get("objectid"));
+            obsRow.put("observationGroupId", row.get("observationGroupId"));
             obsRow.put("type", order.get("type"));
             obsRow.put("taskid", groupTaskId);
 
@@ -1192,6 +1216,124 @@ public class NBRI_EHRTriggerHelper
         }
 
         return triggerOrder;
+    }
+
+    // Each row in a scheduled entry's group sits on its own order's task, so an edit to any of them is carried onto the rest.
+    public void updateScheduledObservationGroup(Map<String, Object> row, Map<String, Object> oldRow, String qcstate) throws SQLException, BatchValidationException, QueryUpdateServiceException, InvalidKeyException
+    {
+        Map<String, Object> newValues = new CaseInsensitiveHashMap<>(row);
+        Map<String, Object> oldValues = new CaseInsensitiveHashMap<>(oldRow);
+        String objectId = ConvertHelper.convert(oldValues.get("objectid"), String.class);
+        String taskId = ConvertHelper.convert(newValues.get("taskid"), String.class);
+        String groupId = ConvertHelper.convert(oldValues.get("observationGroupId"), String.class);
+
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("objectid"), objectId, CompareType.NEQ);
+        // Rows on this row's own task are saved by this same batch; pushing to them lets whichever is saved last overwrite the rest.
+        if (taskId != null)
+            filter.addCondition(FieldKey.fromString("taskid"), taskId, CompareType.NEQ_OR_NULL);
+        if (groupId != null)
+            filter.addCondition(FieldKey.fromString("observationGroupId"), groupId);
+        else
+            addPreviousValueConditions(filter, oldValues);
+
+        TableInfo obsTi = getTableInfo("study", "clinical_observations");
+        List<Map<String, Object>> copies = new ArrayList<>(new TableSelector(obsTi, PageFlowUtil.set("objectid", "taskid"), filter, null).getMapCollection());
+        if (copies.isEmpty())
+            return;
+
+        // Carry only what this row changed, so an untouched row later in the batch can't revert another row's edit.
+        Map<String, Object> changed = new CaseInsensitiveHashMap<>();
+        for (String col : List.of("date", "observation", "remark", "performedBy"))
+        {
+            Object newValue = col.equals("date") ? ConvertHelper.convert(newValues.get(col), Date.class) : newValues.get(col);
+            Object oldValue = col.equals("date") ? ConvertHelper.convert(oldValues.get(col), Date.class) : oldValues.get(col);
+            if (!Objects.equals(newValue, oldValue))
+                changed.put(col, newValue);
+        }
+
+        List<Map<String, Object>> obsRows = copies.stream().map(copy -> {
+            Map<String, Object> obsRow = new CaseInsensitiveHashMap<>(changed);
+            obsRow.put("objectid", copy.get("objectid"));
+            obsRow.put("qcstate", qcstate);
+            return obsRow;
+        }).collect(Collectors.toList());
+        BatchValidationException errors = new BatchValidationException();
+        Objects.requireNonNull(obsTi.getUpdateService()).updateRows(_user, _container, obsRows, null, errors, null, getExtraContext());
+        if (errors.hasErrors())
+            throw errors;
+
+        // A copy's task can also hold weights or unscheduled entries, so move it only once every record on it has reached this QC state.
+        TableInfo studyData = getTableInfo("study", "StudyData");
+        Integer qcRowId = ConvertHelper.convert(qcstate, Integer.class);
+        List<Map<String, Object>> taskRows = copies.stream()
+                .map(copy -> ConvertHelper.convert(copy.get("taskid"), String.class))
+                .filter(copyTaskId -> copyTaskId != null && !copyTaskId.equals(taskId))
+                .distinct()
+                .filter(copyTaskId -> {
+                    SimpleFilter pending = new SimpleFilter(FieldKey.fromString("taskid"), copyTaskId);
+                    pending.addCondition(FieldKey.fromString("QCState"), qcRowId, CompareType.NEQ_OR_NULL);
+                    return !new TableSelector(studyData, pending, null).exists();
+                })
+                .map(copyTaskId -> {
+                    Map<String, Object> taskRow = new CaseInsensitiveHashMap<>();
+                    taskRow.put("taskid", copyTaskId);
+                    taskRow.put("qcstate", qcstate);
+                    return taskRow;
+                })
+                .collect(Collectors.toList());
+        if (!taskRows.isEmpty())
+            Objects.requireNonNull(getTableInfo("ehr", "tasks").getUpdateService()).updateRows(_user, _container, taskRows, null, errors, null, getExtraContext());
+        if (errors.hasErrors())
+            throw errors;
+    }
+
+    // Rows saved before observationGroupId existed are only recognizable as copies by carrying the entry's previous values. oldRow carries no QCState rowid, so QC is not matched.
+    private void addPreviousValueConditions(SimpleFilter filter, Map<String, Object> oldValues)
+    {
+        for (String col : List.of("Id", "category", "scheduledDate", "date", "observation", "performedBy"))
+        {
+            Object value = oldValues.get(col);
+            if (value == null)
+                filter.addCondition(FieldKey.fromString(col), null, CompareType.ISBLANK);
+            else
+                filter.addCondition(FieldKey.fromString(col), col.equalsIgnoreCase("date") || col.equalsIgnoreCase("scheduledDate") ? ConvertHelper.convert(value, Date.class) : value);
+        }
+    }
+
+    // Deleting any row of a scheduled entry's group removes the rest, and any task a copy leaves empty, which would otherwise linger in My Tasks.
+    public void deleteScheduledObservationGroup(String groupId, String objectId, String taskId) throws SQLException, BatchValidationException, QueryUpdateServiceException, InvalidKeyException
+    {
+        TableInfo obsTi = getTableInfo("study", "clinical_observations");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("observationGroupId"), groupId);
+        filter.addCondition(FieldKey.fromString("objectid"), objectId, CompareType.NEQ);
+        List<Map<String, Object>> copies = new ArrayList<>(new TableSelector(obsTi, PageFlowUtil.set("objectid", "taskid"), filter, null).getMapCollection());
+        if (copies.isEmpty())
+            return;
+
+        List<Map<String, Object>> keys = copies.stream()
+                .map(copy -> {
+                    Map<String, Object> key = new CaseInsensitiveHashMap<>();
+                    key.put("objectid", copy.get("objectid"));
+                    return key;
+                })
+                .collect(Collectors.toList());
+        Objects.requireNonNull(obsTi.getUpdateService()).deleteRows(_user, _container, keys, null, getExtraContext());
+
+        // The deleted row's own task is left to whoever deleted it; StudyData spans every dataset, so a task with weights or other rows is kept.
+        TableInfo studyData = getTableInfo("study", "StudyData");
+        List<Map<String, Object>> emptyTasks = copies.stream()
+                .map(copy -> ConvertHelper.convert(copy.get("taskid"), String.class))
+                .filter(copyTaskId -> copyTaskId != null && !copyTaskId.equals(taskId))
+                .distinct()
+                .filter(copyTaskId -> !new TableSelector(studyData, new SimpleFilter(FieldKey.fromString("taskid"), copyTaskId), null).exists())
+                .map(copyTaskId -> {
+                    Map<String, Object> taskKey = new CaseInsensitiveHashMap<>();
+                    taskKey.put("taskid", copyTaskId);
+                    return taskKey;
+                })
+                .collect(Collectors.toList());
+        if (!emptyTasks.isEmpty())
+            Objects.requireNonNull(getTableInfo("ehr", "tasks").getUpdateService()).deleteRows(_user, _container, emptyTasks, null, getExtraContext());
     }
 
     /**
