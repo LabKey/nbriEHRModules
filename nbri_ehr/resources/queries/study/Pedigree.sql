@@ -6,8 +6,9 @@
 SELECT
 
     d.id as Id,
-    d.dam as Dam,
-    d.sire as Sire,
+    -- UNKNOWN is a placeholder parent; passed through, kinship would treat every animal recorded against it as siblings
+    CASE WHEN UPPER(d.dam) = 'UNKNOWN' THEN NULL ELSE d.dam END as Dam,
+    CASE WHEN UPPER(d.sire) = 'UNKNOWN' THEN NULL ELSE d.sire END as Sire,
     d.modified,
 
     CASE (d.id.demographics.gender.meaning)
@@ -28,4 +29,4 @@ SELECT
     d.modified
 
 FROM study.demographics d
-WHERE d.Dam IS NOT NULL OR d.Sire IS NOT NULL
+WHERE (d.Dam IS NOT NULL AND UPPER(d.Dam) <> 'UNKNOWN') OR (d.Sire IS NOT NULL AND UPPER(d.Sire) <> 'UNKNOWN')

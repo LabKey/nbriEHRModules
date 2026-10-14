@@ -22,6 +22,11 @@ function isBlankGeneration(value) {
     return value === null || value === undefined || value === '';
 }
 
+// UNKNOWN is a placeholder parent, so it must not supply the newborn's species, origin or generation
+function knownParent(value) {
+    return value && String(value).toUpperCase() !== 'UNKNOWN' ? value : null;
+}
+
 // opens one assignment record against the animal being entered; each dataset carries the assignment under its own field
 function createAssignment(scriptErrors, dataset, fieldName, value, row) {
     if (!value)
@@ -177,8 +182,8 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 Id: row.Id,
                 date: row.date,
                 calculated_status: calc_status,
-                dam: row['Id/demographics/dam'] || null,
-                sire: row['Id/demographics/sire'] || null,
+                dam: knownParent(row['Id/demographics/dam']),
+                sire: knownParent(row['Id/demographics/sire']),
                 species: row['Id/demographics/species'] || null,
                 birth: row.date || null,
                 gender: row['Id/demographics/gender'] || null,

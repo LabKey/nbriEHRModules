@@ -82,6 +82,7 @@ pairing_formation_types	Pairing Formation Type	value
 pairing_reason	Introduction Reason	value
 pairing_observation	Interaction Summary	value
 pairing_separation_reason	Pairing Status Change Reason	value	value
+per_diem	Per Diem	value	title
 preferences	Preferences	value
 pregnancy_result	Pregnancy Results	value
 procedure_category	Category of procedures	value
