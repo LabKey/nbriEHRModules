@@ -1083,6 +1083,13 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             col.setDescription("This calculates the final project assignment for the animal.  This is distinct from active project assignment because it will return a project assignment for dead animals");
             ds.addColumn(col);
         }
+        if (ds.getColumn("mostRecentBCS") == null)
+        {
+            var col = getWrappedCol(us, ds, "mostRecentBCS", "demographicsMostRecentBCS", "Id", "Id");
+            col.setLabel("Body Condition Score");
+            col.setDescription("Calculates the most recent BCS for each animal");
+            ds.addColumn(col);
+        }
     }
 
     private void customizeProtocolTable(AbstractTableInfo ti)

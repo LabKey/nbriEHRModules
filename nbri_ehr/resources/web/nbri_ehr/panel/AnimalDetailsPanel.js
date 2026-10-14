@@ -145,6 +145,9 @@ Ext4.define('NBRI_EHR.panel.AnimalDetailsPanel', {
                     fieldLabel: 'Weight',
                     name: 'weights'
                 },{
+                    fieldLabel: 'BCS',
+                    name: 'mostRecentBCS'
+                },{
                     xtype: 'ldk-linkbutton',
                     style: 'margin-top: 10px;',
                     scope: this,
@@ -247,5 +250,21 @@ Ext4.define('NBRI_EHR.panel.AnimalDetailsPanel', {
         }
 
         toSet['weights'] = text;
+    },
+
+    appendDataResults: function(toSet, results, id){
+        this.callParent(arguments);
+        this.appendBCS(toSet, results);
+    },
+
+    appendBCS: function(toSet, results){
+        var data = results ? results.getData() : null;
+        var text;
+        if (data && data['mostRecentBCS']){
+            var date = LDK.ConvertUtils.parseDate(data['mostRecentBCSDate']);
+            text = LABKEY.Utils.encodeHtml(data['mostRecentBCS']) + (date ? ', ' + Ext4.Date.format(date, LABKEY.extDefaultDateFormat) : '');
+        }
+
+        toSet['mostRecentBCS'] = text;
     },
 });
