@@ -20,6 +20,7 @@ import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.collections.CaseInsensitiveHashMap;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.CompareType;
@@ -35,31 +36,47 @@ import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.ehr.EHRDemographicsService;
 import org.labkey.api.ehr.EHRService;
+import org.labkey.api.ehr.notification.AbstractEHRNotification;
 import org.labkey.api.ehr.security.EHRVeterinarianPermission;
 import org.labkey.api.ldk.notification.NotificationService;
+import org.labkey.api.puppeteer.PuppeteerService;
 import org.labkey.api.query.BatchValidationException;
 import org.labkey.api.query.DuplicateKeyException;
 import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.InvalidKeyException;
 import org.labkey.api.query.QueryService;
+import org.labkey.api.query.QueryUpdateService;
 import org.labkey.api.query.QueryUpdateServiceException;
 import org.labkey.api.query.UserSchema;
+import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.study.StudyService;
+import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.GUID;
 import org.labkey.api.util.JobRunner;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.view.ActionURL;
 import org.labkey.nbri_ehr.NBRI_EHRManager;
 import org.labkey.nbri_ehr.dataentry.form.NBRIClinicalObservationsFormType;
+import org.labkey.nbri_ehr.dataentry.form.NBRINecropsyBaseFormType;
 import org.labkey.nbri_ehr.notification.NBRIClinicalMoveNotification;
 import org.labkey.nbri_ehr.notification.NBRIDeathNotification;
+import org.labkey.nbri_ehr.notification.NBRINecropsyFinalNotification;
+import org.labkey.nbri_ehr.notification.NBRINecropsyPreliminaryNotification;
+import org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification;
 import org.labkey.nbri_ehr.notification.NBRIPregnancyOutcomeNotification;
 import org.labkey.nbri_ehr.notification.TriggerScriptNotification;
+import org.labkey.vfs.FileLike;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.net.URI;
+import java.net.URL;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
@@ -92,6 +109,7 @@ public class NBRI_EHRTriggerHelper
 
     // Animals named in the occupancy error before it switches to a count.
     private static final int MAX_NAMED_ANIMALS = 10;
+    private static final String NECROPSY_ALIAS_CATEGORY = "A";
 
     public NBRI_EHRTriggerHelper(int userId, String containerId)
     {
@@ -604,16 +622,14 @@ public class NBRI_EHRTriggerHelper
 
                         //get death info
                         TableInfo deaths = getTableInfo("study", "deathNotification");
-                        TableSelector deathsTs = new TableSelector(deaths, PageFlowUtil.set("Id", "date", "taskid", "performedBy"), new SimpleFilter(FieldKey.fromString("Id"), animalId), null);
+                        TableSelector deathsTs = new TableSelector(deaths, PageFlowUtil.set("Id", "date", "performedBy"), new SimpleFilter(FieldKey.fromString("Id"), animalId), null);
                         final Mutable<Date> deathDate = new MutableObject<>();
-                        final Mutable<String> taskId = new MutableObject<>();
                         final Mutable<String> performedBy = new MutableObject<>();
                         deathsTs.forEach(rs -> {
                             if (rs.getString("date") != null)
                             {
                                 Date date = ConvertHelper.convert(rs.getString("date"), Date.class);
                                 deathDate.setValue(date);
-                                taskId.setValue(rs.getString("taskid"));
                                 performedBy.setValue(rs.getString("performedBy"));
                             }
                         });
@@ -632,12 +648,12 @@ public class NBRI_EHRTriggerHelper
                         //append animal details
                         appendAnimalDetails(html, animalId, container);
 
-                        //append link to Necropsy form
-                        String url = AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + "/ehr" +
-                                container.getPath() + "/dataEntryForm.view?formType=Necropsy&taskid=" + taskId.get();
+                        //append link to a new Necropsy Request
+                        String url = new ActionURL("ehr", "dataEntryForm", container)
+                                .addParameter("formType", NBRINecropsyBaseFormType.REQUEST).getURIString();
                         html.append("<a href='").append(PageFlowUtil.filter(url)).append("'>");
 
-                        html.append("Click here to record Necropsy</a><br>");
+                        html.append("Click here to request a Necropsy</a><br>");
 
                         // send Death Notification
                         _log.debug("NBRI Death notification job sending email for animal {} in container {}", animalId, container.getPath());
@@ -645,6 +661,253 @@ public class NBRI_EHRTriggerHelper
                     }), DbScope.CommitTaskOption.POSTCOMMIT);
 
             transaction.commit();
+        }
+    }
+
+    /** True if a necropsy request for this animal exists on a task other than the given one. */
+    public boolean necropsyRequestExists(String id, String taskid)
+    {
+        return existsOnOtherTask("necropsyRequest", id, taskid);
+    }
+
+    /** True if a necropsy for this animal exists on a task other than the given one. */
+    public boolean necropsyExists(String id, String taskid)
+    {
+        return existsOnOtherTask("necropsy", id, taskid);
+    }
+
+    private boolean existsOnOtherTask(String queryName, String id, String taskid)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
+        if (taskid != null)
+            filter.addCondition(FieldKey.fromString("taskid"), taskid, CompareType.NEQ_OR_NULL);
+
+        return new TableSelector(getTableInfo("study", queryName), filter, null).exists();
+    }
+
+    public void upsertNecropsyAlias(String id, Object date, String accessionNo, String qcStateLabel, @Nullable String performedby) throws SQLException, BatchValidationException, QueryUpdateServiceException, DuplicateKeyException, InvalidKeyException
+    {
+        TableInfo ti = getTableInfo("study", "alias");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
+        filter.addCondition(FieldKey.fromString("category"), NECROPSY_ALIAS_CATEGORY);
+        List<String> existing = new TableSelector(ti, PageFlowUtil.set("objectid"), filter, new Sort("date")).getArrayList(String.class);
+
+        Map<String, Object> row = new CaseInsensitiveHashMap<>();
+        row.put("Id", id);
+        row.put("alias", accessionNo);
+        row.put("category", NECROPSY_ALIAS_CATEGORY);
+        row.put("date", ConvertHelper.convert(date, Date.class));
+        row.put("QCStateLabel", qcStateLabel);
+        row.put("performedby", performedby != null ? performedby : String.valueOf(_user.getUserId()));
+        row.put("objectid", existing.isEmpty() ? new GUID().toString() : existing.getFirst());
+
+        QueryUpdateService qus = Objects.requireNonNull(ti.getUpdateService(), "study.alias is not updatable");
+        BatchValidationException errors = new BatchValidationException();
+        if (existing.isEmpty())
+            qus.insertRows(_user, _container, List.of(row), errors, null, getExtraContext());
+        else
+            qus.updateRows(_user, _container, List.of(row), null, errors, null, getExtraContext());
+
+        if (errors.hasErrors())
+            throw errors;
+    }
+
+    /** Removes the necropsy rows of a deleted necropsy task, including any a draft later stage left behind. */
+    public void deleteNecropsyData(String taskid) throws QueryUpdateServiceException, SQLException, BatchValidationException, InvalidKeyException
+    {
+        if (taskid == null)
+            return;
+
+        for (String queryName : List.of("necropsyRequest", "necropsy", "procedureStaff", "grossPathology", "tissueMeasurements", "tissueDisposition", "preliminaryDiagnoses", "histology", "finalDiagnoses", "necropsyFinal"))
+        {
+            TableInfo ti = getTableInfo("study", queryName);
+            QueryUpdateService qus = ti.getUpdateService();
+            if (qus == null)
+                continue;
+
+            List<Map<String, Object>> keys = List.of(new TableSelector(ti, PageFlowUtil.set("lsid"), new SimpleFilter(FieldKey.fromString("taskid"), taskid), null).getMapArray());
+            if (!keys.isEmpty())
+                qus.deleteRows(_user, _container, keys, null, getExtraContext());
+        }
+    }
+
+    /**
+     * Emails the notification for the necropsy status just reached, once the save commits. The preliminary and final
+     * reports carry the printable report as a PDF when the PDF service is available.
+     */
+    public void sendNecropsyNotification(final String taskid, final String objectid, final String status)
+    {
+        final String formType;
+        final AbstractEHRNotification notification;
+        switch (status == null ? "" : status)
+        {
+            case NBRI_EHRManager.NECROPSY_REQUEST_PENDING ->
+            {
+                formType = NBRINecropsyBaseFormType.REQUEST;
+                notification = new NBRINecropsyRequestNotification();
+            }
+            case NBRI_EHRManager.NECROPSY_PRELIMINARY_SUBMITTED ->
+            {
+                formType = NBRINecropsyBaseFormType.PRELIMINARY;
+                notification = new NBRINecropsyPreliminaryNotification();
+            }
+            case NBRI_EHRManager.NECROPSY_FINAL_SUBMITTED, NBRI_EHRManager.NECROPSY_FINAL_SUBMITTED_PENDING ->
+            {
+                formType = NBRINecropsyBaseFormType.FINAL;
+                notification = new NBRINecropsyFinalNotification();
+            }
+            default ->
+            {
+                return;
+            }
+        }
+        if (taskid == null)
+            return;
+
+        if (!NotificationService.get().isServiceEnabled() || !NotificationService.get().isActive(notification, _container))
+        {
+            _log.info("{} is not enabled, will not send it.", notification.getName());
+            return;
+        }
+
+        try (DbScope.Transaction transaction = StudyService.get().getDatasetSchema().getScope().ensureTransaction())
+        {
+            transaction.addCommitTask(() ->
+                    JobRunner.getDefault().execute(() -> {
+                        Set<UserPrincipal> recipients = NotificationService.get().getRecipients(notification, _container);
+                        if (recipients.isEmpty())
+                        {
+                            _log.warn("No recipients set, skipping {}", notification.getName());
+                            return;
+                        }
+
+                        Map<String, Object> request = getNecropsyRequest(taskid);
+                        if (request == null)
+                        {
+                            _log.warn("{} not sent: no necropsy request for task {}", notification.getName(), taskid);
+                            return;
+                        }
+
+                        String id = (String) request.get("Id");
+                        StringBuilder html = new StringBuilder();
+                        html.append("Status: ").append(PageFlowUtil.filter(status)).append("<br>");
+                        appendNecropsyRequestDetails(html, request);
+                        appendAnimalDetails(html, id, _container);
+                        appendNecropsyLinks(html, taskid, formType);
+
+                        File pdf = NBRINecropsyBaseFormType.REQUEST.equals(formType) ? null : renderNecropsyReport(objectid);
+                        try
+                        {
+                            TriggerScriptNotification.sendMessage(notification.getEmailSubject(_container) + ": " + id, html.toString(), recipients, _container, _user, pdf);
+                        }
+                        finally
+                        {
+                            if (pdf != null)
+                                FileUtil.deleteDir(pdf.getParentFile());
+                        }
+                    }), DbScope.CommitTaskOption.POSTCOMMIT);
+
+            transaction.commit();
+        }
+    }
+
+    /** The task's request details, plus the animal from its necropsy request. */
+    private @Nullable Map<String, Object> getNecropsyRequest(String taskid)
+    {
+        SimpleFilter taskFilter = new SimpleFilter(FieldKey.fromString("taskid"), taskid);
+        String[] ids = new TableSelector(getTableInfo("study", "necropsyRequest"), PageFlowUtil.set("Id"), taskFilter, null).getArray(String.class);
+        if (ids.length == 0)
+            return null;
+
+        TableInfo ti = getTableInfo("nbri_ehr", "necropsyTask");
+        List<FieldKey> keys = List.of(
+                FieldKey.fromString("Date"),
+                FieldKey.fromString("SubmittingPI"),
+                FieldKey.fromString("SubmittingVet/DisplayName"),
+                FieldKey.fromString("PriorityCode"),
+                FieldKey.fromString("Sensitive"),
+                FieldKey.fromString("SensitiveReason"));
+        final Map<FieldKey, ColumnInfo> cols = QueryService.get().getColumns(ti, keys);
+
+        final Map<String, Object> request = new CaseInsensitiveHashMap<>();
+        request.put("Id", ids[0]);
+        new TableSelector(ti, cols.values(), taskFilter, null).forEach(object -> {
+            Results rs = new ResultsImpl(object, cols);
+            for (FieldKey key : keys)
+                request.put(key.toString(), rs.getObject(key));
+        });
+
+        return request;
+    }
+
+    private void appendNecropsyRequestDetails(StringBuilder html, Map<String, Object> request)
+    {
+        Date date = ConvertHelper.convert(request.get("Date"), Date.class);
+        boolean sensitive = Boolean.TRUE.equals(ConvertHelper.convert(request.get("Sensitive"), Boolean.class));
+
+        html.append("Request Date: ").append(date == null ? "" : PageFlowUtil.filter(_dateFormat.format(date))).append("<br>");
+        html.append("Submitting PI: ").append(PageFlowUtil.filter(request.get("SubmittingPI"))).append("<br>");
+        html.append("Submitting Vet: ").append(PageFlowUtil.filter(request.get("SubmittingVet/DisplayName"))).append("<br>");
+        html.append("Priority: ").append(PageFlowUtil.filter(request.get("PriorityCode"))).append("<br>");
+        html.append("Sensitive: ").append(sensitive ? "Yes" : "No").append("<br>");
+        if (sensitive)
+            html.append("Sensitive Reason: ").append(PageFlowUtil.filter(request.get("SensitiveReason"))).append("<br>");
+        html.append("<br>");
+    }
+
+    private void appendNecropsyLinks(StringBuilder html, String taskid, String formType)
+    {
+        String reportUrl = new ActionURL("ehr", "dataEntryFormDetails", _container)
+                .addParameter("formType", formType).addParameter("taskid", taskid).getURIString();
+        html.append("<br><a href='").append(PageFlowUtil.filter(reportUrl)).append("'>Click here to view this necropsy</a><br>");
+
+        String nextStage = switch (formType)
+        {
+            case NBRINecropsyBaseFormType.REQUEST -> NBRINecropsyBaseFormType.PRELIMINARY;
+            case NBRINecropsyBaseFormType.PRELIMINARY -> NBRINecropsyBaseFormType.FINAL;
+            default -> null;
+        };
+        if (nextStage != null)
+        {
+            String enterUrl = new ActionURL("ehr", "dataEntryForm", _container)
+                    .addParameter("formType", nextStage).addParameter("taskid", taskid).getURIString();
+            html.append("<a href='").append(PageFlowUtil.filter(enterUrl)).append("'>Click here to enter ")
+                    .append(NBRINecropsyBaseFormType.PRELIMINARY.equals(nextStage) ? "preliminary" : "final").append(" necropsy results</a><br>");
+        }
+
+        String allUrl = new ActionURL("query", "executeQuery", _container)
+                .addParameter("schemaName", "nbri_ehr").addParameter("query.queryName", "necropsyTask").getURIString();
+        html.append("<a href='").append(PageFlowUtil.filter(allUrl)).append("'>Click here to view all necropsies</a><br>");
+    }
+
+    /** Renders the printable necropsy report to a PDF in its own temp directory, or returns null if it can't. */
+    private @Nullable File renderNecropsyReport(String objectid)
+    {
+        PuppeteerService puppeteer = PuppeteerService.get();
+        if (puppeteer == null || !puppeteer.isAvailable())
+        {
+            _log.warn("PDF service is not available, sending the necropsy report without its PDF");
+            return null;
+        }
+
+        FileLike dir = null;
+        try (SecurityManager.TransformSession session = SecurityManager.createTransformSession(_user))
+        {
+            dir = FileUtil.createTempDirectoryFileLike("necropsyReport");
+            File pdf = dir.resolveChild("NecropsyReport.pdf").toNioPathForWrite().toFile();
+            URL url = new URI(new ActionURL("nbri_ehr", "necropsyReport.view", _container).addParameter("objectIds", objectid).getURIString()).toURL();
+            try (OutputStream out = new FileOutputStream(pdf))
+            {
+                puppeteer.streamPDF(_user, url, null, null, pdf.getName(), session.getApiKey(), () -> out);
+            }
+            return pdf;
+        }
+        catch (Exception e)
+        {
+            _log.error("Unable to render the necropsy report PDF for necropsy task {}", objectid, e);
+            if (dir != null)
+                FileUtil.deleteDir(dir);
+            return null;
         }
     }
 

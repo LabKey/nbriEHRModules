@@ -36,7 +36,7 @@ import org.labkey.api.ehr.EHRService;
 import org.labkey.api.ehr.security.EHRBehaviorEntryPermission;
 import org.labkey.api.ehr.security.EHRClinicalEntryPermission;
 import org.labkey.api.ehr.security.EHRDataEntryPermission;
-import org.labkey.api.ehr.security.EHRVeterinarianPermission;
+import org.labkey.api.ehr.security.EHRPathologyEntryPermission;
 import org.labkey.api.ehr.table.FixedWidthDisplayColumn;
 import org.labkey.api.ehr.table.TreatmentLinkConfig;
 import org.labkey.api.ehr.table.TreatmentLinkDisplayColumnFactory;
@@ -51,6 +51,7 @@ import org.labkey.api.query.FieldKey;
 import org.labkey.api.query.FilteredTable;
 import org.labkey.api.query.QueryForeignKey;
 import org.labkey.api.query.UserSchema;
+import org.labkey.api.security.User;
 import org.labkey.api.study.Dataset;
 import org.labkey.api.study.DatasetTable;
 import org.labkey.api.study.StudyService;
@@ -62,6 +63,7 @@ import org.labkey.api.view.template.ClientDependency;
 import org.labkey.api.writer.HtmlWriter;
 import org.labkey.nbri_ehr.NBRI_EHRManager;
 import org.labkey.nbri_ehr.dataentry.form.NBRIClinicalObservationsFormType;
+import org.labkey.nbri_ehr.dataentry.form.NBRINecropsyBaseFormType;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -73,6 +75,10 @@ import java.util.Set;
 
 public class NBRI_EHRCustomizer extends AbstractTableCustomizer
 {
+    private static final List<String> NECROPSY_DATASETS = List.of("necropsyRequest", "necropsy", "procedureStaff", "grossPathology",
+            "tissueMeasurements", "tissueDisposition", "preliminaryDiagnoses", "histology", "finalDiagnoses", "necropsyFinal");
+    private static final FieldKey QC_LABEL_KEY = FieldKey.fromParts("QCState", "Label");
+
     private static final TreatmentLinkConfig RECORD_TREATMENT = TreatmentLinkConfig.builder()
             .formTypes("Behavior", "Behavioral Rounds", "Bulk Behavior Entry")
             .build();
@@ -103,17 +109,14 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
                 customizeTasks(ti);
             }
 
-            if (matches(ti, "nbri_ehr", "necropsyTasks"))
+            if (matches(ti, "nbri_ehr", "necropsyTask"))
             {
-                addNecropsyReportLink(ti);
-                addNecropsyEnterDataLink(ti);
+                customizeNecropsyTask(ti);
             }
 
-            if (matches(ti, "study", "necropsy") ||
-                    matches(ti, "study", "grossPathology") ||
-                    matches(ti, "study", "tissueDisposition"))
+            if (NECROPSY_DATASETS.stream().anyMatch(name -> matches(ti, "study", name)))
             {
-                addNecropsyReportLink(ti);
+                addNecropsyReportLink(ti, FieldKey.fromParts("taskid", "formtype"));
             }
 
             if (matches(ti, "study", "cases"))
@@ -461,123 +464,142 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         ti.addColumn(ci);
     }
 
-    private void addNecropsyEnterDataLink(AbstractTableInfo ti)
+    private void customizeNecropsyTask(AbstractTableInfo ti)
     {
-        if (ti.getColumn("enterNecropsyData") == null)
+        if (ti.getColumn("animalId") == null && ti.getColumn("taskid") != null)
         {
-            WrappedColumn enterNecropsy = new WrappedColumn(ti.getColumn("taskid"), "enterNecropsyData");
-            enterNecropsy.setLabel("Enter Data");
-            enterNecropsy.setDisplayColumnFactory(new DisplayColumnFactory()
+            UserSchema us = getUserSchema(ti, "study");
+            if (us != null)
             {
-                @Override
-                public DisplayColumn createRenderer(final ColumnInfo colInfo)
-                {
-                    return new DataColumn(colInfo){
-
-                        @Override
-                        public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
-                        {
-                            if (!ti.getUserSchema().getContainer().hasPermission(ti.getUserSchema().getUser(), EHRVeterinarianPermission.class))
-                                return;
-
-                            String taskid = (String)getBoundColumn().getValue(ctx);
-
-                            ActionURL url = new ActionURL("ehr", "dataEntryForm", ti.getUserSchema().getContainer());
-                            url.addParameter("formType", "Necropsy");
-                            url.addParameter("taskid", taskid);
-
-                            ActionURL returnUrl = new ActionURL("query", "executeQuery", ti.getUserSchema().getContainer());
-                            returnUrl.addParameter("schemaName", "nbri_ehr");
-                            returnUrl.addParameter("queryName", "necropsyTasks");
-                            url.addParameter("returnUrl", returnUrl.toString());
-
-                            out.write(LinkBuilder.labkeyLink("Enter/Update Necropsy", url).target("_blank"));
-                        }
-
-                        @Override
-                        public void addQueryFieldKeys(Set<FieldKey> keys)
-                        {
-                            super.addQueryFieldKeys(keys);
-                            keys.add(getBoundColumn().getFieldKey());
-                        }
-
-                        @Override
-                        public boolean isSortable()
-                        {
-                            return false;
-                        }
-
-                        @Override
-                        public boolean isFilterable()
-                        {
-                            return false;
-                        }
-
-                        @Override
-                        public boolean isEditable()
-                        {
-                            return false;
-                        }
-                    };
-                }
-            });
-            ti.addColumn(enterNecropsy);
+                WrappedColumn animal = new WrappedColumn(ti.getColumn("taskid"), "animalId");
+                animal.setLabel("Id");
+                animal.setReadOnly(true);
+                animal.setUserEditable(false);
+                animal.setFk(new QueryForeignKey(QueryForeignKey.from(us, ti.getContainerFilter())
+                        .table("necropsyRequest")
+                        .key("taskid")
+                        .display("Id")));
+                ti.addColumn(animal);
+            }
         }
+
+        addNecropsyReportLink(ti, FieldKey.fromParts("taskid", "formtype"));
+        addNecropsyStageLink(ti, "enterPreliminaryNecropsy", "Preliminary Necropsy", NBRINecropsyBaseFormType.PRELIMINARY);
+        addNecropsyStageLink(ti, "enterFinalNecropsy", "Final Necropsy", NBRINecropsyBaseFormType.FINAL);
     }
 
-    private void addNecropsyReportLink(AbstractTableInfo ti)
+    /** Opens the given stage's form once the stage before it is complete; pathology staff only. */
+    private void addNecropsyStageLink(AbstractTableInfo ti, String name, String label, String formType)
+    {
+        if (ti.getColumn(name) != null || ti.getColumn("taskid") == null)
+            return;
+
+        // the status that must be completed before this stage opens, and the statuses this stage has already reached
+        String requiredStatus = NBRINecropsyBaseFormType.FINAL.equals(formType) ? NBRI_EHRManager.NECROPSY_PRELIMINARY_SUBMITTED : NBRI_EHRManager.NECROPSY_REQUEST_PENDING;
+        List<String> enteredStatuses = NBRINecropsyBaseFormType.FINAL.equals(formType)
+                ? List.of(NBRI_EHRManager.NECROPSY_FINAL_SUBMITTED, NBRI_EHRManager.NECROPSY_FINAL_SUBMITTED_PENDING)
+                : List.of(NBRI_EHRManager.NECROPSY_PRELIMINARY_SUBMITTED, NBRI_EHRManager.NECROPSY_FINAL_SUBMITTED, NBRI_EHRManager.NECROPSY_FINAL_SUBMITTED_PENDING);
+
+        WrappedColumn col = new WrappedColumn(ti.getColumn("taskid"), name);
+        col.setLabel(label);
+        col.setDisplayColumnFactory(colInfo -> new NecropsyLinkColumn(colInfo, FieldKey.fromParts("status"))
+        {
+            @Override
+            public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
+            {
+                Container c = ti.getUserSchema().getContainer();
+                User u = ti.getUserSchema().getUser();
+                if (!c.hasPermission(u, EHRPathologyEntryPermission.class))
+                    return;
+
+                String taskid = (String) getBoundColumn().getValue(ctx);
+                String status = ctx.get(_stageKey, String.class);
+                boolean entered = enteredStatuses.contains(status);
+                boolean ready = requiredStatus.equals(status) && "Completed".equals(ctx.get(QC_LABEL_KEY, String.class));
+                if (taskid == null || !(entered || ready))
+                    return;
+
+                ActionURL url = new ActionURL("ehr", "dataEntryForm", c);
+                url.addParameter("formType", formType);
+                url.addParameter("taskid", taskid);
+                url.addParameter("returnUrl", new ActionURL("query", "executeQuery", c)
+                        .addParameter("schemaName", "nbri_ehr").addParameter("query.queryName", "necropsyTask").toString());
+
+                out.write(LinkBuilder.labkeyLink((entered ? "Update " : "Enter ") + label, url).target("_blank"));
+            }
+
+            @Override
+            public void addQueryFieldKeys(Set<FieldKey> keys)
+            {
+                super.addQueryFieldKeys(keys);
+                keys.add(QC_LABEL_KEY);
+            }
+        });
+        ti.addColumn(col);
+    }
+
+    private void addNecropsyReportLink(AbstractTableInfo ti, FieldKey stageKey)
     {
         if (ti.getColumn("viewNecropsy") == null && ti.getColumn("taskid") != null)
         {
             WrappedColumn viewNecropsy = new WrappedColumn(ti.getColumn("taskid"), "viewNecropsy");
             viewNecropsy.setLabel("Report");
-            viewNecropsy.setDisplayColumnFactory(new DisplayColumnFactory()
+            viewNecropsy.setDisplayColumnFactory(colInfo -> new NecropsyLinkColumn(colInfo, stageKey)
             {
                 @Override
-                public DisplayColumn createRenderer(final ColumnInfo colInfo)
+                public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
                 {
-                    return new DataColumn(colInfo){
+                    String taskid = (String) getBoundColumn().getValue(ctx);
+                    String stage = ctx.get(_stageKey, String.class);
+                    if (taskid == null || !NBRINecropsyBaseFormType.STAGES.contains(stage))
+                        return;
 
-                        @Override
-                        public void renderGridCellContents(RenderContext ctx, HtmlWriter out)
-                        {
-                            String taskid = (String)getBoundColumn().getValue(ctx);
+                    ActionURL url = new ActionURL("ehr", "dataEntryFormDetails", ti.getUserSchema().getContainer());
+                    url.addParameter("formType", stage);
+                    url.addParameter("taskid", taskid);
 
-                            ActionURL url = new ActionURL("ehr", "dataEntryFormDetails", ti.getUserSchema().getContainer());
-                            url.addParameter("formType", "Necropsy");
-                            url.addParameter("taskid", taskid);
-
-                            out.write(LinkBuilder.labkeyLink("View Report", url).target("_blank"));
-                        }
-
-                        @Override
-                        public void addQueryFieldKeys(Set<FieldKey> keys)
-                        {
-                            super.addQueryFieldKeys(keys);
-                            keys.add(getBoundColumn().getFieldKey());
-                        }
-
-                        @Override
-                        public boolean isSortable()
-                        {
-                            return false;
-                        }
-
-                        @Override
-                        public boolean isFilterable()
-                        {
-                            return false;
-                        }
-
-                        @Override
-                        public boolean isEditable()
-                        {
-                            return false;
-                        }
-                    };
+                    out.write(LinkBuilder.labkeyLink("View Report", url).target("_blank"));
                 }
             });
             ti.addColumn(viewNecropsy);
+        }
+    }
+
+    /** A non-sortable link column on taskid that also needs the necropsy stage (the task's form type). */
+    private abstract static class NecropsyLinkColumn extends DataColumn
+    {
+        protected final FieldKey _stageKey;
+
+        NecropsyLinkColumn(ColumnInfo colInfo, FieldKey stageKey)
+        {
+            super(colInfo);
+            _stageKey = stageKey;
+        }
+
+        @Override
+        public void addQueryFieldKeys(Set<FieldKey> keys)
+        {
+            super.addQueryFieldKeys(keys);
+            keys.add(getBoundColumn().getFieldKey());
+            keys.add(_stageKey);
+        }
+
+        @Override
+        public boolean isSortable()
+        {
+            return false;
+        }
+
+        @Override
+        public boolean isFilterable()
+        {
+            return false;
+        }
+
+        @Override
+        public boolean isEditable()
+        {
+            return false;
         }
     }
 

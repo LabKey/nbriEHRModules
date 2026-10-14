@@ -159,12 +159,39 @@ exports.init = function (EHR) {
         });
     });
 
-    EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'necropsy', function(event, helper) {
-
-        helper.setScriptOptions({
-            removeTimeFromDate: false
+    // necropsy data is recorded against animals that are already dead, often well after the death
+    ['necropsy', 'procedureStaff', 'grossPathology', 'tissueMeasurements', 'tissueDisposition', 'preliminaryDiagnoses', 'histology', 'finalDiagnoses', 'necropsyFinal'].forEach(function(queryName) {
+        EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', queryName, function(event, helper) {
+            helper.setScriptOptions({
+                allowDeadIds: true,
+                allowDatesInDistantPast: true,
+                removeTimeFromDate: false
+            });
         });
     });
+
+    EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'necropsyRequest', function(event, helper) {
+        helper.setScriptOptions({
+            allowDeadIds: true,
+            allowDatesInDistantPast: true,
+            // necropsy_status changes while the request is still in review, before it is public
+            announceAllModifiedParticipants: true
+        });
+    });
+
+    var NECROPSY_STAGES = ['Necropsy Request', 'Necropsy', 'Necropsy Final'];
+
+    // Resubmitting an earlier stage's form must not move the task back to that stage's form type
+    EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'ehr', 'tasks', function(helper, scriptErrors, row, oldRow) {
+        if (!oldRow)
+            return;
+
+        var oldStage = NECROPSY_STAGES.indexOf(oldRow.formtype);
+        if (oldStage > -1 && NECROPSY_STAGES.indexOf(row.formtype) < oldStage) {
+            row.formtype = oldRow.formtype;
+        }
+    });
+
 
     EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'cases', function(event, helper) {
         helper.setScriptOptions({

@@ -36,6 +36,7 @@ import org.labkey.remoteapi.query.InsertRowsCommand;
 import org.labkey.remoteapi.query.RowsResponse;
 import org.labkey.remoteapi.query.SelectRowsCommand;
 import org.labkey.remoteapi.query.SelectRowsResponse;
+import org.labkey.remoteapi.query.UpdateRowsCommand;
 import org.labkey.remoteapi.security.CreateUserResponse;
 import org.labkey.test.Locator;
 import org.labkey.test.TestFileUtils;
@@ -48,7 +49,6 @@ import org.labkey.test.components.ui.grids.QueryGrid;
 import org.labkey.test.pages.ehr.AnimalHistoryPage;
 import org.labkey.test.pages.ehr.EHRAdminPage;
 import org.labkey.test.pages.ehr.EHRLookupPage;
-import org.labkey.test.pages.ehr.EnterDataPage;
 import org.labkey.test.pages.ehr.NotificationAdminPage;
 import org.labkey.test.pages.ehr.ParticipantViewPage;
 import org.labkey.test.params.ModuleProperty;
@@ -62,9 +62,7 @@ import org.labkey.test.util.ehr.EHRClientAPIHelper;
 import org.labkey.test.util.ext4cmp.Ext4ComboRef;
 import org.labkey.test.util.ext4cmp.Ext4FieldRef;
 import org.labkey.test.util.ext4cmp.Ext4GridRef;
-import org.openqa.selenium.Keys;
 import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 
 import java.io.BufferedReader;
@@ -99,9 +97,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String NBRI_FULL_SUBMITTER_VET_TECH = "vet_tech_fs@nbritest.com";
     private static final String NBRI_FULL_SUBMITTER_VET = "vet_fs@nbritest.com";
     private static final String NBRI_VET_NAME = "vet fs";
+    private static final String NBRI_PATHOLOGIST = "pathologist@nbritest.com";
+    private static final String DEATH_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRIDeathNotification";
+    private static final String NECROPSY_REQUEST_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification";
+    private static final String NECROPSY_FINAL_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRINecropsyFinalNotification";
+    private static final String ACCESSION_NUMBER = "N26-001";
     // Assign the vet-tech role by its class-based name rather than its "EHR Veterinarian Technician" display
     // name: NIRC's role shares that display name, so a display-name lookup can resolve to the wrong module's
-    // role, leaving the user without NBRIEHRVetTechPermission (hiding "Submit Necropsy for Review", etc.).
+    // role, leaving the user without NBRIEHRVetTechPermission.
     private static final String NBRI_VET_TECH_ROLE = "NBRIEHRVetTechRole";
 
     private static final String deadAnimalId = "D5454";
@@ -391,7 +394,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         addExtensibleCols();
         enableSiteNotification();
         populateLocations();
-        addUsersAndPermissions();//create users and assign roles, created for Death/Necropsy form, but users can be repurposed for other forms.
+        addUsersAndPermissions();//create users and assign roles, created for the death and necropsy forms, but users can be repurposed for other forms.
         populateEHRTables();
     }
 
@@ -422,7 +425,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         _helper.clickExt4WindowBtn("Success", "OK");
     }
 
-    private void enableNotification(String notification)
+    private void enableNotification(String notificationClass)
     {
         goToEHRFolder();
         _containerHelper.enableModule("Dumbster");
@@ -430,8 +433,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         EHRAdminPage.beginAt(this, getContainerPath());
         NotificationAdminPage notificationAdminPage = EHRAdminPage.clickNotificationService(this);
         notificationAdminPage.setNotificationUserAndReplyEmail(DATA_ADMIN_USER);
-        notificationAdminPage.addManageUsers("org.labkey.nbri_ehr.notification.NBRIDeathNotification", "EHR Administrators");
-        notificationAdminPage.enableRequestAdminAlerts(notification);
+        notificationAdminPage.addManageUsers(notificationClass, "EHR Administrators");
+        notificationAdminPage.enableRequestAdminAlerts("status_" + notificationClass);
     }
 
     @LogMethod
@@ -1757,17 +1760,20 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
     public void addUsersAndPermissions()
     {
-        //create animal care basic submitter user (ex. this user can 'Submit Death' in Death/Necropsy)
+        //create animal care basic submitter user
         createUser(NBRI_BASIC_SUBMITTER, "EHR Basic Submitters", null);
 
-        //create a vet tech user with 'EHR Basic Submitters' group (ex. this user can 'Submit Necropsy for Review' in Death/Necropsy)
+        //create a vet tech user with 'EHR Basic Submitters' group
         createUser(NBRI_BASIC_SUBMITTER_VET_TECH, "EHR Basic Submitters", NBRI_VET_TECH_ROLE);
 
         //create a vet tech user with 'EHR Full Updaters' group (ex. this user can 'Submit for Review' and 'Submit Final' in cases)
         createUser(NBRI_FULL_SUBMITTER_VET_TECH, "EHR Full Updaters", NBRI_VET_TECH_ROLE);
 
-        //create a vet user with 'EHR Full Updaters' group (ex. this user can 'Submit Final' in Death/Necropsy)
+        //create a vet user with 'EHR Full Updaters' group (ex. this user can 'Submit Final' and request a necropsy)
         createUser(NBRI_FULL_SUBMITTER_VET, "EHR Full Updaters", "EHR Veterinarian");
+
+        //create a pathologist, who enters the preliminary and final necropsy
+        createUser(NBRI_PATHOLOGIST, "EHR Full Updaters", "EHRPathologyEntryRole");
 
         _permissionsHelper.setPermissions(FULL_UPDATER.getGroup(), "EHR Clinical Entry");
 
@@ -1822,160 +1828,211 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     }
 
     @Test
-    public void testDeathNecropsyForm() throws IOException, CommandException
+    public void testDeathAndNecropsyWorkflow() throws IOException, CommandException
     {
-        enableNotification("status_org.labkey.nbri_ehr.notification.NBRIDeathNotification");
+        enableNotification(DEATH_NOTIFICATION);
+        enableNotification(NECROPSY_REQUEST_NOTIFICATION);
+        enableNotification(NECROPSY_FINAL_NOTIFICATION);
         createSubjectsForDeathForm();
 
-        log("Go to EHR page > Enter Data > Death/Necropsy");
-        impersonate(NBRI_BASIC_SUBMITTER);
-        gotoEnterData();
-        waitAndClickAndWait(Locator.linkWithText("Death/Necropsy"));
+        log("Verify the deaths trigger rejects animals that cannot die");
+        assertDeathRejected(departedAnimalId, "ERROR: Animal is not at the center.");
+        assertDeathRejected(unknownAnimalId, "ERROR: Id not found in the demographics table.");
+        assertDeathRejected(deadAnimalId, "ERROR: Death record already exists for this animal.");
 
-        waitForElement(Locator.name("Id"));
-        setFormElement(Locator.name("Id"), departedAnimalId);
-        waitForText("Id: ERROR: Animal is not at the center.");
-
-        setFormElement(Locator.name("Id"), unknownAnimalId);
-        waitForText("Id: ERROR: Id not found in the demographics table.");
-
-        setFormElement(Locator.name("Id"), deadAnimalId);
-        waitForText("Id: ERROR: Death record already exists for this animal.");
-
-        setFormElement(Locator.name("Id"), aliveAnimalId);
-        _ext4Helper.selectComboBoxItem("Death Type:", "Spontaneous/Normal");
-        waitForElement(Locator.name("deathWeight"));
-        setFormElement(Locator.name("deathWeight"), "23");
-        Assert.assertFalse(isElementPresent(Locator.linkWithText("Submit Necropsy for Review")));
-        Assert.assertFalse(isElementPresent(Locator.linkWithText("Submit Final")));
-        submitForm("Submit Death", "Confirm");
-        stopImpersonating();
+        log("Recording the death");
+        InsertRowsCommand death = new InsertRowsCommand("study", "deaths");
+        death.addRow(Map.of("Id", aliveAnimalId, "date", LocalDateTime.now(), "type", "D", "deathWeight", 23,
+                "QCStateLabel", "Completed", "performedby", 1004));
+        death.execute(getApiHelper().getConnection(), getContainerPath());
 
         log("Verify a second death insert is rejected with a validation error, not a unique constraint violation");
-        SimplePostCommand duplicateDeath = getApiHelper().prepareInsertCommand("study", "deaths", "lsid",
-                new String[]{"Id", "date", "performedby"},
-                new Object[][]{{aliveAnimalId, LocalDateTime.now(), 1004}});
-        CommandException duplicateError = getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), duplicateDeath, getExtraContext());
-        Map<String, List<String>> duplicateErrors = getApiHelper().extractErrors(duplicateError.getProperties());
-        Assert.assertTrue("Expected duplicate death validation error, got: " + duplicateErrors,
-                duplicateErrors.getOrDefault("Id", List.of()).contains("ERROR: A death record already exists for this animal (Request: Pending)."));
+        assertDeathRejected(aliveAnimalId, "ERROR: Death record already exists for this animal.");
 
-        log("Trigger notifications");
-        goToEHRFolder();
-        NotificationAdminPage adminPage = NotificationAdminPage.beginAt(this);
-        adminPage.clickManuallyTriggerEmail("NBRI Death Notification");
-
+        log("Verify the death notification offers a necropsy request");
         goToModule("Dumbster");
         EmailRecordTable notifications = new EmailRecordTable(this);
-        waitForTextWithRefresh(WAIT_FOR_PAGE + WAIT_FOR_JAVASCRIPT, "Death Notification: " + aliveAnimalId); //wait for more than a min
-        notifications.getMessage("Death Notification: " + aliveAnimalId).getBody().
-                contains("Animal '" + aliveAnimalId + "' has been declared dead on '" + LocalDateTime.now().format(_dateFormat) + "'.");
+        waitForTextWithRefresh(WAIT_FOR_PAGE + WAIT_FOR_JAVASCRIPT, "Death Notification: " + aliveAnimalId);
         notifications.clickMessage(notifications.getMessageWithSubjectContaining("Death Notification: " + aliveAnimalId));
-        String url = Locator.linkWithText("Click here to record Necropsy").findElement(notifications).getAttribute("href");
+        String requestUrl = Locator.linkWithText("Click here to request a Necropsy").findElement(notifications).getAttribute("href");
 
-        log("Entering Necropsy");
-        impersonate(NBRI_BASIC_SUBMITTER_VET_TECH);
-        beginAt(url);
-        _helper.getExt4GridForFormSection("Necropsy");
-        waitForElement(Ext4Helper.Locators.ext4Button("Submit Necropsy for Review"), WAIT_FOR_PAGE);
-        waitForElement(Ext4Helper.Locators.formItemWithLabel("Performed By:"), WAIT_FOR_PAGE);
-        scrollIntoView(Locator.name("accessionNumber"));
-        _ext4Helper.selectComboBoxItem("Physical Condition:", "Excellent");
-        _ext4Helper.selectComboBoxItem("Condition of Specimen:", "Fresh");
-        sleep(1000);
-        Ext4FieldRef accessionNumber = _helper.getExt4FieldForFormSection("Necropsy", "Accession Number");
-        accessionNumber.setValue("123");
-        waitFor(() -> "123".equals(accessionNumber.getValue()), WAIT_FOR_JAVASCRIPT);
-        scrollIntoView(Locator.name("diagnosis"));
-        Ext4FieldRef identification = _helper.getExt4FieldForFormSection("Necropsy", "Name/State/License no. (quarantine only)");
-        identification.setValue("Extra information");
-        waitFor(() -> "Extra information".equals(identification.getValue()), WAIT_FOR_JAVASCRIPT);
-        Ext4FieldRef grossAbnormalities = _helper.getExt4FieldForFormSection("Necropsy", "Gross Abnormalities");
-        grossAbnormalities.setValue("Extra leg");
-        waitFor(() -> "Extra leg".equals(grossAbnormalities.getValue()), WAIT_FOR_JAVASCRIPT);
-        Ext4FieldRef diagnosis = _helper.getExt4FieldForFormSection("Necropsy", "Diagnosis");
-        diagnosis.setValue("Dead");
-        waitFor(() -> "Dead".equals(diagnosis.getValue()), WAIT_FOR_JAVASCRIPT);
-        _ext4Helper.selectComboBoxItem("Performed By:", NBRI_BASIC_SUBMITTER_NAME);
+        log("Requesting the necropsy");
+        impersonate(NBRI_FULL_SUBMITTER_VET);
+        beginAt(requestUrl);
+        waitForElement(Ext4Helper.Locators.ext4Button("Submit Request"), WAIT_FOR_PAGE);
+        enterNecropsyRequest(aliveAnimalId);
+        submitNecropsyStage("Submit Request");
+        stopImpersonating();
 
-        log("Entering Tissue Disposition");
+        String taskid = getNecropsyTaskValue(aliveAnimalId, "taskid");
+        assertEquals("Wrong necropsy status after the request", "Request Pending", getNecropsyTaskValue(aliveAnimalId, "status"));
+        assertEquals("A requested necropsy should be pending", "Necropsy Pending", getNecropsyStatus(aliveAnimalId));
+
+        log("Verify the request notification links to the preliminary stage");
+        goToModule("Dumbster");
+        waitForTextWithRefresh(WAIT_FOR_PAGE + WAIT_FOR_JAVASCRIPT, "Necropsy Request: " + aliveAnimalId);
+        notifications = new EmailRecordTable(this);
+        notifications.clickMessage(notifications.getMessageWithSubjectContaining("Necropsy Request: " + aliveAnimalId));
+        String preliminaryUrl = Locator.linkWithText("Click here to enter preliminary necropsy results").findElement(notifications).getAttribute("href");
+
+        log("Entering the preliminary necropsy");
+        impersonate(NBRI_PATHOLOGIST);
+        beginAt(preliminaryUrl);
+        waitForElement(Ext4Helper.Locators.ext4Button("Submit Preliminary Results"), WAIT_FOR_PAGE);
+        _helper.getExt4FieldForFormSection("Necropsy", "Preliminary Cause of Death").setValue("Pneumonia");
+        _helper.getExt4FieldForFormSection("Gross Description", "Gross Description").setValue("Consolidated right lung");
+
         Ext4GridRef tissueDisposition = _helper.getExt4GridForFormSection("Tissue Disposition");
         _helper.addRecordToGrid(tissueDisposition);
         tissueDisposition.setGridCell(1, "necropsyDispositionCode", "Frozen");
         tissueDisposition.setGridCell(1, "necropsyTissue", "Pancreas");
-        waitAndClick(_helper.getDataEntryButton("Submit Necropsy for Review"));
 
-        log("Assigning the reviewer");
-        Window<?> submitForReview = new Window<>("Submit For Review", getDriver());
-
-        // Make sure to find the element in submitForReview window.
-        waitForElement(Locator.tagWithNameContaining("input", "assignedTo"));
-        click(Locator.tagWithNameContaining("input", "assignedTo"));
-        WebElement assignedToElement = Locator.tagWithNameContaining("input", "assignedTo").findWhenNeeded(submitForReview);
-        setFormElement(assignedToElement, _userHelper.getDisplayNameForEmail(NBRI_FULL_SUBMITTER_VET));
-        click(Locator.tagWithNameContaining("input", "assignedTo"));
-
-        // Entering the text leaves the selection list visible, send 'Enter' to remove it.
-        assignedToElement.sendKeys(Keys.ENTER);
-
-        // The 'button' is actually a link tag.
-        WebElement submitButton = Locator.tagWithText("a", "Submit").findWhenNeeded(submitForReview);
-        scrollIntoView(submitButton);
-        doAndWaitForPageToLoad(submitButton::click);
-
+        Ext4GridRef preliminaryDiagnoses = _helper.getExt4GridForFormSection("Gross Diagnoses");
+        _helper.addRecordToGrid(preliminaryDiagnoses);
+        preliminaryDiagnoses.setGridCell(1, "tissueSample", "LUNG, NOS");
+        preliminaryDiagnoses.setGridCell(1, "diagnosis", "Inflammation");
+        preliminaryDiagnoses.setGridCell(1, "severity", "Marked");
+        preliminaryDiagnoses.setGridCell(1, "distribution", "Diffuse");
+        _helper.getExt4FieldForFormSection("Necropsy", "Accession Number").setValue(ACCESSION_NUMBER);
+        setFormSectionFieldUntilWarningClears("Necropsy", "Accession Number", ACCESSION_NUMBER, "Accession number is required");
+        submitNecropsyStage("Submit Preliminary Results");
         stopImpersonating();
-
-        log("Verify rows were inserted in appropriate datasets");
         goToEHRFolder();
+
+        assertEquals("Wrong necropsy status after the preliminary results", "Preliminary Results Submitted", getNecropsyTaskValue(aliveAnimalId, "status"));
+        assertEquals("The necropsy record did not carry the status", "Preliminary Results Submitted",
+                getSingleRowForAnimal("necropsy", aliveAnimalId, List.of("Id", "necropsyStatus")).get("necropsyStatus"));
         verifyRowCreated("study", "necropsy", aliveAnimalId, 1);
-        verifyRowCreated("study", "grossPathology", aliveAnimalId, 9);
+        verifyRowCreated("study", "grossPathology", aliveAnimalId, 1);
         verifyRowCreated("study", "tissueDisposition", aliveAnimalId, 1);
+        verifyRowCreated("study", "preliminaryDiagnoses", aliveAnimalId, 1);
+        assertEquals("The accession number did not become the animal's necropsy alias", ACCESSION_NUMBER, getNecropsyAlias(aliveAnimalId));
 
-        goToEHRFolder();
-        impersonate(NBRI_FULL_SUBMITTER_VET);
-        EnterDataPage enterDataPage = EnterDataPage.beginAt(this, getContainerPath());
-        enterDataPage.clickAllTasksTab();
-        waitAndClick(Locator.linkWithText("Death/Necropsy"));
-        switchToWindow(1);
-        submitForm("Submit Final", "Finalize");
-        switchToMainWindow();
+        log("Entering the final necropsy");
+        impersonate(NBRI_PATHOLOGIST);
+        beginAt(WebTestHelper.buildURL("ehr", getContainerPath(), "dataEntryForm", Map.of("formType", "Necropsy Final", "taskid", taskid)));
+        waitForElement(Ext4Helper.Locators.ext4Button("Submit Final Results"), WAIT_FOR_PAGE);
+        _helper.getExt4FieldForFormSection("Final Results", "Cause of Death Category").setValue("Respiratory");
+        _helper.getExt4FieldForFormSection("Final Results", "Cause of Death").setValue("Bacterial pneumonia");
+
+        Ext4GridRef finalDiagnoses = _helper.getExt4GridForFormSection("Final Diagnoses");
+        assertEquals("The final diagnoses did not start from the preliminary diagnoses", 1, finalDiagnoses.getRowCount());
+        assertEquals("Wrong copied diagnosis", "Inflammation", finalDiagnoses.getFieldValue(1, "diagnosis"));
+        finalDiagnoses.setGridCell(1, "severity", "Severe");
+
+        Ext4GridRef histology = _helper.getExt4GridForFormSection("Histology");
+        _helper.addRecordToGrid(histology);
+        histology.setGridCell(1, "slideNo", "S1");
+        histology.setGridCell(1, "stain", "Gram Stain");
+
+        waitForFormValidationToClear();
+        click(Ext4Helper.Locators.ext4Button("Submit Final Results"));
+        new Window.WindowFinder(getDriver()).withTitle("Submit Final Necropsy").waitFor().clickButton("Submit Final");
         stopImpersonating();
-
-        log("Verify rows were inserted in appropriate datasets");
         goToEHRFolder();
+
+        assertEquals("Wrong necropsy status after the final results", "Final Results Submitted", getNecropsyTaskValue(aliveAnimalId, "status"));
+        verifyRowCreated("study", "necropsyFinal", aliveAnimalId, 1);
+        verifyRowCreated("study", "histology", aliveAnimalId, 1);
+        verifyRowCreated("study", "finalDiagnoses", aliveAnimalId, 1);
+        assertEquals("Wrong cause of death category", "Respiratory",
+                getSingleRowForAnimal("necropsyFinal", aliveAnimalId, List.of("Id", "causeCategory")).get("causeCategory"));
+        assertEquals("The preliminary diagnosis changed when the final copy was edited", "Marked",
+                getSingleRowForAnimal("preliminaryDiagnoses", aliveAnimalId, List.of("Id", "severity")).get("severity"));
+        assertEquals("Wrong final severity", "Severe",
+                getSingleRowForAnimal("finalDiagnoses", aliveAnimalId, List.of("Id", "severity")).get("severity"));
+        assertEquals("A completed necropsy should leave the animal Dead", "Dead", getNecropsyStatus(aliveAnimalId));
+
+        log("Verify the final report notification was sent");
+        goToModule("Dumbster");
+        waitForTextWithRefresh(WAIT_FOR_PAGE + WAIT_FOR_JAVASCRIPT, "Necropsy Final Report: " + aliveAnimalId);
+
+        log("Verify a task cannot be moved back to an earlier necropsy stage");
+        UpdateRowsCommand regress = new UpdateRowsCommand("ehr", "tasks");
+        regress.addRow(Map.of("taskid", taskid, "formtype", "Necropsy Request"));
+        regress.execute(getApiHelper().getConnection(), getContainerPath());
+        assertEquals("The task moved back to an earlier stage", "Necropsy Final", getNecropsyTaskValue(aliveAnimalId, "taskid/formtype"));
+
+        log("Verify the death closed out the animal's records");
         verifyRowCreated("study", "weight", aliveAnimalId, 1);
+        String deathDay = getDatasetDay("deaths", aliveAnimalId, "date");
+        Assert.assertNotNull("Death record has no date", deathDay);
+        assertEquals("Demographics death date does not match the death record", deathDay, getDatasetDay("demographics", aliveAnimalId, "death"));
+        assertEquals("Animal should be Dead once the death is recorded", "Dead", getCalculatedStatus(aliveAnimalId));
+        for (String dataset : List.of("housing", "assignment", "protocolAssignment"))
+        {
+            assertEquals("End date is not updated for study." + dataset, LocalDateTime.now().format(_dateFormat),
+                    getDatasetDay(dataset, aliveAnimalId, "enddate"));
+        }
+    }
 
-        log("Verify the death date reached demographics and agrees with the death record");
-        String finalizedDeathDay = getDatasetDay("deaths", aliveAnimalId, "date");
-        Assert.assertNotNull("Death record has no date", finalizedDeathDay);
-        assertEquals("Demographics death date does not match the death record",
-                finalizedDeathDay, getDatasetDay("demographics", aliveAnimalId, "death"));
-        // the waitForText below is a weak check: the necropsy diagnosis on this page is also the text "Dead"
-        assertEquals("Animal should be Dead once the death is finalized", "Dead", getCalculatedStatus(aliveAnimalId));
+    private void assertDeathRejected(String animalId, String expectedError)
+    {
+        SimplePostCommand insert = getApiHelper().prepareInsertCommand("study", "deaths", "lsid",
+                new String[]{"Id", "date", "performedby"},
+                new Object[][]{{animalId, LocalDateTime.now(), 1004}});
+        CommandException error = getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), insert, getExtraContext());
+        Map<String, List<String>> errors = getApiHelper().extractErrors(error.getProperties());
+        Assert.assertTrue("Expected '" + expectedError + "' for " + animalId + ", got: " + errors,
+                errors.getOrDefault("Id", List.of()).contains(expectedError));
+    }
 
-        log("Verify animal is marked as dead");
-        AnimalHistoryPage<?> historyPage = AnimalHistoryPage.beginAt(this);
-        historyPage.searchSingleAnimal(aliveAnimalId);
-        waitForText(WAIT_FOR_PAGE, "Dead");
-        waitForText("23 kg"); //checking latest weight is updated.
+    // The request form can rebuild its sections while it loads, discarding what was typed, so re-enter until it sticks
+    private void enterNecropsyRequest(String animalId)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            waitForFormValidationToSettle();
+            setFormElement(Locator.name("Id"), animalId);
+            _helper.getExt4FieldForFormSection("Necropsy Request", "Clinical Differential Diagnoses").setValue("Respiratory distress");
+            _helper.getExt4FieldForFormSection("Request", "Submitting PI").setValue("Dr. Investigator");
+            _ext4Helper.selectComboBoxItem("Submitting Vet:", Ext4Helper.TextMatchTechnique.CONTAINS, NBRI_VET_NAME);
+            waitForFormValidationToSettle();
 
-        goToSchemaBrowser();
-        DataRegionTable table = viewQueryData("study", "housing");
-        table.setFilter("Id", "Equals", aliveAnimalId);
-        Assert.assertTrue("End date is not updated for study.housing", table.getDataAsText(0, "endDate").contains(LocalDateTime.now().format(_dateFormat)));
+            boolean kept = animalId.equals(getFormElement(Locator.name("Id")))
+                    && _helper.getExt4FieldForFormSection("Necropsy Request", "Clinical Differential Diagnoses").getValue() != null
+                    && _helper.getExt4FieldForFormSection("Request", "Submitting Vet").getValue() != null;
+            if (kept)
+                return;
 
-        log("Verify end date in study.assignment");
-        goToSchemaBrowser();
-        table = viewQueryData("study", "assignment");
-        table.setFilter("Id", "Equals", aliveAnimalId);
-        Assert.assertTrue("End date is not updated for study.assignment", table.getDataAsText(0, "endDate").contains(LocalDateTime.now().format(_dateFormat)));
+            Assert.assertTrue("The necropsy request form kept discarding its values", attempt < 3);
+            log("Necropsy request values were discarded, re-entering");
+        }
+    }
 
-        log("Verify end date in study.protocolAssignment");
-        goToSchemaBrowser();
-        table = viewQueryData("study", "protocolAssignment");
-        table.setFilter("Id", "Equals", aliveAnimalId);
-        Assert.assertTrue("End date is not updated for study.protocolAssignment", table.getDataAsText(0, "endDate").contains(LocalDateTime.now().format(_dateFormat)));
+    // the necropsy submit buttons save and navigate without a confirmation window
+    private void submitNecropsyStage(String buttonText)
+    {
+        waitForFormValidationToClear();
+        Locator button = Locator.linkWithText(buttonText);
+        shortWait().until(ExpectedConditions.elementToBeClickable(button));
+        clickAndWait(button.findElement(getDriver()));
+    }
 
+    private String getNecropsyTaskValue(String animalId, String column) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("nbri_ehr", "necropsyTask");
+        select.setColumns(List.of("taskid", "animalId/Id", column));
+        select.addFilter(new Filter("animalId/Id", animalId));
+        SelectRowsResponse response = select.execute(getApiHelper().getConnection(), getContainerPath());
+        assertEquals("Expected one necropsy task for " + animalId, 1, response.getRows().size());
+        return (String) response.getRows().getFirst().get(column);
+    }
+
+    private String getNecropsyStatus(String animalId) throws IOException, CommandException
+    {
+        return (String) getSingleRowForAnimal("necropsyStatus", animalId, List.of("Id", "necropsy_status")).get("necropsy_status");
+    }
+
+    private String getNecropsyAlias(String animalId) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("study", "alias");
+        select.setColumns(List.of("Id", "alias"));
+        select.addFilter(new Filter("Id", animalId));
+        select.addFilter(new Filter("category", "A"));
+        SelectRowsResponse response = select.execute(getApiHelper().getConnection(), getContainerPath());
+        assertEquals("Expected one necropsy alias for " + animalId, 1, response.getRows().size());
+        return (String) response.getRows().getFirst().get("alias");
     }
 
     /**

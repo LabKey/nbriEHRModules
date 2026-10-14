@@ -3,10 +3,12 @@
         <sort column="date" descending="true"/>
     </sorts>
     <columns>
+        <column name="viewNecropsy"/>
         <column name="Id"/>
         <column name="date"/>
         <column name="necropsyTissue"/>
         <column name="necropsyDispositionCode"/>
         <column name="remark"/>
+        <column name="necropsyStatus"/>
     </columns>
 </customView>

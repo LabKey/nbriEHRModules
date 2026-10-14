@@ -41,5 +41,12 @@
         <dataset name="weight" id="1015" category="Clinical" type="Standard"/>
         <dataset name="grossPathology" id="1022" category="Pathology" type="Standard"/>
         <dataset name="tissueDisposition" id="1026" category="Pathology" type="Standard"/>
+        <dataset name="necropsyRequest" id="1051" category="Pathology" type="Standard"/>
+        <dataset name="procedureStaff" id="1052" category="Pathology" type="Standard"/>
+        <dataset name="tissueMeasurements" id="1053" category="Pathology" type="Standard"/>
+        <dataset name="histology" id="1054" category="Pathology" type="Standard"/>
+        <dataset name="necropsyFinal" id="1055" category="Pathology" type="Standard"/>
+        <dataset name="preliminaryDiagnoses" id="1056" category="Pathology" type="Standard"/>
+        <dataset name="finalDiagnoses" id="1057" category="Pathology" type="Standard"/>
     </datasets>
 </datasets>

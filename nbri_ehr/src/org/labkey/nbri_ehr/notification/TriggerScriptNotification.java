@@ -18,6 +18,7 @@ package org.labkey.nbri_ehr.notification;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
 import org.labkey.api.ldk.notification.NotificationService;
 import org.labkey.api.security.User;
@@ -26,6 +27,8 @@ import org.labkey.api.util.MailHelper;
 
 import jakarta.mail.Address;
 import jakarta.mail.Message;
+
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -36,6 +39,11 @@ public class TriggerScriptNotification
     private static final Logger _log = LogManager.getLogger(TriggerScriptNotification.class);
 
     public static void sendMessage(String subject, String bodyHtml, Collection<UserPrincipal> recipients, Container container, User user)
+    {
+        sendMessage(subject, bodyHtml, recipients, container, user, null);
+    }
+
+    public static void sendMessage(String subject, String bodyHtml, Collection<UserPrincipal> recipients, Container container, User user, @Nullable File attachment)
     {
         try
         {
@@ -72,6 +80,8 @@ public class TriggerScriptNotification
 
             msg.setRecipients(Message.RecipientType.TO, StringUtils.join(emails, ","));
             msg.setEncodedHtmlContent(bodyHtml);
+            if (attachment != null)
+                msg.addAttachment(attachment);
 
             MailHelper.send(msg, user, container);
         }
