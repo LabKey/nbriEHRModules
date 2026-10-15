@@ -24,7 +24,7 @@ public class NBRINecropsyRequestFormType extends NBRINecropsyBaseFormType
                 new NBRIAnimalDetailsFormSection(),
                 new NBRINecropsyTaskFormSection(false),
                 new NBRINecropsyRequestFormSection(false)
-        ), "NECROPSY_REQUEST_REVIEW", "NECROPSY_REQUEST_SUBMIT", false);
+        ), "NECROPSY_REQUEST_REVIEW", "NECROPSY_REQUEST_SUBMIT", false, List.of());
 
         for (FormSection s : getFormSections())
         {

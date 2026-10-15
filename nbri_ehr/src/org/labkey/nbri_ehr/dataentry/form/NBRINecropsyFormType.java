@@ -39,7 +39,7 @@ public class NBRINecropsyFormType extends NBRINecropsyBaseFormType
                 new NBRIProcedureStaffFormSection(false),
                 new NBRITissueMeasurementsFormSection(false),
                 new NBRITissueDispositionFormSection(false)
-        ), "NECROPSY_PRELIMINARY_REVIEW", "NECROPSY_PRELIMINARY_SUBMIT", true);
+        ), "NECROPSY_PRELIMINARY_REVIEW", "NECROPSY_PRELIMINARY_SUBMIT", true, REQUEST_QUERIES);
 
         for (FormSection s : getFormSections())
         {

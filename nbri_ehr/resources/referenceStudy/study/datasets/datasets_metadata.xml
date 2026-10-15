@@ -794,10 +794,6 @@
                 <columnTitle>Preliminary Comments</columnTitle>
                 <datatype>varchar</datatype>
             </column>
-            <column columnName="necropsyStatus">
-                <columnTitle>Necropsy Status</columnTitle>
-                <datatype>varchar</datatype>
-            </column>
         </columns>
     </table>
     <table tableName="grossPathology" tableDbType="TABLE">
@@ -815,10 +811,6 @@
                 <datatype>timestamp</datatype>
                 <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
                 <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
-            </column>
-            <column columnName="necropsyStatus">
-                <columnTitle>Necropsy Status</columnTitle>
-                <datatype>varchar</datatype>
             </column>
         </columns>
     </table>
@@ -842,10 +834,6 @@
                 <datatype>varchar</datatype>
             </column>
             <column columnName="necropsyDispositionCode">
-                <datatype>varchar</datatype>
-            </column>
-            <column columnName="necropsyStatus">
-                <columnTitle>Necropsy Status</columnTitle>
                 <datatype>varchar</datatype>
             </column>
         </columns>
@@ -898,10 +886,6 @@
                 <columnTitle>History</columnTitle>
                 <datatype>varchar</datatype>
             </column>
-            <column columnName="necropsyStatus">
-                <columnTitle>Necropsy Status</columnTitle>
-                <datatype>varchar</datatype>
-            </column>
         </columns>
     </table>
     <table tableName="procedureStaff" tableDbType="TABLE">
@@ -930,10 +914,6 @@
             </column>
             <column columnName="category">
                 <columnTitle>Category</columnTitle>
-                <datatype>varchar</datatype>
-            </column>
-            <column columnName="necropsyStatus">
-                <columnTitle>Necropsy Status</columnTitle>
                 <datatype>varchar</datatype>
             </column>
         </columns>
@@ -990,10 +970,6 @@
                 <columnTitle>Units</columnTitle>
                 <datatype>varchar</datatype>
             </column>
-            <column columnName="necropsyStatus">
-                <columnTitle>Necropsy Status</columnTitle>
-                <datatype>varchar</datatype>
-            </column>
         </columns>
     </table>
     <table tableName="histology" tableDbType="TABLE">
@@ -1028,10 +1004,6 @@
                 <columnTitle>Slide No.</columnTitle>
                 <datatype>varchar</datatype>
             </column>
-            <column columnName="necropsyStatus">
-                <columnTitle>Necropsy Status</columnTitle>
-                <datatype>varchar</datatype>
-            </column>
         </columns>
     </table>
     <table tableName="necropsyFinal" tableDbType="TABLE">
@@ -1060,10 +1032,6 @@
             </column>
             <column columnName="comments">
                 <columnTitle>Comments</columnTitle>
-                <datatype>varchar</datatype>
-            </column>
-            <column columnName="necropsyStatus">
-                <columnTitle>Necropsy Status</columnTitle>
                 <datatype>varchar</datatype>
             </column>
         </columns>
@@ -1100,10 +1068,6 @@
                 <columnTitle>Distribution</columnTitle>
                 <datatype>varchar</datatype>
             </column>
-            <column columnName="necropsyStatus">
-                <columnTitle>Necropsy Status</columnTitle>
-                <datatype>varchar</datatype>
-            </column>
         </columns>
     </table>
     <table tableName="finalDiagnoses" tableDbType="TABLE">
@@ -1136,10 +1100,6 @@
             </column>
             <column columnName="distribution">
                 <columnTitle>Distribution</columnTitle>
-                <datatype>varchar</datatype>
-            </column>
-            <column columnName="necropsyStatus">
-                <columnTitle>Necropsy Status</columnTitle>
                 <datatype>varchar</datatype>
             </column>
         </columns>

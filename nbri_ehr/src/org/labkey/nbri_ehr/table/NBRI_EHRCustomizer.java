@@ -62,6 +62,7 @@ import org.labkey.api.view.ActionURL;
 import org.labkey.api.view.template.ClientDependency;
 import org.labkey.api.writer.HtmlWriter;
 import org.labkey.nbri_ehr.NBRI_EHRManager;
+import org.labkey.nbri_ehr.NBRI_EHRSchema;
 import org.labkey.nbri_ehr.dataentry.form.NBRIClinicalObservationsFormType;
 import org.labkey.nbri_ehr.dataentry.form.NBRINecropsyBaseFormType;
 
@@ -117,6 +118,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             if (NECROPSY_DATASETS.stream().anyMatch(name -> matches(ti, "study", name)))
             {
                 addNecropsyReportLink(ti, FieldKey.fromParts("taskid", "formtype"));
+                addNecropsyStatus(ti);
             }
 
             if (matches(ti, "study", "cases"))
@@ -462,6 +464,23 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         ci.setWidth("50px");
 
         ti.addColumn(ci);
+    }
+
+    /** The task's live status; storing it per record would make each later stage re-save the earlier stages' records. */
+    private void addNecropsyStatus(AbstractTableInfo ti)
+    {
+        String name = "necropsyStatus";
+        ColumnInfo taskid = ti.getColumn("taskid");
+        if (ti.getColumn(name) != null || taskid == null)
+            return;
+
+        TableInfo necropsyTask = NBRI_EHRSchema.getInstance().getSchema().getTable("necropsyTask");
+        SQLFragment sql = new SQLFragment("(SELECT t.status FROM " + necropsyTask.getSelectName() + " t WHERE t.taskid = " + ExprColumn.STR_TABLE_ALIAS + ".taskid)");
+        ExprColumn col = new ExprColumn(ti, name, sql, JdbcType.VARCHAR, taskid);
+        col.setLabel("Necropsy Status");
+        col.setUserEditable(false);
+        col.setReadOnly(true);
+        ti.addColumn(col);
     }
 
     private void customizeNecropsyTask(AbstractTableInfo ti)

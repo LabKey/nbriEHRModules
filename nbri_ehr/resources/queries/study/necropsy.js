@@ -24,8 +24,8 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
     triggerHelper.reportDataChange("study", "necropsy", [row.Id]);
 
     // a draft accession number is not yet the animal's alias
-    if (!helper.isETL() && !helper.isValidateOnly() && row.Id && row.accessionNo && row.QCStateLabel &&
-            EHR.Server.Security.getQCStateByLabel(row.QCStateLabel).PublicData) {
+    var qc = row.QCStateLabel ? EHR.Server.Security.getQCStateByLabel(row.QCStateLabel) : null;
+    if (!helper.isETL() && !helper.isValidateOnly() && row.Id && row.accessionNo && qc && qc.PublicData) {
         triggerHelper.upsertNecropsyAlias(row.Id, row.date, row.accessionNo, row.QCStateLabel, row.performedby ? String(row.performedby) : null);
     }
 });

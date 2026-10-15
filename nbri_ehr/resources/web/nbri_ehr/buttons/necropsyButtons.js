@@ -5,7 +5,7 @@
  */
 /**
  * Submit buttons for the Necropsy Request, Necropsy and Necropsy Final forms. Each stamps the necropsy status on the
- * necropsy task and every record, and records its stage as the task's form type.
+ * necropsy task and records its stage as the task's form type.
  */
 (function(){
 
@@ -23,26 +23,32 @@
         'query.queryName': 'necropsyTask'
     });
 
-    function getStatusField(rec){
-        if (rec.fields.keys.indexOf('necropsyStatus') !== -1)
-            return 'necropsyStatus';
-        return rec.fields.keys.indexOf('status') !== -1 ? 'status' : null;
-    }
-
     // force is for the final stage, which may move between its two statuses
     function setStage(panel, status, formType, force){
-        panel.storeCollection.clientStores.each(function(store){
-            var sectionName = store.sectionCfg.name;
-            store.each(function(rec){
-                var statusField = getStatusField(rec);
-                var current = statusField ? STATUS_RANK[rec.get(statusField)] : undefined;
-                if (statusField && (force || current === undefined || current < STATUS_RANK[status]))
-                    rec.set(statusField, status);
+        var necropsyTask = panel.storeCollection.getClientStoreByName('necropsyTask');
+        if (necropsyTask) {
+            necropsyTask.each(function(rec){
+                var current = STATUS_RANK[rec.get('status')];
+                if (force || current === undefined || current < STATUS_RANK[status])
+                    rec.set('status', status);
+            });
+        }
 
-                if (sectionName === 'tasks' && FORM_TYPES.indexOf(rec.get('formtype')) < FORM_TYPES.indexOf(formType))
+        // later stages save it only when modified, and its QC state must follow this submission
+        var necropsyTaskServer = panel.storeCollection.getServerStoreForQuery('nbri_ehr', 'necropsyTask');
+        if (necropsyTaskServer) {
+            necropsyTaskServer.each(function(rec){
+                rec.setDirty();
+            });
+        }
+
+        var tasks = panel.storeCollection.getClientStoreByName('tasks');
+        if (tasks) {
+            tasks.each(function(rec){
+                if (FORM_TYPES.indexOf(rec.get('formtype')) < FORM_TYPES.indexOf(formType))
                     rec.set('formtype', formType);
             });
-        });
+        }
     }
 
     function submitForReview(panel, btn){
@@ -66,7 +72,7 @@
             disableOn: 'ERROR',
             handler: function(btn){
                 var panel = btn.up('ehr-dataentrypanel');
-                setStage(panel, status, formType, formType === 'Necropsy Final');
+                setStage(panel, status, formType);
                 submitForReview(panel, btn);
             }
         });

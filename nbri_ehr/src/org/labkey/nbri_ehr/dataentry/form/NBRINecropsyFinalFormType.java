@@ -22,6 +22,7 @@ import org.labkey.nbri_ehr.dataentry.section.NBRITissueDispositionFormSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRITissueMeasurementsFormSection;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 public class NBRINecropsyFinalFormType extends NBRINecropsyBaseFormType
 {
@@ -41,7 +42,8 @@ public class NBRINecropsyFinalFormType extends NBRINecropsyBaseFormType
                 new NBRIHistologyFormSection(false),
                 NBRIDiagnosesFormSection.forFinal(false),
                 new NBRINecropsyFinalFormSection(false)
-        ), "NECROPSY_FINAL_REVIEW", "NECROPSY_FINAL_SUBMIT", true);
+        ), "NECROPSY_FINAL_REVIEW", "NECROPSY_FINAL_SUBMIT", true,
+                Stream.concat(REQUEST_QUERIES.stream(), PRELIMINARY_QUERIES.stream()).toList());
 
         for (FormSection s : getFormSections())
         {

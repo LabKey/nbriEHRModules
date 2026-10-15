@@ -1924,7 +1924,20 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         _helper.addRecordToGrid(histology);
         histology.setGridCell(1, "slideNo", "S1");
         histology.setGridCell(1, "stain", "Gram Stain");
+        submitNecropsyStage("Save Draft");
+        stopImpersonating();
 
+        log("Verify a final draft leaves the earlier stages submitted");
+        assertEquals("A final draft changed the necropsy task's QC state", "Completed", getNecropsyTaskValue(aliveAnimalId, "QCState/Label"));
+        for (String earlierStage : List.of("necropsyRequest", "necropsy", "preliminaryDiagnoses"))
+        {
+            assertEquals("A final draft changed the QC state of study." + earlierStage, "Completed",
+                    getSingleRowForAnimal(earlierStage, aliveAnimalId, List.of("Id", "QCState/Label")).get("QCState/Label"));
+        }
+
+        impersonate(NBRI_PATHOLOGIST);
+        beginAt(WebTestHelper.buildURL("ehr", getContainerPath(), "dataEntryForm", Map.of("formType", "Necropsy Final", "taskid", taskid)));
+        waitForElement(Ext4Helper.Locators.ext4Button("Submit Final Results"), WAIT_FOR_PAGE);
         waitForFormValidationToClear();
         click(Ext4Helper.Locators.ext4Button("Submit Final Results"));
         new Window.WindowFinder(getDriver()).withTitle("Submit Final Necropsy").waitFor().clickButton("Submit Final");
@@ -1932,6 +1945,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         goToEHRFolder();
 
         assertEquals("Wrong necropsy status after the final results", "Final Results Submitted", getNecropsyTaskValue(aliveAnimalId, "status"));
+        assertEquals("The request record does not show the task's status", "Final Results Submitted",
+                getSingleRowForAnimal("necropsyRequest", aliveAnimalId, List.of("Id", "necropsyStatus")).get("necropsyStatus"));
+        assertEquals("Final submission changed the request's QC state", "Completed",
+                getSingleRowForAnimal("necropsyRequest", aliveAnimalId, List.of("Id", "QCState/Label")).get("QCState/Label"));
         verifyRowCreated("study", "necropsyFinal", aliveAnimalId, 1);
         verifyRowCreated("study", "histology", aliveAnimalId, 1);
         verifyRowCreated("study", "finalDiagnoses", aliveAnimalId, 1);
