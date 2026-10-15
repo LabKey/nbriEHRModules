@@ -15,13 +15,34 @@
  */
 package org.labkey.nbri_ehr.dataentry.section;
 
+import org.labkey.api.data.TableInfo;
+import org.labkey.api.query.FieldKey;
 import org.labkey.api.view.template.ClientDependency;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class NBRIHousingFormSection extends BaseFormSection
 {
+    private boolean _showCurrentLocation = false;
+
     public NBRIHousingFormSection(boolean collapsible, boolean initCollapsed)
     {
         super("study", "housing", "Housing Transfers", "ehr-gridpanel", collapsible, initCollapsed, true);
+    }
+
+    public NBRIHousingFormSection(boolean collapsible, boolean initCollapsed, boolean showCurrentLocation)
+    {
+        this(collapsible, initCollapsed);
+        _showCurrentLocation = showCurrentLocation;
+        if (showCurrentLocation)
+        {
+            addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/model/sources/HousingTransfer.js"));
+            addConfigSource("HousingTransfer");
+
+            addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/data/HousingTransferClientStore.js"));
+            setClientStoreClass("NBRI_EHR.data.HousingTransferClientStore");
+        }
     }
 
     public NBRIHousingFormSection(boolean collapsible, boolean initCollapsed, boolean isChild, String parentQueryName)
@@ -36,5 +57,22 @@ public class NBRIHousingFormSection extends BaseFormSection
             setClientStoreClass("EHR.data.ChildClientStore");
             addExtraProperty("parentQueryName", parentQueryName);
         }
+    }
+
+    // Display-only: not a housing column, so insert/update ignores it
+    @Override
+    protected List<FieldKey> getFieldKeys(TableInfo ti)
+    {
+        List<FieldKey> keys = new ArrayList<>(super.getFieldKeys(ti));
+        if (_showCurrentLocation)
+        {
+            keys.add(keys.indexOf(FieldKey.fromParts("Id")) + 1, FieldKey.fromString("Id/curLocation/location"));
+
+            FieldKey cage = FieldKey.fromParts("cage");
+            if (keys.remove(cage))
+                keys.add(Math.max(keys.indexOf(FieldKey.fromParts("date")), 0), cage);
+        }
+
+        return keys;
     }
 }
