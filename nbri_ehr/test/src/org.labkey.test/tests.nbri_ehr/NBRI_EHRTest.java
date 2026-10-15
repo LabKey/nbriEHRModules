@@ -1390,7 +1390,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         observation.setGridCell(3, "observation", "Normal to low");
         observation.setGridCellJS(3, "remark", "remark for Appetite");
 
-        observation.setGridCell(4, "observation", "2.5");
+        observation.setGridCell(4, "observation", "Lean (2.5)");
         observation.setGridCellJS(4, "remark", "remark for BCS");
 
         observation.setGridCell(5, "observation", "10%");
@@ -1412,7 +1412,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Verifying Animal Details shows the most recent BCS");
         String bcs = getSnapshotFieldValue(animalId, "BCS");
-        Assert.assertTrue("Animal Details shows the wrong BCS: " + bcs, bcs.startsWith("2.5 ("));
+        Assert.assertTrue("Animal Details shows the wrong BCS: " + bcs, bcs.startsWith("Lean (2.5) ("));
 
         log("Closing the case");
         goToEHRFolder();
@@ -1491,7 +1491,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final Map<String, String> NBRI_DAILY_OBS_VALUES = Map.of(
             "Activity", "0-1 Extremely Lethargic",
             "Appetite", "Normal to low",
-            "BCS", "2.5",
+            "BCS", "Lean (2.5)",
             "Hydration", "10%",
             "Stool", "M/F",
             "Verified Id?", "No");
