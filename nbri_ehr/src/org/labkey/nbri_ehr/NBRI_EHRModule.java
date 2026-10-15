@@ -57,8 +57,6 @@ import org.labkey.nbri_ehr.demographics.ProtocolAssignmentDemographicsProvider;
 import org.labkey.nbri_ehr.history.*;
 import org.labkey.nbri_ehr.notification.NBRIClinicalMoveNotification;
 import org.labkey.nbri_ehr.notification.NBRIDeathNotification;
-import org.labkey.nbri_ehr.notification.NBRINecropsyFinalNotification;
-import org.labkey.nbri_ehr.notification.NBRINecropsyPreliminaryNotification;
 import org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification;
 import org.labkey.nbri_ehr.notification.NBRIPregnancyOutcomeNotification;
 import org.labkey.nbri_ehr.notification.NBRIProcedureOverdueNotification;
@@ -197,8 +195,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         NotificationService.get().registerNotification(new NBRIProcedureOverdueNotification(this));
         NotificationService.get().registerNotification(new NBRIPregnancyOutcomeNotification(this));
         NotificationService.get().registerNotification(new NBRINecropsyRequestNotification(this));
-        NotificationService.get().registerNotification(new NBRINecropsyPreliminaryNotification(this));
-        NotificationService.get().registerNotification(new NBRINecropsyFinalNotification(this));
+        // TODO: register NBRINecropsyPreliminaryNotification and NBRINecropsyFinalNotification once they can carry the printable necropsy report
 
         EHRService.get().registerReportLink(EHRService.REPORT_LINK_TYPE.moreReports, "Printable Necropsy Report", this, DetailsURL.fromString("/nbri_ehr-necropsyReport.view"), "Pathology");
         EHRService.get().registerReportLink(EHRService.REPORT_LINK_TYPE.moreReports, "Acquisition Report", this, DetailsURL.fromString("/nbri_ehr-acquisitionReport.view"), "Population Overview");

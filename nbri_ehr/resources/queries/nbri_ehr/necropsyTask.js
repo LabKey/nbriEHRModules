@@ -31,7 +31,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
     // notify once per stage: when the status changes or the task first becomes public, not on every later save
     if (!helper.isValidateOnly() && row.status && isPublic(row) && (!isPublic(oldRow) || oldRow.status !== row.status)) {
-        triggerHelper.sendNecropsyNotification(row.taskid, row.objectid, row.status);
+        triggerHelper.sendNecropsyNotification(row.taskid, row.status);
     }
 });
 

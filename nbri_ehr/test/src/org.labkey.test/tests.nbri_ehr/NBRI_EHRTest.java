@@ -100,7 +100,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String NBRI_PATHOLOGIST = "pathologist@nbritest.com";
     private static final String DEATH_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRIDeathNotification";
     private static final String NECROPSY_REQUEST_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification";
-    private static final String NECROPSY_FINAL_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRINecropsyFinalNotification";
     private static final String ACCESSION_NUMBER = "N26-001";
     // Assign the vet-tech role by its class-based name rather than its "EHR Veterinarian Technician" display
     // name: NIRC's role shares that display name, so a display-name lookup can resolve to the wrong module's
@@ -1832,7 +1831,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     {
         enableNotification(DEATH_NOTIFICATION);
         enableNotification(NECROPSY_REQUEST_NOTIFICATION);
-        enableNotification(NECROPSY_FINAL_NOTIFICATION);
         createSubjectsForDeathForm();
 
         log("Verify the deaths trigger rejects animals that cannot die");
@@ -1959,10 +1957,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assertEquals("Wrong final severity", "Severe",
                 getSingleRowForAnimal("finalDiagnoses", aliveAnimalId, List.of("Id", "severity")).get("severity"));
         assertEquals("A completed necropsy should leave the animal Dead", "Dead", getNecropsyStatus(aliveAnimalId));
-
-        log("Verify the final report notification was sent");
-        goToModule("Dumbster");
-        waitForTextWithRefresh(WAIT_FOR_PAGE + WAIT_FOR_JAVASCRIPT, "Necropsy Final Report: " + aliveAnimalId);
 
         log("Verify a task cannot be moved back to an earlier necropsy stage");
         UpdateRowsCommand regress = new UpdateRowsCommand("ehr", "tasks");

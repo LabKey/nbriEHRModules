@@ -39,7 +39,6 @@ import org.labkey.api.ehr.EHRService;
 import org.labkey.api.ehr.notification.AbstractEHRNotification;
 import org.labkey.api.ehr.security.EHRVeterinarianPermission;
 import org.labkey.api.ldk.notification.NotificationService;
-import org.labkey.api.puppeteer.PuppeteerService;
 import org.labkey.api.query.BatchValidationException;
 import org.labkey.api.query.DuplicateKeyException;
 import org.labkey.api.query.FieldKey;
@@ -48,14 +47,12 @@ import org.labkey.api.query.QueryService;
 import org.labkey.api.query.QueryUpdateService;
 import org.labkey.api.query.QueryUpdateServiceException;
 import org.labkey.api.query.UserSchema;
-import org.labkey.api.security.SecurityManager;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
 import org.labkey.api.study.StudyService;
-import org.labkey.api.util.FileUtil;
 import org.labkey.api.util.GUID;
 import org.labkey.api.util.JobRunner;
 import org.labkey.api.util.PageFlowUtil;
@@ -65,18 +62,10 @@ import org.labkey.nbri_ehr.dataentry.form.NBRIClinicalObservationsFormType;
 import org.labkey.nbri_ehr.dataentry.form.NBRINecropsyBaseFormType;
 import org.labkey.nbri_ehr.notification.NBRIClinicalMoveNotification;
 import org.labkey.nbri_ehr.notification.NBRIDeathNotification;
-import org.labkey.nbri_ehr.notification.NBRINecropsyFinalNotification;
-import org.labkey.nbri_ehr.notification.NBRINecropsyPreliminaryNotification;
 import org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification;
 import org.labkey.nbri_ehr.notification.NBRIPregnancyOutcomeNotification;
 import org.labkey.nbri_ehr.notification.TriggerScriptNotification;
-import org.labkey.vfs.FileLike;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStream;
-import java.net.URI;
-import java.net.URL;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
@@ -731,38 +720,15 @@ public class NBRI_EHRTriggerHelper
         }
     }
 
-    /**
-     * Emails the notification for the necropsy status just reached, once the save commits. The preliminary and final
-     * reports carry the printable report as a PDF when the PDF service is available.
-     */
-    public void sendNecropsyNotification(final String taskid, final String objectid, final String status)
+    /** Emails the notification for the necropsy status just reached, once the save commits. */
+    public void sendNecropsyNotification(final String taskid, final String status)
     {
-        final String formType;
-        final AbstractEHRNotification notification;
-        switch (status == null ? "" : status)
-        {
-            case NBRI_EHRManager.NECROPSY_REQUEST_PENDING ->
-            {
-                formType = NBRINecropsyBaseFormType.REQUEST;
-                notification = new NBRINecropsyRequestNotification();
-            }
-            case NBRI_EHRManager.NECROPSY_PRELIMINARY_SUBMITTED ->
-            {
-                formType = NBRINecropsyBaseFormType.PRELIMINARY;
-                notification = new NBRINecropsyPreliminaryNotification();
-            }
-            case NBRI_EHRManager.NECROPSY_FINAL_SUBMITTED, NBRI_EHRManager.NECROPSY_FINAL_SUBMITTED_PENDING ->
-            {
-                formType = NBRINecropsyBaseFormType.FINAL;
-                notification = new NBRINecropsyFinalNotification();
-            }
-            default ->
-            {
-                return;
-            }
-        }
-        if (taskid == null)
+        // TODO: NBRINecropsyPreliminaryNotification and NBRINecropsyFinalNotification are unregistered until they can carry the printable report (nbri_ehr-necropsyReport.view), e.g. as a PDF rendered by PuppeteerService
+        if (taskid == null || !NBRI_EHRManager.NECROPSY_REQUEST_PENDING.equals(status))
             return;
+
+        final String formType = NBRINecropsyBaseFormType.REQUEST;
+        final AbstractEHRNotification notification = new NBRINecropsyRequestNotification();
 
         if (!NotificationService.get().isServiceEnabled() || !NotificationService.get().isActive(notification, _container))
         {
@@ -795,16 +761,7 @@ public class NBRI_EHRTriggerHelper
                         appendAnimalDetails(html, id, _container);
                         appendNecropsyLinks(html, taskid, formType);
 
-                        File pdf = NBRINecropsyBaseFormType.REQUEST.equals(formType) ? null : renderNecropsyReport(objectid);
-                        try
-                        {
-                            TriggerScriptNotification.sendMessage(notification.getEmailSubject(_container) + ": " + id, html.toString(), recipients, _container, _user, pdf);
-                        }
-                        finally
-                        {
-                            if (pdf != null)
-                                FileUtil.deleteDir(pdf.getParentFile());
-                        }
+                        TriggerScriptNotification.sendMessage(notification.getEmailSubject(_container) + ": " + id, html.toString(), recipients, _container, _user);
                     }), DbScope.CommitTaskOption.POSTCOMMIT);
 
             transaction.commit();
@@ -878,37 +835,6 @@ public class NBRI_EHRTriggerHelper
         String allUrl = new ActionURL("query", "executeQuery", _container)
                 .addParameter("schemaName", "nbri_ehr").addParameter("query.queryName", "necropsyTask").getURIString();
         html.append("<a href='").append(PageFlowUtil.filter(allUrl)).append("'>Click here to view all necropsies</a><br>");
-    }
-
-    /** Renders the printable necropsy report to a PDF in its own temp directory, or returns null if it can't. */
-    private @Nullable File renderNecropsyReport(String objectid)
-    {
-        PuppeteerService puppeteer = PuppeteerService.get();
-        if (puppeteer == null || !puppeteer.isAvailable())
-        {
-            _log.warn("PDF service is not available, sending the necropsy report without its PDF");
-            return null;
-        }
-
-        FileLike dir = null;
-        try (SecurityManager.TransformSession session = SecurityManager.createTransformSession(_user))
-        {
-            dir = FileUtil.createTempDirectoryFileLike("necropsyReport");
-            File pdf = dir.resolveChild("NecropsyReport.pdf").toNioPathForWrite().toFile();
-            URL url = new URI(new ActionURL("nbri_ehr", "necropsyReport.view", _container).addParameter("objectIds", objectid).getURIString()).toURL();
-            try (OutputStream out = new FileOutputStream(pdf))
-            {
-                puppeteer.streamPDF(_user, url, null, null, pdf.getName(), session.getApiKey(), () -> out);
-            }
-            return pdf;
-        }
-        catch (Exception e)
-        {
-            _log.error("Unable to render the necropsy report PDF for necropsy task {}", objectid, e);
-            if (dir != null)
-                FileUtil.deleteDir(dir);
-            return null;
-        }
     }
 
     private void appendAnimalDetails(StringBuilder html, String id, final Container container)
