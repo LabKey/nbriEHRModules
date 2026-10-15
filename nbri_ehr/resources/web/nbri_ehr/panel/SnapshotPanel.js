@@ -403,7 +403,7 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
         var text;
         if (data && data['mostRecentBCS']){
             var date = LDK.ConvertUtils.parseDate(data['mostRecentBCSDate']);
-            text = LABKEY.Utils.encodeHtml(data['mostRecentBCS']) + (date ? ', ' + Ext4.Date.format(date, LABKEY.extDefaultDateFormat) : '');
+            text = LABKEY.Utils.encodeHtml(data['mostRecentBCS']) + (date ? ' (' + Ext4.Date.format(date, LABKEY.extDefaultDateFormat) + ')' : '');
         }
 
         toSet['mostRecentBCS'] = text;

@@ -1410,6 +1410,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         // order group and stays on the form's task: one task group, and no empty task created.
         verifyScheduledObservationTaskGrouping(animalId, obsTasksBefore, 1);
 
+        log("Verifying Animal Details shows the most recent BCS");
+        String bcs = getSnapshotFieldValue(animalId, "BCS");
+        Assert.assertTrue("Animal Details shows the wrong BCS: " + bcs, bcs.startsWith("2.5 ("));
+
         log("Closing the case");
         goToEHRFolder();
         waitAndClickAndWait(Locator.linkWithText("Active Clinical Cases"));

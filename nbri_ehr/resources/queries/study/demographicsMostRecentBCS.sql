@@ -6,8 +6,8 @@
 SELECT
   co.Id,
   co.date AS mostRecentBCSDate,
-  -- Lists every score when more than one was entered on the latest date
-  group_concat(DISTINCT co.observation) AS mostRecentBCS
+  -- Lists every score recorded at the latest timestamp; earlier scores from the same day are excluded
+  group_concat(DISTINCT co.observation, ', ') AS mostRecentBCS
 FROM study.clinical_observations co
 -- latest: each animal's most recent BCS date
 JOIN (
