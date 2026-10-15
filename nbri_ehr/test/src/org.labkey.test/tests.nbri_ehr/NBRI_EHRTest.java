@@ -144,6 +144,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     // cannot change what the snapshot reports.
     private static final String[] LOCATION_ANIMALS = {"LOC0001"};
 
+    // Housed by testHousingTransferLocationColumns in different cages, so switching the row's Id must change the
+    // current location it shows.
+    private static final String[] TRANSFER_ANIMALS = {"HSG0001", "HSG0002"};
+
     // Rooms for testRoomDateDisabledCascade, dedicated to it so a sibling housing an animal or retiring a shared room
     // cannot change what it observes.
     private static final String RETIRED_ROOM_NAME = "DIS1";
@@ -2373,6 +2377,53 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         String location = getSnapshotFieldValue(LOCATION_ANIMALS[0], "Location");
         Assert.assertTrue("Animal Details reported an unexpected location: " + location,
                 location.startsWith(CAGE_IN_R1));
+    }
+
+    @Test
+    public void testHousingTransferLocationColumns() throws Exception
+    {
+        createAliveAnimals(TRANSFER_ANIMALS);
+        houseAnimals(new String[]{TRANSFER_ANIMALS[0]}, CAGE_IN_R1);
+        houseAnimals(new String[]{TRANSFER_ANIMALS[1]}, CAGE_IN_R2);
+
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Housing Transfers"));
+        lockForm();
+
+        Ext4GridRef housing = _helper.getExt4GridForFormSection("Housing Transfers");
+        _helper.addRecordToGrid(housing);
+
+        log("Verifying the location columns sit between the Id and the In Date");
+        List<String> columns = getVisibleColumns(housing);
+        int idIdx = columns.indexOf("Id");
+        Assert.assertTrue("Housing grid has no Id column: " + columns, idIdx > -1);
+        Assert.assertEquals("Unexpected column order after the Id",
+                List.of("Id", "Id/curLocation/location", "cage", "date"),
+                columns.subList(idIdx, Math.min(idIdx + 4, columns.size())));
+        Assert.assertEquals("Wrong header over the current location",
+                "Current Location", getColumnProperty(housing, "Id/curLocation/location", "text"));
+        Assert.assertEquals("Wrong header over the new location",
+                "New Location", getColumnProperty(housing, "cage", "text"));
+        Assert.assertEquals("Current Location should not be editable",
+                false, getColumnProperty(housing, "Id/curLocation/location", "editable"));
+
+        log("Verifying the current location follows the animal's active housing");
+        // the full location id, not the room alone that the shared EHR location lookup would build
+        housing.setGridCell(1, "Id", TRANSFER_ANIMALS[0]);
+        waitFor(() -> CAGE_IN_R1.equals(housing.getFieldValue(1, "Id/curLocation/location")),
+                "Current location did not show " + CAGE_IN_R1 + ", was: " + housing.getFieldValue(1, "Id/curLocation/location"), WAIT_FOR_JAVASCRIPT);
+
+        housing.setGridCell(1, "Id", TRANSFER_ANIMALS[1]);
+        waitFor(() -> CAGE_IN_R2.equals(housing.getFieldValue(1, "Id/curLocation/location")),
+                "Current location did not follow a changed Id to " + CAGE_IN_R2 + ", was: " + housing.getFieldValue(1, "Id/curLocation/location"), WAIT_FOR_JAVASCRIPT);
+
+        // every check above reads the unsaved row, so discard rather than move the animal
+        _helper.discardForm();
+    }
+
+    private List<String> getVisibleColumns(Ext4GridRef grid)
+    {
+        return (List<String>) grid.getFnEval("var ret = []; for (var i=0;i<this.columns.length;i++){if (!this.columns[i].hidden) ret.push(this.columns[i].dataIndex);} return ret;");
     }
 
     /**

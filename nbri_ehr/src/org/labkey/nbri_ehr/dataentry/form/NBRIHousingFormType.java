@@ -33,7 +33,7 @@ public class NBRIHousingFormType extends NBRIBaseTaskFormType
         super(ctx, owner, NAME, "Housing Transfers", "Colony Management", Arrays.asList(
                 new NBRITaskFormSection(),
                 new NBRIAnimalDetailsFormSection(),
-                new NBRIHousingFormSection(true, false)
+                new NBRIHousingFormSection(true, false, true)
         ));
     }
 
