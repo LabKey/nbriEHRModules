@@ -123,16 +123,16 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
                         name: 'flags'
                     },{
                         xtype: 'displayfield',
-                        fieldLabel: 'Remark',
-                        name: 'remark'
-                    },{
-                        xtype: 'displayfield',
                         fieldLabel: 'Last TB',
                         name: 'lastTB'
                     },{
                         xtype: 'displayfield',
                         fieldLabel: 'Pregnant',
                         name: 'pregnant'
+                    },{
+                        xtype: 'displayfield',
+                        fieldLabel: 'BCS',
+                        name: 'mostRecentBCS'
                     },{
                         xtype: 'displayfield',
                         fieldLabel: 'Weights',
@@ -395,6 +395,18 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
     appendDataResults: function(toSet, results, id){
         this.callParent(arguments);
         this.appendPregnancy(toSet, results, id);
+        this.appendBCS(toSet, results);
+    },
+
+    appendBCS: function(toSet, results){
+        var data = results ? results.getData() : null;
+        var text;
+        if (data && data['mostRecentBCS']){
+            var date = LDK.ConvertUtils.parseDate(data['mostRecentBCSDate']);
+            text = LABKEY.Utils.encodeHtml(data['mostRecentBCS']) + (date ? ', ' + Ext4.Date.format(date, LABKEY.extDefaultDateFormat) : '');
+        }
+
+        toSet['mostRecentBCS'] = text;
     },
 
     appendPregnancy: function(toSet, results, id){
