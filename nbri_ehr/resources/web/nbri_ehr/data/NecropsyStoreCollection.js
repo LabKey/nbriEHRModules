@@ -17,7 +17,8 @@ Ext4.define('NBRI_EHR.data.NecropsyStoreCollection', {
 
         this.serverStores.each(function(s){
             var earlierStage = earlierStageQueries.indexOf((s.schemaName + '.' + s.queryName).toLowerCase()) > -1;
-            var ret = s.getCommands(s.getRange(), commitAll && !earlierStage);
+            var records = earlierStage ? Ext4.Array.filter(s.getRange(), this.isEdited, this) : s.getRange();
+            var ret = s.getCommands(records, commitAll && !earlierStage);
             if (ret.commands.length){
                 allCommands = allCommands.concat(ret.commands);
                 allRecords = allRecords.concat(ret.records);
@@ -28,5 +29,18 @@ Ext4.define('NBRI_EHR.data.NecropsyStoreCollection', {
             commands: allCommands,
             records: allRecords
         };
+    },
+
+    /** Saves an earlier stage's record even if none of its values changed. */
+    forceSave: function(rec){
+        rec.setDirty();
+        rec.necropsyForceSave = true;
+    },
+
+    // a child insert re-copies inherited fields onto every child record, flagging them modified with unchanged values
+    isEdited: function(rec){
+        return rec.phantom || rec.necropsyForceSave || Ext4.Object.getKeys(rec.modified || {}).some(function(name){
+            return !rec.isEqual(rec.modified[name], rec.get(name));
+        });
     }
 });

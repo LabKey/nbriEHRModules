@@ -38,7 +38,7 @@
         var necropsyTaskServer = panel.storeCollection.getServerStoreForQuery('nbri_ehr', 'necropsyTask');
         if (necropsyTaskServer) {
             necropsyTaskServer.each(function(rec){
-                rec.setDirty();
+                panel.storeCollection.forceSave(rec);
             });
         }
 
