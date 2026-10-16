@@ -1922,6 +1922,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         _helper.addRecordToGrid(histology);
         histology.setGridCell(1, "slideNo", "S1");
         histology.setGridCell(1, "stain", "Gram Stain");
+        setFormSectionFieldUntilWarningClears("Final Results", "Cause of Death Category", "Respiratory", "Cause of death category is required");
         submitNecropsyStage("Save Draft");
         stopImpersonating();
 
