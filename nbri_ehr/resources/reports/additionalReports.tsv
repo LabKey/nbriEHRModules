@@ -4,6 +4,12 @@ assignment	Colony Management	query	Protocol Assignment	TRUE		study	protocolAssig
 grossPathology	Pathology	query	Gross Pathology	TRUE		study	grossPathology				FALSE	FALSE		qcstate/publicdata	This is for histopathology reports
 tissueDisposition	Pathology	query	Tissue Disposition	TRUE		study	tissueDisposition				FALSE	FALSE		qcstate/publicdata	This is for histopathology reports
 histopathology	Pathology	query	Histopathology	TRUE		study	histopathology				FALSE	FALSE		qcstate/publicdata	This is for histopathology reports
+necropsyRequest	Pathology	query	Necropsy Request	TRUE		study	necropsyRequest				FALSE	FALSE		qcstate/publicdata	This report shows necropsy requests
+tissueMeasurements	Pathology	query	Tissue Measurements	TRUE		study	tissueMeasurements				FALSE	FALSE		qcstate/publicdata	This report shows tissues collected at necropsy
+histology	Pathology	query	Histology	TRUE		study	histology				FALSE	FALSE		qcstate/publicdata	This report shows histology slides from necropsy tissues
+necropsyFinal	Pathology	query	Necropsy Final	TRUE		study	necropsyFinal				FALSE	FALSE		qcstate/publicdata	This report shows the final necropsy cause of death and comments
+preliminaryDiagnoses	Pathology	query	Gross Diagnoses	TRUE		study	preliminaryDiagnoses				FALSE	FALSE		qcstate/publicdata	This report shows gross (preliminary) necropsy diagnoses
+finalDiagnoses	Pathology	query	Final Diagnoses	TRUE		study	finalDiagnoses				FALSE	FALSE		qcstate/publicdata	This report shows final necropsy diagnoses
 clinical_observations	Clinical	query	Clinical Observations	TRUE		study	clinical_observationsSummary	Clinical		date	FALSE	FALSE		qcstate/publicdata	This report displays clinical observations for the selected animal
 foster	Reproductive Management	query	Fostering	TRUE		study	foster				FALSE	FALSE		qcstate/publicdata	This is for animal fostering data
 projects	Colony Management	query	Project Assignment	TRUE		study	assignment				FALSE	FALSE		qcstate/publicdata	This is for project assignments

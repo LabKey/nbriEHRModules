@@ -1,0 +1,10 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="tissueSample"/>
+        <column name="qualifier"/>
+        <column name="slideNo"/>
+        <column name="stain"/>
+        <column name="remark"/>
+        <column name="performedby"/>
+    </columns>
+</customView>

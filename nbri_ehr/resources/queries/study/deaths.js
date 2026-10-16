@@ -114,15 +114,14 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
             else if (deathsInTransaction[row.Id]) {
                 errorMsg = 'This animal is entered more than once. Only one death record per animal can be saved.';
             }
-            // A new entry starts at 'IN PROGRESS'; 'Submit Death' sets 'REQUEST: PENDING' and 'Submit Necropsy for
-            // Review' sets 'Review Required', so either prior state means the animal is already in the workflow.
+            // A new entry starts at 'IN PROGRESS'; a prior death awaiting review means the animal is already in the workflow.
             else if (rowQCState === 'IN PROGRESS' &&
                     (priorDeathQCState === 'REQUEST: PENDING' || priorDeathQCState === 'REVIEW REQUIRED')) {
                 errorMsg = 'Death record is pending review for this animal';
             }
             // A second draft for the same animal would fail on the unique constraint, so catch it here.
             else if (oldRow === undefined && rowQCState === 'IN PROGRESS' && priorDeathQCState === 'IN PROGRESS') {
-                errorMsg = 'Death/Necropsy data entry is in progress for this animal';
+                errorMsg = 'Death data entry is in progress for this animal';
             }
             // Catch-all for that constraint. Test existence, not QC state: ETL rows can carry a null QCState.
             else if (oldRow === undefined && deathIdMap[row.Id]) {
@@ -202,7 +201,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         if (helper.isETL() || !row || !row.Id || !row.QCStateLabel)
             continue;
 
-        // Notify once, on the first save that leaves draft: 'Submit Death' lands on 'Request: Pending', but a death entered alongside its necropsy goes straight to 'Review Required' or 'Completed'.
+        // Notify once, on the first save that leaves draft.
         var wasDraft = !oldRow || !oldRow.QCStateLabel || oldRow.QCStateLabel.toUpperCase() === 'IN PROGRESS';
         if (wasDraft && NOTIFY_STATES.indexOf(row.QCStateLabel.toUpperCase()) > -1) {
             console.log("Sending NBRI Death Notification")

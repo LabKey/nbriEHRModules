@@ -1,0 +1,22 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
+    <sorts>
+        <sort column="date" descending="true"/>
+    </sorts>
+    <columns>
+        <column name="viewNecropsy"/>
+        <column name="Id"/>
+        <column name="date"/>
+        <column name="tissueSample"/>
+        <column name="qualifier"/>
+        <column name="preparation"/>
+        <column name="weight"/>
+        <column name="weightUnits"/>
+        <column name="measurement1"/>
+        <column name="measurement2"/>
+        <column name="measurement3"/>
+        <column name="units"/>
+        <column name="remark"/>
+        <column name="necropsyStatus"/>
+        <column name="QCState"/>
+    </columns>
+</customView>

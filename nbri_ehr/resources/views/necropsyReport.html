@@ -1,0 +1,369 @@
+<style>
+    .necropsy-report {
+        font-family: Arial, sans-serif;
+        line-height: 1.5;
+        max-width: 1100px;
+        margin: 0 auto 40px auto;
+        padding: 20px;
+        background: #fff;
+    }
+
+    .necropsy-report .report-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+
+    .necropsy-report .letterhead {
+        flex: 1;
+        min-width: 200px;
+        font-size: 12px;
+    }
+
+    .necropsy-report .report-title {
+        flex: 2;
+        text-align: center;
+    }
+
+    .necropsy-report .report-title h1 {
+        font-size: 24px;
+        font-weight: bold;
+        margin: 0;
+    }
+
+    .necropsy-report .report-title h5 {
+        font-size: 14px;
+        font-style: italic;
+        font-weight: normal;
+    }
+
+    .necropsy-report .header-logo {
+        flex: 1;
+        text-align: right;
+    }
+
+    .necropsy-report .header-logo img {
+        width: 216px;
+        max-width: 100%;
+    }
+
+    .necropsy-report table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0 30px 0;
+    }
+
+    .necropsy-report th, .necropsy-report td {
+        padding: 6px 12px;
+        border: 1px solid #ddd;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    .necropsy-report th {
+        background-color: #f2f2f2;
+        white-space: nowrap;
+    }
+
+    .necropsy-report h2 {
+        font-size: 20px;
+        font-weight: bold;
+    }
+
+    .necropsy-report .text-block {
+        white-space: pre-wrap;
+    }
+
+    @media print {
+        .hide-on-print {
+            display: none !important;
+        }
+
+        .necropsy-report {
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            font-size: 12px;
+            page-break-after: always;
+        }
+
+        .necropsy-report th, .necropsy-report td {
+            border: 1px solid #000;
+        }
+    }
+</style>
+
+<div class="hide-on-print" id="necropsyReportSearch" style="display: none; margin-bottom: 20px;">
+    <label for="necropsyReportAnimalId" style="margin-right: 10px;">Animal Id</label><input id="necropsyReportAnimalId" type="text"/>
+    <button id="necropsyReportAnimalIdSubmit">Submit</button>
+    <div id="necropsyReportMessage"></div>
+</div>
+<div id="necropsyReports"></div>
+
+<script type="application/javascript" nonce="<%=scriptNonce%>">
+(function(){
+    const LETTERHEAD = [
+        'National Biomedical Research Institute (NBRI) / California National Primate Research Center (CNPRC)',
+        'University of California, Davis',
+        'One Shields Avenue',
+        'Davis, CA 95616-8542'
+    ];
+    const GUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    const redacted = LABKEY.ActionURL.getParameter('redacted') === 'true';
+    const container = document.getElementById('necropsyReports');
+    const message = document.getElementById('necropsyReportMessage');
+
+    const el = (tag, text, className) => {
+        const node = document.createElement(tag);
+        if (text !== undefined && text !== null)
+            node.textContent = text;
+        if (className)
+            node.className = className;
+        return node;
+    };
+
+    const pad = (n) => String(n).padStart(2, '0');
+
+    const formatDate = (value, includeTime) => {
+        if (!value)
+            return '';
+        const d = new Date(value);
+        if (isNaN(d.getTime()))
+            return String(value);
+        const date = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+        return includeTime ? date + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) : date;
+    };
+
+    const formatInterval = (minutes) => {
+        if (minutes === null || minutes === undefined || minutes < 0)
+            return '';
+        const days = Math.floor(minutes / 1440);
+        const hours = Math.floor((minutes % 1440) / 60);
+        return days + 'd ' + hours + 'h ' + (minutes % 60) + 'm';
+    };
+
+    const selectRows = (queryName, schemaName, column, value, columns) => new Promise((resolve, reject) => {
+        LABKEY.Query.selectRows({
+            schemaName: schemaName,
+            queryName: queryName,
+            columns: columns,
+            filterArray: [LABKEY.Filter.create(column, value, LABKEY.Filter.Types.EQUAL)],
+            success: (data) => resolve(data.rows),
+            failure: reject
+        });
+    });
+
+    const textSection = (report, title, text) => {
+        report.appendChild(el('h2', title));
+        report.appendChild(el('p', text || 'None found.', 'text-block'));
+    };
+
+    const tableSection = (report, title, rows, columns) => {
+        report.appendChild(el('h2', title));
+        if (!rows.length) {
+            report.appendChild(el('p', 'None found.'));
+            return;
+        }
+
+        const table = el('table');
+        const header = el('tr');
+        columns.forEach((c) => header.appendChild(el('th', c.label)));
+        table.appendChild(el('thead')).appendChild(header);
+        const body = table.appendChild(el('tbody'));
+        rows.forEach((row) => {
+            const tr = el('tr');
+            columns.forEach((c) => tr.appendChild(el('td', row[c.name])));
+            body.appendChild(tr);
+        });
+        report.appendChild(table);
+    };
+
+    const infoCell = (pairs) => {
+        const td = el('td');
+        pairs.forEach(([label, value], i) => {
+            if (i > 0)
+                td.appendChild(el('br'));
+            td.appendChild(el('strong', label + ': '));
+            td.appendChild(document.createTextNode(value === null || value === undefined ? '' : value));
+        });
+        return td;
+    };
+
+    const getTitle = (info) => {
+        const submitted = formatDate(info.requestDate);
+        let title, subtitle;
+        if (!info.status || info.status === 'Request Pending') {
+            title = 'Necropsy Request';
+            subtitle = 'This is the necropsy request for the specimen submitted on ' + submitted + '.';
+        }
+        else if (info.status === 'Preliminary Results Submitted') {
+            title = 'Preliminary Anatomic Diagnosis';
+            subtitle = 'This is the preliminary report for the specimen submitted on ' + submitted + '. Final results will be forwarded on submission.';
+        }
+        else {
+            title = 'Final Anatomic Diagnosis';
+            subtitle = 'This is the final diagnosis report for the specimen submitted on ' + submitted + '.';
+            if (info.status === 'Final Results Submitted: Pending Addendum')
+                subtitle += ' Additional ancillary tests are pending; these will be forwarded upon completion.';
+        }
+
+        if (info.qcStateLabel && info.qcStateLabel !== 'Completed')
+            subtitle += ' Status: ' + info.qcStateLabel + '.';
+
+        return {title, subtitle};
+    };
+
+    const renderReport = async (objectid) => {
+        const report = container.appendChild(el('div', null, 'necropsy-report'));
+
+        const infoRows = await selectRows('necropsyReport', 'nbri_ehr', 'objectid', objectid);
+        if (!infoRows.length) {
+            report.textContent = 'No necropsy found for this task.';
+            return;
+        }
+        const info = infoRows[0];
+        const taskid = info.taskid;
+        const isRequest = !info.status || info.status === 'Request Pending';
+        const isFinal = info.status === 'Final Results Submitted' || info.status === 'Final Results Submitted: Pending Addendum';
+
+        const header = report.appendChild(el('div', null, 'report-header'));
+        const letterhead = header.appendChild(el('div', null, 'letterhead'));
+        LETTERHEAD.forEach((line) => letterhead.appendChild(el('div', line)));
+        const titleBlock = header.appendChild(el('div', null, 'report-title'));
+        const {title, subtitle} = getTitle(info);
+        titleBlock.appendChild(el('h1', title));
+        titleBlock.appendChild(el('h5', subtitle));
+        const logo = header.appendChild(el('div', null, 'header-logo')).appendChild(el('img'));
+        logo.src = LABKEY.contextPath + '/nbri_ehr/images/ucdavis_logo.png';
+        logo.alt = 'UC Davis';
+
+        const infoTable = report.appendChild(el('table'));
+        const infoRow = infoTable.appendChild(el('tbody')).appendChild(el('tr'));
+        infoRow.appendChild(infoCell([
+            ['Accession No', info.accessionNo],
+            ['Investigator', info.SubmittingPI],
+            ['Vet', info.submittingVet],
+            ['Vet Cell', info.SubmittingVetCell]
+        ]));
+        infoRow.appendChild(infoCell([
+            ['Animal ID', info.Id],
+            ['Species', info.species],
+            ['Breed/Strain', info.breed],
+            ['Sex', info.sex],
+            ['Age', info.age]
+        ]));
+        infoRow.appendChild(infoCell([
+            ['Death Date/Time', formatDate(info.death, true)],
+            ['Necropsy Date/Time', formatDate(info.necropsyDate, true)],
+            ['Post Mortem Interval', formatInterval(info.postMortemMinutes)]
+        ]));
+
+        textSection(report, 'Clinical Diagnoses', info.clinicalDiagnosis);
+        if (isRequest)
+            return;
+
+        textSection(report, 'Gross Description', info.grossFindings);
+
+        const [measurements, disposition, staff, histology, diagnoses] = await Promise.all([
+            selectRows('tissueMeasurements', 'study', 'taskid', taskid),
+            // tissue and disposition store lookup codes; their titles are the readable names
+            selectRows('tissueDisposition', 'study', 'taskid', taskid, 'necropsyTissue/title,necropsyDispositionCode/title,remark'),
+            redacted ? Promise.resolve([]) : selectRows('procedureStaff', 'study', 'taskid', taskid),
+            isFinal ? selectRows('histology', 'study', 'taskid', taskid) : Promise.resolve([]),
+            selectRows(isFinal ? 'finalDiagnoses' : 'preliminaryDiagnoses', 'study', 'taskid', taskid)
+        ]);
+
+        tableSection(report, 'Tissue Measurements', measurements, [
+            {name: 'tissueSample', label: 'Tissue'},
+            {name: 'qualifier', label: 'Qualifier'},
+            {name: 'preparation', label: 'Preparation'},
+            {name: 'weight', label: 'Weight'},
+            {name: 'weightUnits', label: 'Wt. Units'},
+            {name: 'measurement1', label: 'Meas. 1'},
+            {name: 'measurement2', label: 'Meas. 2'},
+            {name: 'measurement3', label: 'Meas. 3'},
+            {name: 'units', label: 'Units'},
+            {name: 'remark', label: 'Remark'}
+        ]);
+
+        tableSection(report, 'Tissue Disposition', disposition, [
+            {name: 'necropsyTissue/title', label: 'Tissue'},
+            {name: 'necropsyDispositionCode/title', label: 'Disposition'},
+            {name: 'remark', label: 'Remark'}
+        ]);
+
+        if (isFinal) {
+            tableSection(report, 'Histology', histology, [
+                {name: 'tissueSample', label: 'Tissue'},
+                {name: 'qualifier', label: 'Qualifier'},
+                {name: 'slideNo', label: 'Slide No.'},
+                {name: 'stain', label: 'Stain'},
+                {name: 'remark', label: 'Histology Description'}
+            ]);
+        }
+
+        textSection(report, 'Cause of Death', isFinal ? [info.causeCategory, info.causeOfDeath].filter((v) => v).join(': ') : info.preliminaryCauseOfDeath);
+        tableSection(report, isFinal ? 'Final Diagnoses' : 'Gross Diagnoses', diagnoses, [
+            {name: 'tissueSample', label: 'Organ/Tissue'},
+            {name: 'diagnosis', label: 'Diagnosis'},
+            {name: 'severity', label: 'Severity'},
+            {name: 'distribution', label: 'Distribution'},
+            {name: 'remark', label: 'Remark'}
+        ]);
+        textSection(report, 'Comments', isFinal ? info.comments : info.preliminaryComments);
+
+        if (!redacted) {
+            tableSection(report, 'Staff', staff, [
+                {name: 'role', label: 'Role'},
+                {name: 'staff', label: 'Staff'},
+                {name: 'remark', label: 'Remark'}
+            ]);
+        }
+    };
+
+    const renderAll = async (objectids) => {
+        container.textContent = '';
+        try {
+            for (const objectid of objectids)
+                await renderReport(objectid);
+        }
+        catch (error) {
+            console.error(error);
+            container.appendChild(el('p', 'Failed to load the necropsy report. Please contact your system administrator.'));
+        }
+    };
+
+    const findByAnimal = () => {
+        const animalId = document.getElementById('necropsyReportAnimalId').value.trim();
+        message.textContent = '';
+        if (!animalId)
+            return;
+
+        LABKEY.Query.selectRows({
+            schemaName: 'nbri_ehr',
+            queryName: 'necropsyReport',
+            columns: 'objectid',
+            filterArray: [LABKEY.Filter.create('Id', animalId, LABKEY.Filter.Types.EQUAL)],
+            success: (data) => {
+                const objectids = data.rows.map((r) => r.objectid).filter((t) => t);
+                if (!objectids.length)
+                    message.textContent = 'No necropsy found for animal ' + animalId + '.';
+                else
+                    renderAll(objectids);
+            },
+            failure: () => message.textContent = 'Failed to look up the animal.'
+        });
+    };
+
+    const candidates = (LABKEY.ActionURL.getParameter('objectIds') || '').split(';').filter((id) => id !== '');
+    const objectids = candidates.filter((id) => GUID.test(id));
+    if (objectids.length) {
+        renderAll(objectids);
+    }
+    else {
+        document.getElementById('necropsyReportSearch').style.display = '';
+        document.getElementById('necropsyReportAnimalIdSubmit').addEventListener('click', findByAnimal);
+    }
+})();
+</script>
