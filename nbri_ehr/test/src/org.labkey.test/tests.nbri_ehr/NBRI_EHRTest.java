@@ -1386,28 +1386,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         switchToWindow(1);
         waitForText(animalId);
-        Ext4GridRef observation = _helper.getExt4GridForFormSection("Observations");
-        observation.setGridCell(1, "observation", "Lame on left leg");
-        observation.setGridCellJS(1, "remark", "remark for lameness");
-
-        observation.setGridCell(2, "observation", "0-1 Extremely Lethargic");
-        observation.setGridCellJS(2, "remark", "remark for activity");
-
-        observation.setGridCell(3, "observation", "Normal to low");
-        observation.setGridCellJS(3, "remark", "remark for Appetite");
-
-        observation.setGridCell(4, "observation", "Lean (2.5)");
-        observation.setGridCellJS(4, "remark", "remark for BCS");
-
-        observation.setGridCell(5, "observation", "10%");
-        observation.setGridCellJS(5, "remark", "remark for Hydration");
-
-        observation.setGridCell(6, "observation", "M/F");
-        observation.setGridCellJS(6, "remark", "remark for Stool");
-
-        observation.setGridCell(7, "observation", "No");
-        observation.setGridCellJS(7, "remark", "remark for Verified Id?");
-        submitForm("Submit Final", "Finalize");
+        Map<String, String> obsValues = new HashMap<>(NBRI_DAILY_OBS_VALUES);
+        obsValues.put("Lameness", "Lame on left leg");
+        enterScheduledObservations(obsValues);
 
         table = new AnimalHistoryPage<>(getDriver()).getActiveReportDataRegion();
         Assert.assertEquals("Status is not updated", "Completed", table.getDataAsText(0, "observationStatus"));
@@ -1417,6 +1398,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         verifyScheduledObservationTaskGrouping(animalId, obsTasksBefore, 1);
 
         log("Verifying Animal Details shows the most recent BCS");
+        // the BCS combo forces selection, so an unmatched value saves as null rather than failing the form
+        List<String> savedBcs = getClinicalObservations(animalId).stream()
+                .filter(row -> "BCS".equals(row.get("category")))
+                .map(row -> String.valueOf(row.get("observation")))
+                .toList();
+        Assert.assertEquals("BCS observation was not saved", List.of("Lean (2.5)"), savedBcs);
         String bcs = getSnapshotFieldValue(animalId, "BCS");
         Assert.assertTrue("Animal Details shows the wrong BCS: " + bcs, bcs.startsWith("Lean (2.5) ("));
 
@@ -1529,7 +1516,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table.link(0, "observationRecord").click();
         switchToWindow(1);
         waitForText(animalId);
-        enterScheduledObservations();
+        enterScheduledObservations(NBRI_DAILY_OBS_VALUES);
 
         // Each of the six daily categories matched two orders, so two entries per category were created,
         // grouped into exactly two tasks (one per originating order taskid) with no empty task.
@@ -1571,14 +1558,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
     // Fills in the Observations grid opened from the schedule, setting a valid value and remark for each
     // category row regardless of the grid's row order, then submits.
-    private void enterScheduledObservations()
+    private void enterScheduledObservations(Map<String, String> valuesByCategory)
     {
         Ext4GridRef observation = _helper.getExt4GridForFormSection("Observations");
         int rowCount = observation.getRowCount();
         for (int row = 1; row <= rowCount; row++)
         {
             String category = String.valueOf(observation.getFieldValue(row, "category"));
-            String value = NBRI_DAILY_OBS_VALUES.get(category);
+            String value = valuesByCategory.get(category);
             if (value != null)
                 observation.setGridCell(row, "observation", value);
             observation.setGridCellJS(row, "remark", "remark for " + category);
