@@ -1,56 +1,31 @@
 /*
  * Copyright (c) 2026 LabKey Corporation
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
 package org.labkey.nbri_ehr.dataentry.section;
 
-import org.labkey.api.view.template.ClientDependency;
+import org.json.JSONObject;
+import org.labkey.api.ehr.dataentry.DataEntryFormContext;
+import org.labkey.api.ehr.dataentry.SimpleFormPanelSection;
 
-import java.util.List;
-
-public class NBRIGrossPathologyFormSection extends BaseFormSection
+public class NBRIGrossPathologyFormSection extends SimpleFormPanelSection
 {
-    public NBRIGrossPathologyFormSection(boolean isChild)
+    private final boolean _initCollapsed;
+
+    public NBRIGrossPathologyFormSection(boolean initCollapsed)
     {
-        super("study", "grossPathology", "Gross Pathology", "ehr-gridpanel", true, true, true);
-        addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/buttons/necropsyGridButtons.js"));
-        if (isChild)
-        {
-            addExtraProperty("parentQueryName", "deaths");
-
-            addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/model/sources/ParentChild.js"));
-            addConfigSource("ParentChild");
-
-            addClientDependency(ClientDependency.supplierFromPath("ehr/data/ChildClientStore.js"));
-            setClientStoreClass("EHR.data.ChildClientStore");
-        }
+        super("study", "grossPathology", "Gross Description");
+        setTemplateMode(TEMPLATE_MODE.NONE);
+        NecropsySectionUtils.configureAsChild(this);
+        _initCollapsed = initCollapsed;
     }
 
     @Override
-    public List<String> getTbarButtons()
+    public JSONObject toJSON(DataEntryFormContext ctx, boolean includeFormElements)
     {
-        List<String> defaults = super.getTbarButtons();
-        defaults.clear();
-        defaults.add("ADDGROSSPATHOLOGY");
-        return defaults;
-    }
-
-    @Override
-    public List<String> getTbarMoreActionButtons()
-    {
-        List<String> defaultButtons = super.getTbarMoreActionButtons();
-        defaultButtons.clear();
-        return defaultButtons;
+        JSONObject json = super.toJSON(ctx, includeFormElements);
+        NecropsySectionUtils.putCollapseConfig(json, _initCollapsed);
+        return json;
     }
 }

@@ -1,0 +1,23 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="viewNecropsy"/>
+        <column name="enterPreliminaryNecropsy"/>
+        <column name="enterFinalNecropsy"/>
+        <column name="animalId"/>
+        <column name="animalId/Id/Demographics/death"/>
+        <column name="status"/>
+        <column name="QCState"/>
+        <column name="Date"/>
+        <column name="SubmittingPI"/>
+        <column name="SubmittingVet"/>
+        <column name="SubmittingVetCell"/>
+        <column name="PriorityCode"/>
+        <column name="Sensitive"/>
+        <column name="SensitiveReason"/>
+        <column name="AssignedTo"/>
+    </columns>
+    <sorts>
+        <sort column="status" descending="true"/>
+        <sort column="PriorityCode"/>
+    </sorts>
+</customView>

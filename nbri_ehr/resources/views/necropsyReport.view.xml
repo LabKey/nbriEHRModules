@@ -1,0 +1,6 @@
+<view xmlns="http://labkey.org/data/xml/view" title="Necropsy Report" frame="none">
+    <requiresLogin/>
+    <dependencies>
+        <dependency path="ehr.context"/>
+    </dependencies>
+</view>

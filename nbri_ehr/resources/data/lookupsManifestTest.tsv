@@ -42,6 +42,7 @@ derm_obs
 divider_types
 dosage_units
 editable_lookups
+encounter_roles
 esig_events
 euthanasia_type
 exam_findings
@@ -56,6 +57,7 @@ general_obs
 genitourinary_obs
 geographic_origins
 hernia_types
+histology_stain
 housing_reason
 hyd_score
 incision_score
@@ -64,11 +66,12 @@ lameness
 mens_score
 mucous_membranes
 musculoskeletal_observations
+necropsy_cause_category
+necropsy_diagnosis
+necropsy_diagnosis_distribution
+necropsy_diagnosis_severity
 necropsy_disposition_codes
-necropsy_organ_appearance
-necropsy_organ_systems
-necropsy_physical_condition
-necropsy_specimen_condition
+necropsy_priority
 necropsy_tissue
 neurologic_observations
 nhp_training_reason
@@ -112,6 +115,11 @@ stool_score
 stool_types
 temperament
 testicular_volume
+tissue
+tissue_measurement_units
+tissue_preparation
+tissue_qualifier
+tissue_weight_units
 treatment_frequency
 treatment_frequency_times
 vaginal_uterine_prolapse

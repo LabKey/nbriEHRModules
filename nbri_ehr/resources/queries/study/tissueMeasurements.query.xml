@@ -1,0 +1,86 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="tissueMeasurements" tableDbType="TABLE">
+                <tableTitle>Tissue Measurements</tableTitle>
+                <columns>
+                    <column columnName="tissueSample">
+                        <columnTitle>Tissue</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>tissue</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="qualifier">
+                        <columnTitle>Qualifier</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>tissue_qualifier</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="preparation">
+                        <columnTitle>Preparation</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>tissue_preparation</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="weightUnits">
+                        <columnTitle>Weight Units</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>tissue_weight_units</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="units">
+                        <columnTitle>Units</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>tissue_measurement_units</fkTable>
+                            <fkColumnName>value</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="performedby">
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="project">
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="description">
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="taskid">
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="necropsyStatus">
+                        <columnTitle>Necropsy Status</columnTitle>
+                        <conditionalFormats>
+                            <conditionalFormat>
+                                <filters>
+                                    <filter operator="eq" value="Request Pending"/>
+                                </filters>
+                                <backgroundColor>FBEC5D</backgroundColor>
+                            </conditionalFormat>
+                            <conditionalFormat>
+                                <filters>
+                                    <filter operator="eq" value="Preliminary Results Submitted"/>
+                                </filters>
+                                <backgroundColor>FBEC5D</backgroundColor>
+                            </conditionalFormat>
+                            <conditionalFormat>
+                                <filters>
+                                    <filter operator="eq" value="Final Results Submitted: Pending Addendum"/>
+                                </filters>
+                                <backgroundColor>FBEC5D</backgroundColor>
+                            </conditionalFormat>
+                        </conditionalFormats>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

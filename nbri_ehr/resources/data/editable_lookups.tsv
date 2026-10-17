@@ -51,6 +51,7 @@ ehr_lookups	divider_types	Colony Management	Divider Type	Used in cage details.
 ehr_lookups	dosage_units	Clinical	Dosage Units	Used in drug and treatment datasets.
 ehr_lookups	drug_defaults	Clinical	Formulary	Default values in drug and treatment datasets.
 ehr_lookups	ear_types	Clinical	Ear Types	Clinical observation fixed values.
+ehr_lookups	encounter_roles	Pathology	Staff Roles	Roles for staff recorded on a procedure.
 ehr_lookups	esig_events	Colony Management	Esig Events	
 ehr_lookups	euthanasia_type	Colony Management	Euthanasia Type	
 ehr_lookups	exam_findings	Clinical	Exam Findings	Physical exam values.
@@ -69,6 +70,7 @@ ehr_lookups	genital_types	Colony Management	Genital Types	Clinical observation f
 ehr_lookups	genitourinary_obs	Clinical	Genitourinary Observation Types	Clinical observation fixed values.
 ehr_lookups	geographic_origins	Colony Management	Geographic Origins	Used in demographics dataset.
 ehr_lookups	hernia_types	Clinical	Hernia Types	Clinical observation fixed values.
+ehr_lookups	histology_stain	Pathology	Histology Stain	Histology slide stains.
 ehr_lookups	housing_reason	Housing	Housing Move Reason	Used in housing dataset for location transfers.
 ehr_lookups	hyd_score	Clinical	Hydration Score	Clinical observation fixed values.
 ehr_lookups	incision_score	Clinical	Incision Status	Clinical observation fixed values.
@@ -80,12 +82,13 @@ ehr_lookups	mass_type	Clinical	Mass Type	Clinical observation fixed values.
 ehr_lookups	mens_score	Clinical	Menses Types	Clinical observation fixed values.
 ehr_lookups	mucous_membranes	Clinical	Mucous Membranes	Used in clinical observations.
 ehr_lookups	musculoskeletal_observations	Clinical	Musculoskeletal Observations	Used in clinical observations.
-ehr_lookups	necropsy_disposition_codes	Colony Management	Necropsy Disposition Codes	
-ehr_lookups	necropsy_organ_appearance	Colony Management	Necropsy Organ Appearance
-ehr_lookups	necropsy_organ_systems	Colony Management	Necropsy Organ Systems	
-ehr_lookups	necropsy_physical_condition	Colony Management	Necropsy Physical Condition	
-ehr_lookups	necropsy_specimen_condition	Colony Management	Necropsy Specimen Condition	
-ehr_lookups	necropsy_tissue	Colony Management	Necropsy Tissue	
+ehr_lookups	necropsy_cause_category	Pathology	Cause of Death Category	Underlying cause of death categories for necropsy reporting.
+ehr_lookups	necropsy_diagnosis	Pathology	Necropsy Diagnosis	Morphologic diagnoses for necropsy findings.
+ehr_lookups	necropsy_diagnosis_distribution	Pathology	Necropsy Diagnosis Distribution	Distribution of a necropsy lesion.
+ehr_lookups	necropsy_diagnosis_severity	Pathology	Necropsy Diagnosis Severity	Severity of a necropsy lesion.
+ehr_lookups	necropsy_disposition_codes	Pathology	Necropsy Disposition Codes	What was done with a tissue collected at necropsy.
+ehr_lookups	necropsy_priority	Pathology	Necropsy Priority	Necropsy request priorities.
+ehr_lookups	necropsy_tissue	Pathology	Necropsy Tissue	Tissues recorded for tissue disposition.
 ehr_lookups	neurologic_observations	Clinical	Neurologic Observations	Used in clinical observations..
 ehr_lookups	nhp_training_reason	Behavior	NHP Training Reason	Behavior training reason values
 ehr_lookups	nhp_training_result	Behavior	NHP Training Result	Behavior training result values
@@ -135,6 +138,11 @@ ehr_lookups	tb_obs_score	Clinical	TB Observation Scores	Clinical observation fix
 ehr_lookups	temperament	Behavior	Temperament	Behavior observation fixed values.
 ehr_lookups	testicular_volume    	Clinical	Testicular Volume   	Testicular volume values.
 ehr_lookups	termination_reason_codes	Clinical	Termination Reason Codes	Clinical observation fixed values.
+ehr_lookups	tissue	Pathology	Pathology Tissues	Tissues recorded at necropsy and in histology.
+ehr_lookups	tissue_measurement_units	Pathology	Tissue Measurement Units	Units for tissue measurements.
+ehr_lookups	tissue_preparation	Pathology	Tissue Preparation	How a collected tissue was prepared.
+ehr_lookups	tissue_qualifier	Pathology	Tissue Qualifier	Anatomical qualifiers for a tissue.
+ehr_lookups	tissue_weight_units	Pathology	Tissue Weight Units	Units for tissue weights.
 ehr_lookups	trauma_size	Clinical	Trauma Size	Clinical observation fixed values.
 ehr_lookups	treatment_frequency	Clinical	Treatment Frequency	Used in treatment and drug datasets.
 ehr_lookups	treatment_frequency_times	Clinical	Treatment Frequency Times	"Used in treatment, drug and observation datasets."

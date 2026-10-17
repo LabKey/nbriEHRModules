@@ -1,0 +1,11 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="accessionNo"/>
+        <column name="date"/>
+        <column name="weight"/>
+        <column name="perfused"/>
+        <column name="preliminaryCauseOfDeath"/>
+        <column name="preliminaryComments"/>
+        <column name="performedby"/>
+    </columns>
+</customView>

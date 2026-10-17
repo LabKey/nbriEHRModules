@@ -1,0 +1,9 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="tissueSample"/>
+        <column name="diagnosis"/>
+        <column name="severity"/>
+        <column name="distribution"/>
+        <column name="remark"/>
+    </columns>
+</customView>
