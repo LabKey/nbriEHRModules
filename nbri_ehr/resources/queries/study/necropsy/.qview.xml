@@ -3,16 +3,17 @@
         <sort column="date" descending="true"/>
     </sorts>
     <columns>
+        <column name="viewNecropsy"/>
         <column name="Id"/>
         <column name="Id/Demographics/species"/>
         <column name="date"/>
-        <column name="accessionNumber"/>
-        <column name="specimenCondition"/>
-        <column name="physicalCondition"/>
-        <column name="relevantHistory"/>
-        <column name="grossAbnormalities"/>
-        <column name="diagnosis"/>
-        <column name="identification"/>
-        <column name="remark"/>
+        <column name="accessionNo"/>
+        <column name="weight"/>
+        <column name="perfused"/>
+        <column name="preliminaryCauseOfDeath"/>
+        <column name="preliminaryComments"/>
+        <column name="performedby"/>
+        <column name="necropsyStatus"/>
+        <column name="QCState"/>
     </columns>
 </customView>

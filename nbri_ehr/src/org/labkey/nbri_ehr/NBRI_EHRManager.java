@@ -26,4 +26,10 @@ public class NBRI_EHRManager
     public static final List<String> DAILY_CLINICAL_OBS = List.of("Activity", "Appetite", "BCS", "Hydration", "Stool", "Verified Id?");
     public static final String SIB_OBS_TITLE = "SIB Observations";
     public static final List<String> SIB_OBS = List.of("Environmental Change", "Self Biting Observed", "Other Stereotopy", "New Injury Observed", "Special Enrichment", "Wound Status", "Wound Severity");
+
+    // necropsyTask.status values; the client buttons and necropsyStatus.sql use the same strings
+    public static final String NECROPSY_REQUEST_PENDING = "Request Pending";
+    public static final String NECROPSY_PRELIMINARY_SUBMITTED = "Preliminary Results Submitted";
+    public static final String NECROPSY_FINAL_SUBMITTED = "Final Results Submitted";
+    public static final String NECROPSY_FINAL_SUBMITTED_PENDING = "Final Results Submitted: Pending Addendum";
 }

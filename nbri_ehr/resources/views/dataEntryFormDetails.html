@@ -1,0 +1,24 @@
+<div id="detailsParent"></div>
+
+<script type="text/javascript" nonce="<%=scriptNonce%>">
+
+Ext4.onReady(function(){
+    var formType = LABKEY.ActionURL.getParameter('formType') || LABKEY.ActionURL.getParameter('formtype');
+    var taskId = LABKEY.ActionURL.getParameter('taskId') || LABKEY.ActionURL.getParameter('taskid');
+    var requestId = LABKEY.ActionURL.getParameter('requestId') || LABKEY.ActionURL.getParameter('requestid');
+
+    if (!taskId && !requestId){
+        alert('Must provide form type and either the taskId or requestId');
+        return;
+    }
+
+    var webpart = <%=webpartContext%>;
+    var isNecropsy = formType === 'Necropsy Request' || formType === 'Necropsy' || formType === 'Necropsy Final';
+    Ext4.create(isNecropsy && taskId ? 'NBRI_EHR.panel.NecropsyReportPanel' : 'EHR.panel.DataEntryFormDetailsPanel', {
+        taskId: taskId,
+        requestId: requestId,
+        formType: formType
+    }).render(webpart.wrapperDivId);
+});
+
+</script>

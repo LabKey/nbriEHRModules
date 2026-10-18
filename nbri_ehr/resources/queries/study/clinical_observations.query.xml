@@ -51,6 +51,10 @@
                             <fkColumnName>objectid</fkColumnName>
                         </fk>
                     </column>
+                    <column columnName="observationGroupId">
+                        <columnTitle>Observation Group</columnTitle>
+                        <isHidden>true</isHidden>
+                    </column>
                 </columns>
             </table>
         </tables>

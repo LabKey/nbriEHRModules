@@ -52,7 +52,7 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
         // saved template carries a type left over from a different category.
         row.type = triggerHelper.getObservationTypeCategory(row.category) === 'Behavior' ? 'Behavior' : 'Clinical';
 
-        // Handle scheduled observations
+        // Handle scheduled observations. Fan out on insert only: re-saving a draft would fan out again and reassign orderid.
         if (!helper.isValidateOnly() && row.scheduledDate) {
             var qc;
             if (row.QCStateLabel) {
@@ -65,9 +65,15 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
             if (!qc) {
                 console.error('Unable to find QCState: ' + row.QCState + '/' + row.QCStateLabel);
             }
+            else if (oldRow) {
+                triggerHelper.updateScheduledObservationGroup(row, oldRow, qc.RowId);
+            }
             else {
                 var orderTasks = helper.getProperty('orderTasksInTransaction');
                 if (orderTasks && orderTasks.length > 0) {
+                    // Each scheduled entry heads its own group; the copies made for the slot's other orders join it.
+                    row.objectid = row.objectid || LABKEY.Utils.generateUUID();
+                    row.observationGroupId = row.objectid;
                     var orderData = triggerHelper.handleScheduledObservations(row, qc.RowId, orderTasks[0]);
 
                     if (orderData) {
@@ -80,5 +86,11 @@ function onUpsert(helper, scriptErrors, row, oldRow) {
                 }
             }
         }
+    }
+}
+
+function onAfterDelete(helper, errors, row) {
+    if (!helper.isGeneratedByServer() && row.observationGroupId) {
+        triggerHelper.deleteScheduledObservationGroup(row.observationGroupId, row.objectid, row.taskid);
     }
 }

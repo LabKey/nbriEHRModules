@@ -21,6 +21,7 @@ import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 import org.labkey.api.collections.CaseInsensitiveHashMap;
 import org.labkey.api.collections.CaseInsensitiveHashSet;
 import org.labkey.api.data.ColumnInfo;
@@ -38,6 +39,7 @@ import org.labkey.api.data.TableSelector;
 import org.labkey.api.ehr.EHRDemographicsService;
 import org.labkey.api.ehr.EHRService;
 import org.labkey.api.ehr.demographics.AnimalRecord;
+import org.labkey.api.ehr.notification.AbstractEHRNotification;
 import org.labkey.api.ehr.security.EHRVeterinarianPermission;
 import org.labkey.api.ldk.notification.NotificationService;
 import org.labkey.api.query.BatchValidationException;
@@ -57,10 +59,13 @@ import org.labkey.api.study.StudyService;
 import org.labkey.api.util.GUID;
 import org.labkey.api.util.JobRunner;
 import org.labkey.api.util.PageFlowUtil;
+import org.labkey.api.view.ActionURL;
 import org.labkey.nbri_ehr.NBRI_EHRManager;
 import org.labkey.nbri_ehr.dataentry.form.NBRIClinicalObservationsFormType;
+import org.labkey.nbri_ehr.dataentry.form.NBRINecropsyBaseFormType;
 import org.labkey.nbri_ehr.notification.NBRIClinicalMoveNotification;
 import org.labkey.nbri_ehr.notification.NBRIDeathNotification;
+import org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification;
 import org.labkey.nbri_ehr.notification.NBRIPregnancyOutcomeNotification;
 import org.labkey.nbri_ehr.notification.TriggerScriptNotification;
 import org.labkey.nbri_ehr.security.NBRIProtocolAmendmentApprovePermission;
@@ -76,11 +81,13 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 public class NBRI_EHRTriggerHelper
 {
@@ -98,6 +105,7 @@ public class NBRI_EHRTriggerHelper
 
     // Animals named in the occupancy error before it switches to a count.
     private static final int MAX_NAMED_ANIMALS = 10;
+    private static final String NECROPSY_ALIAS_CATEGORY = "A";
 
     public NBRI_EHRTriggerHelper(int userId, String containerId)
     {
@@ -610,16 +618,14 @@ public class NBRI_EHRTriggerHelper
 
                         //get death info
                         TableInfo deaths = getTableInfo("study", "deathNotification");
-                        TableSelector deathsTs = new TableSelector(deaths, PageFlowUtil.set("Id", "date", "taskid", "performedBy"), new SimpleFilter(FieldKey.fromString("Id"), animalId), null);
+                        TableSelector deathsTs = new TableSelector(deaths, PageFlowUtil.set("Id", "date", "performedBy"), new SimpleFilter(FieldKey.fromString("Id"), animalId), null);
                         final Mutable<Date> deathDate = new MutableObject<>();
-                        final Mutable<String> taskId = new MutableObject<>();
                         final Mutable<String> performedBy = new MutableObject<>();
                         deathsTs.forEach(rs -> {
                             if (rs.getString("date") != null)
                             {
                                 Date date = ConvertHelper.convert(rs.getString("date"), Date.class);
                                 deathDate.setValue(date);
-                                taskId.setValue(rs.getString("taskid"));
                                 performedBy.setValue(rs.getString("performedBy"));
                             }
                         });
@@ -638,12 +644,12 @@ public class NBRI_EHRTriggerHelper
                         //append animal details
                         appendAnimalDetails(html, animalId, container);
 
-                        //append link to Necropsy form
-                        String url = AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + "/ehr" +
-                                container.getPath() + "/dataEntryForm.view?formType=Necropsy&taskid=" + taskId.get();
+                        //append link to a new Necropsy Request
+                        String url = new ActionURL("ehr", "dataEntryForm", container)
+                                .addParameter("formType", NBRINecropsyBaseFormType.REQUEST).getURIString();
                         html.append("<a href='").append(PageFlowUtil.filter(url)).append("'>");
 
-                        html.append("Click here to record Necropsy</a><br>");
+                        html.append("Click here to request a Necropsy</a><br>");
 
                         // send Death Notification
                         _log.debug("NBRI Death notification job sending email for animal {} in container {}", animalId, container.getPath());
@@ -652,6 +658,190 @@ public class NBRI_EHRTriggerHelper
 
             transaction.commit();
         }
+    }
+
+    /** True if a necropsy request for this animal exists on a task other than the given one. */
+    public boolean necropsyRequestExists(String id, String taskid)
+    {
+        return existsOnOtherTask("necropsyRequest", id, taskid);
+    }
+
+    /** True if a necropsy for this animal exists on a task other than the given one. */
+    public boolean necropsyExists(String id, String taskid)
+    {
+        return existsOnOtherTask("necropsy", id, taskid);
+    }
+
+    private boolean existsOnOtherTask(String queryName, String id, String taskid)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
+        if (taskid != null)
+            filter.addCondition(FieldKey.fromString("taskid"), taskid, CompareType.NEQ_OR_NULL);
+
+        return new TableSelector(getTableInfo("study", queryName), filter, null).exists();
+    }
+
+    public void upsertNecropsyAlias(String id, Object date, String accessionNo, String qcStateLabel, @Nullable String performedby) throws SQLException, BatchValidationException, QueryUpdateServiceException, DuplicateKeyException, InvalidKeyException
+    {
+        TableInfo ti = getTableInfo("study", "alias");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
+        filter.addCondition(FieldKey.fromString("category"), NECROPSY_ALIAS_CATEGORY);
+        List<String> existing = new TableSelector(ti, PageFlowUtil.set("objectid"), filter, new Sort("date")).getArrayList(String.class);
+
+        Map<String, Object> row = new CaseInsensitiveHashMap<>();
+        row.put("Id", id);
+        row.put("alias", accessionNo);
+        row.put("category", NECROPSY_ALIAS_CATEGORY);
+        row.put("date", ConvertHelper.convert(date, Date.class));
+        row.put("QCStateLabel", qcStateLabel);
+        row.put("performedby", performedby != null ? performedby : String.valueOf(_user.getUserId()));
+        row.put("objectid", existing.isEmpty() ? new GUID().toString() : existing.getFirst());
+
+        QueryUpdateService qus = Objects.requireNonNull(ti.getUpdateService(), "study.alias is not updatable");
+        BatchValidationException errors = new BatchValidationException();
+        if (existing.isEmpty())
+            qus.insertRows(_user, _container, List.of(row), errors, null, getExtraContext());
+        else
+            qus.updateRows(_user, _container, List.of(row), null, errors, null, getExtraContext());
+
+        if (errors.hasErrors())
+            throw errors;
+    }
+
+    /** Removes the necropsy rows of a deleted necropsy task, including any a draft later stage left behind. */
+    public void deleteNecropsyData(String taskid) throws QueryUpdateServiceException, SQLException, BatchValidationException, InvalidKeyException
+    {
+        if (taskid == null)
+            return;
+
+        for (String queryName : List.of("necropsyRequest", "necropsy", "procedureStaff", "grossPathology", "tissueMeasurements", "tissueDisposition", "preliminaryDiagnoses", "histology", "finalDiagnoses", "necropsyFinal"))
+        {
+            TableInfo ti = getTableInfo("study", queryName);
+            QueryUpdateService qus = ti.getUpdateService();
+            if (qus == null)
+                continue;
+
+            List<Map<String, Object>> keys = List.of(new TableSelector(ti, PageFlowUtil.set("lsid"), new SimpleFilter(FieldKey.fromString("taskid"), taskid), null).getMapArray());
+            if (!keys.isEmpty())
+                qus.deleteRows(_user, _container, keys, null, getExtraContext());
+        }
+    }
+
+    /** Emails the notification for the necropsy status just reached, once the save commits. */
+    public void sendNecropsyNotification(final String taskid, final String status)
+    {
+        // TODO: NBRINecropsyPreliminaryNotification and NBRINecropsyFinalNotification are unregistered until they can carry the printable report (nbri_ehr-necropsyReport.view), e.g. as a PDF rendered by PuppeteerService
+        if (taskid == null || !NBRI_EHRManager.NECROPSY_REQUEST_PENDING.equals(status))
+            return;
+
+        final String formType = NBRINecropsyBaseFormType.REQUEST;
+        final AbstractEHRNotification notification = new NBRINecropsyRequestNotification();
+
+        if (!NotificationService.get().isServiceEnabled() || !NotificationService.get().isActive(notification, _container))
+        {
+            _log.info("{} is not enabled, will not send it.", notification.getName());
+            return;
+        }
+
+        try (DbScope.Transaction transaction = StudyService.get().getDatasetSchema().getScope().ensureTransaction())
+        {
+            transaction.addCommitTask(() ->
+                    JobRunner.getDefault().execute(() -> {
+                        Set<UserPrincipal> recipients = NotificationService.get().getRecipients(notification, _container);
+                        if (recipients.isEmpty())
+                        {
+                            _log.warn("No recipients set, skipping {}", notification.getName());
+                            return;
+                        }
+
+                        Map<String, Object> request = getNecropsyRequest(taskid);
+                        if (request == null)
+                        {
+                            _log.warn("{} not sent: no necropsy request for task {}", notification.getName(), taskid);
+                            return;
+                        }
+
+                        String id = (String) request.get("Id");
+                        StringBuilder html = new StringBuilder();
+                        html.append("Status: ").append(PageFlowUtil.filter(status)).append("<br>");
+                        appendNecropsyRequestDetails(html, request);
+                        appendAnimalDetails(html, id, _container);
+                        appendNecropsyLinks(html, taskid, formType);
+
+                        TriggerScriptNotification.sendMessage(notification.getEmailSubject(_container) + ": " + id, html.toString(), recipients, _container, _user);
+                    }), DbScope.CommitTaskOption.POSTCOMMIT);
+
+            transaction.commit();
+        }
+    }
+
+    /** The task's request details, plus the animal from its necropsy request. */
+    private @Nullable Map<String, Object> getNecropsyRequest(String taskid)
+    {
+        SimpleFilter taskFilter = new SimpleFilter(FieldKey.fromString("taskid"), taskid);
+        String[] ids = new TableSelector(getTableInfo("study", "necropsyRequest"), PageFlowUtil.set("Id"), taskFilter, null).getArray(String.class);
+        if (ids.length == 0)
+            return null;
+
+        TableInfo ti = getTableInfo("nbri_ehr", "necropsyTask");
+        List<FieldKey> keys = List.of(
+                FieldKey.fromString("Date"),
+                FieldKey.fromString("SubmittingPI"),
+                FieldKey.fromString("SubmittingVet/DisplayName"),
+                FieldKey.fromString("PriorityCode"),
+                FieldKey.fromString("Sensitive"),
+                FieldKey.fromString("SensitiveReason"));
+        final Map<FieldKey, ColumnInfo> cols = QueryService.get().getColumns(ti, keys);
+
+        final Map<String, Object> request = new CaseInsensitiveHashMap<>();
+        request.put("Id", ids[0]);
+        new TableSelector(ti, cols.values(), taskFilter, null).forEach(object -> {
+            Results rs = new ResultsImpl(object, cols);
+            for (FieldKey key : keys)
+                request.put(key.toString(), rs.getObject(key));
+        });
+
+        return request;
+    }
+
+    private void appendNecropsyRequestDetails(StringBuilder html, Map<String, Object> request)
+    {
+        Date date = ConvertHelper.convert(request.get("Date"), Date.class);
+        boolean sensitive = Boolean.TRUE.equals(ConvertHelper.convert(request.get("Sensitive"), Boolean.class));
+
+        html.append("Request Date: ").append(date == null ? "" : PageFlowUtil.filter(_dateFormat.format(date))).append("<br>");
+        html.append("Submitting PI: ").append(PageFlowUtil.filter(request.get("SubmittingPI"))).append("<br>");
+        html.append("Submitting Vet: ").append(PageFlowUtil.filter(request.get("SubmittingVet/DisplayName"))).append("<br>");
+        html.append("Priority: ").append(PageFlowUtil.filter(request.get("PriorityCode"))).append("<br>");
+        html.append("Sensitive: ").append(sensitive ? "Yes" : "No").append("<br>");
+        if (sensitive)
+            html.append("Sensitive Reason: ").append(PageFlowUtil.filter(request.get("SensitiveReason"))).append("<br>");
+        html.append("<br>");
+    }
+
+    private void appendNecropsyLinks(StringBuilder html, String taskid, String formType)
+    {
+        String reportUrl = new ActionURL("ehr", "dataEntryFormDetails", _container)
+                .addParameter("formType", formType).addParameter("taskid", taskid).getURIString();
+        html.append("<br><a href='").append(PageFlowUtil.filter(reportUrl)).append("'>Click here to view this necropsy</a><br>");
+
+        String nextStage = switch (formType)
+        {
+            case NBRINecropsyBaseFormType.REQUEST -> NBRINecropsyBaseFormType.PRELIMINARY;
+            case NBRINecropsyBaseFormType.PRELIMINARY -> NBRINecropsyBaseFormType.FINAL;
+            default -> null;
+        };
+        if (nextStage != null)
+        {
+            String enterUrl = new ActionURL("ehr", "dataEntryForm", _container)
+                    .addParameter("formType", nextStage).addParameter("taskid", taskid).getURIString();
+            html.append("<a href='").append(PageFlowUtil.filter(enterUrl)).append("'>Click here to enter ")
+                    .append(NBRINecropsyBaseFormType.PRELIMINARY.equals(nextStage) ? "preliminary" : "final").append(" necropsy results</a><br>");
+        }
+
+        String allUrl = new ActionURL("query", "executeQuery", _container)
+                .addParameter("schemaName", "nbri_ehr").addParameter("query.queryName", "necropsyTask").getURIString();
+        html.append("<a href='").append(PageFlowUtil.filter(allUrl)).append("'>Click here to view all necropsies</a><br>");
     }
 
     private void appendAnimalDetails(StringBuilder html, String id, final Container container)
@@ -1216,7 +1406,7 @@ public class NBRI_EHRTriggerHelper
     public void ensureDailyClinicalObservationOrders(String id, String caseid, final Date date, String performedby, String qcstate, String taskid, List<Map<String, Object>> ordersInTransaction)
     {
         TableInfo ti = getTableInfo("study", "observation_order");
-        SimpleFilter filter = new SimpleFilter(FieldKey.fromParts("category","value"), "Activity");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("category"), NBRI_EHRManager.DAILY_CLINICAL_OBS, CompareType.IN);
         filter.addCondition(FieldKey.fromString("caseid"), caseid);
         filter.addCondition(FieldKey.fromParts("frequency"), "SID");
         TableSelector ts = new TableSelector(ti, PageFlowUtil.set("category","frequency"), filter, null);
@@ -1319,12 +1509,32 @@ public class NBRI_EHRTriggerHelper
         TableSelector ts = new TableSelector(ti, PageFlowUtil.set("category","caseId","animalId","area","objectid","type","taskid"), filter, null);
         ts.setNamedParameters(Map.of("StartDate", scheduledDate, "NumDays", "1"));
 
-        Map<String, Object>[] orders = ts.getMapArray();
+        // The view LEFT JOINs clinical_observations, so an order repeats once per observation already recorded for it.
+        Map<String, Map<String, Object>> ordersById = new LinkedHashMap<>();
+        for (Map<String, Object> order : ts.getMapArray())
+            ordersById.putIfAbsent(ConvertHelper.convert(order.get("objectid"), String.class), order);
+
+        if (ordersById.isEmpty())
+            return null;
+
+        SimpleFilter observedFilter = new SimpleFilter(FieldKey.fromString("orderId"), ordersById.keySet(), CompareType.IN);
+        observedFilter.addCondition(FieldKey.fromString("scheduledDate"), scheduledDate);
+        Set<String> observedOrderIds = new HashSet<>(new TableSelector(getTableInfo("study", "clinical_observations"), Collections.singleton("orderId"), observedFilter, null).getArrayList(String.class));
+
+        List<Map<String, Object>> orders = ordersById.entrySet().stream()
+                .filter(e -> !observedOrderIds.contains(e.getKey()))
+                .map(Map.Entry::getValue)
+                .collect(Collectors.toList());
+
+        // Every order in this slot is already observed; link the entry to the first so it is not left orphaned.
+        if (orders.isEmpty())
+            orders.add(ordersById.values().iterator().next());
+
         Map<String, Object> triggerOrder = null;
 
-        for (int i = 0; i < orders.length; i++)
+        for (int i = 0; i < orders.size(); i++)
         {
-            Map<String, Object> order = orders[i];
+            Map<String, Object> order = orders.get(i);
 
             // Group every entry by the originating order's taskid into a new task per group.
             String orderTaskId = ConvertHelper.convert(order.get("taskid"), String.class);
@@ -1352,8 +1562,10 @@ public class NBRI_EHRTriggerHelper
             obsRow.put("scheduledDate", scheduledDate);
             obsRow.put("area", order.get("area"));
             obsRow.put("observation", observation);
+            obsRow.put("remark", row.get("remark"));
             obsRow.put("performedBy", performedBy);
             obsRow.put("orderId", order.get("objectid"));
+            obsRow.put("observationGroupId", row.get("observationGroupId"));
             obsRow.put("type", order.get("type"));
             obsRow.put("taskid", groupTaskId);
 
@@ -1368,6 +1580,124 @@ public class NBRI_EHRTriggerHelper
         }
 
         return triggerOrder;
+    }
+
+    // Each row in a scheduled entry's group sits on its own order's task, so an edit to any of them is carried onto the rest.
+    public void updateScheduledObservationGroup(Map<String, Object> row, Map<String, Object> oldRow, String qcstate) throws SQLException, BatchValidationException, QueryUpdateServiceException, InvalidKeyException
+    {
+        Map<String, Object> newValues = new CaseInsensitiveHashMap<>(row);
+        Map<String, Object> oldValues = new CaseInsensitiveHashMap<>(oldRow);
+        String objectId = ConvertHelper.convert(oldValues.get("objectid"), String.class);
+        String taskId = ConvertHelper.convert(newValues.get("taskid"), String.class);
+        String groupId = ConvertHelper.convert(oldValues.get("observationGroupId"), String.class);
+
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("objectid"), objectId, CompareType.NEQ);
+        // Rows on this row's own task are saved by this same batch; pushing to them lets whichever is saved last overwrite the rest.
+        if (taskId != null)
+            filter.addCondition(FieldKey.fromString("taskid"), taskId, CompareType.NEQ_OR_NULL);
+        if (groupId != null)
+            filter.addCondition(FieldKey.fromString("observationGroupId"), groupId);
+        else
+            addPreviousValueConditions(filter, oldValues);
+
+        TableInfo obsTi = getTableInfo("study", "clinical_observations");
+        List<Map<String, Object>> copies = new ArrayList<>(new TableSelector(obsTi, PageFlowUtil.set("objectid", "taskid"), filter, null).getMapCollection());
+        if (copies.isEmpty())
+            return;
+
+        // Carry only what this row changed, so an untouched row later in the batch can't revert another row's edit.
+        Map<String, Object> changed = new CaseInsensitiveHashMap<>();
+        for (String col : List.of("date", "observation", "remark", "performedBy"))
+        {
+            Object newValue = col.equals("date") ? ConvertHelper.convert(newValues.get(col), Date.class) : newValues.get(col);
+            Object oldValue = col.equals("date") ? ConvertHelper.convert(oldValues.get(col), Date.class) : oldValues.get(col);
+            if (!Objects.equals(newValue, oldValue))
+                changed.put(col, newValue);
+        }
+
+        List<Map<String, Object>> obsRows = copies.stream().map(copy -> {
+            Map<String, Object> obsRow = new CaseInsensitiveHashMap<>(changed);
+            obsRow.put("objectid", copy.get("objectid"));
+            obsRow.put("qcstate", qcstate);
+            return obsRow;
+        }).collect(Collectors.toList());
+        BatchValidationException errors = new BatchValidationException();
+        Objects.requireNonNull(obsTi.getUpdateService()).updateRows(_user, _container, obsRows, null, errors, null, getExtraContext());
+        if (errors.hasErrors())
+            throw errors;
+
+        // A copy's task can also hold weights or unscheduled entries, so move it only once every record on it has reached this QC state.
+        TableInfo studyData = getTableInfo("study", "StudyData");
+        Integer qcRowId = ConvertHelper.convert(qcstate, Integer.class);
+        List<Map<String, Object>> taskRows = copies.stream()
+                .map(copy -> ConvertHelper.convert(copy.get("taskid"), String.class))
+                .filter(copyTaskId -> copyTaskId != null && !copyTaskId.equals(taskId))
+                .distinct()
+                .filter(copyTaskId -> {
+                    SimpleFilter pending = new SimpleFilter(FieldKey.fromString("taskid"), copyTaskId);
+                    pending.addCondition(FieldKey.fromString("QCState"), qcRowId, CompareType.NEQ_OR_NULL);
+                    return !new TableSelector(studyData, pending, null).exists();
+                })
+                .map(copyTaskId -> {
+                    Map<String, Object> taskRow = new CaseInsensitiveHashMap<>();
+                    taskRow.put("taskid", copyTaskId);
+                    taskRow.put("qcstate", qcstate);
+                    return taskRow;
+                })
+                .collect(Collectors.toList());
+        if (!taskRows.isEmpty())
+            Objects.requireNonNull(getTableInfo("ehr", "tasks").getUpdateService()).updateRows(_user, _container, taskRows, null, errors, null, getExtraContext());
+        if (errors.hasErrors())
+            throw errors;
+    }
+
+    // Rows saved before observationGroupId existed are only recognizable as copies by carrying the entry's previous values. oldRow carries no QCState rowid, so QC is not matched.
+    private void addPreviousValueConditions(SimpleFilter filter, Map<String, Object> oldValues)
+    {
+        for (String col : List.of("Id", "category", "scheduledDate", "date", "observation", "performedBy"))
+        {
+            Object value = oldValues.get(col);
+            if (value == null)
+                filter.addCondition(FieldKey.fromString(col), null, CompareType.ISBLANK);
+            else
+                filter.addCondition(FieldKey.fromString(col), col.equalsIgnoreCase("date") || col.equalsIgnoreCase("scheduledDate") ? ConvertHelper.convert(value, Date.class) : value);
+        }
+    }
+
+    // Deleting any row of a scheduled entry's group removes the rest, and any task a copy leaves empty, which would otherwise linger in My Tasks.
+    public void deleteScheduledObservationGroup(String groupId, String objectId, String taskId) throws SQLException, BatchValidationException, QueryUpdateServiceException, InvalidKeyException
+    {
+        TableInfo obsTi = getTableInfo("study", "clinical_observations");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("observationGroupId"), groupId);
+        filter.addCondition(FieldKey.fromString("objectid"), objectId, CompareType.NEQ);
+        List<Map<String, Object>> copies = new ArrayList<>(new TableSelector(obsTi, PageFlowUtil.set("objectid", "taskid"), filter, null).getMapCollection());
+        if (copies.isEmpty())
+            return;
+
+        List<Map<String, Object>> keys = copies.stream()
+                .map(copy -> {
+                    Map<String, Object> key = new CaseInsensitiveHashMap<>();
+                    key.put("objectid", copy.get("objectid"));
+                    return key;
+                })
+                .collect(Collectors.toList());
+        Objects.requireNonNull(obsTi.getUpdateService()).deleteRows(_user, _container, keys, null, getExtraContext());
+
+        // The deleted row's own task is left to whoever deleted it; StudyData spans every dataset, so a task with weights or other rows is kept.
+        TableInfo studyData = getTableInfo("study", "StudyData");
+        List<Map<String, Object>> emptyTasks = copies.stream()
+                .map(copy -> ConvertHelper.convert(copy.get("taskid"), String.class))
+                .filter(copyTaskId -> copyTaskId != null && !copyTaskId.equals(taskId))
+                .distinct()
+                .filter(copyTaskId -> !new TableSelector(studyData, new SimpleFilter(FieldKey.fromString("taskid"), copyTaskId), null).exists())
+                .map(copyTaskId -> {
+                    Map<String, Object> taskKey = new CaseInsensitiveHashMap<>();
+                    taskKey.put("taskid", copyTaskId);
+                    return taskKey;
+                })
+                .collect(Collectors.toList());
+        if (!emptyTasks.isEmpty())
+            Objects.requireNonNull(getTableInfo("ehr", "tasks").getUpdateService()).deleteRows(_user, _container, emptyTasks, null, getExtraContext());
     }
 
     /**

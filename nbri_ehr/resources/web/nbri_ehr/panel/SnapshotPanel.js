@@ -123,16 +123,16 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
                         name: 'flags'
                     },{
                         xtype: 'displayfield',
-                        fieldLabel: 'Remark',
-                        name: 'remark'
-                    },{
-                        xtype: 'displayfield',
                         fieldLabel: 'Last TB',
                         name: 'lastTB'
                     },{
                         xtype: 'displayfield',
                         fieldLabel: 'Pregnant',
                         name: 'pregnant'
+                    },{
+                        xtype: 'displayfield',
+                        fieldLabel: 'BCS',
+                        name: 'mostRecentBCS'
                     },{
                         xtype: 'displayfield',
                         fieldLabel: 'Weights',
@@ -394,10 +394,28 @@ Ext4.define('NBRI_EHR.panel.SnapshotPanel', {
 
     appendDataResults: function(toSet, results, id){
         this.callParent(arguments);
-        this.appendPregnancy(toSet, results);
+        this.appendPregnancy(toSet, results, id);
+        this.appendBCS(toSet, results);
     },
 
-    appendPregnancy: function(toSet, results){
+    appendBCS: function(toSet, results){
+        var data = results ? results.getData() : null;
+        var text;
+        if (data && data['mostRecentBCS']){
+            var date = LDK.ConvertUtils.parseDate(data['mostRecentBCSDate']);
+            text = LABKEY.Utils.encodeHtml(data['mostRecentBCS']) + (date ? ' (' + Ext4.Date.format(date, LABKEY.extDefaultDateFormat) + ')' : '');
+        }
+
+        toSet['mostRecentBCS'] = text;
+    },
+
+    appendPregnancy: function(toSet, results, id){
+        // UNKNOWN is a placeholder ID, so the conceptions recorded against it describe no single animal
+        if (id && id.toUpperCase() === 'UNKNOWN'){
+            toSet['pregnant'] = '';
+            return;
+        }
+
         var records = results ? results.getData()['activeConceptions'] : null;
         // getEHRContext returns null when the study container property is unset; fall back to the current container
         var ctx = EHR.Utils.getEHRContext() || {};
