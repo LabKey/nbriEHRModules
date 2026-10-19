@@ -50,4 +50,11 @@ public class NBRINecropsyFinalFormType extends NBRINecropsyBaseFormType
             s.addConfigSource("NecropsyRequestReadOnly");
         }
     }
+
+    // reached from the necropsy notifications and task links, not started from the Enter Data page
+    @Override
+    public boolean isVisible()
+    {
+        return false;
+    }
 }
