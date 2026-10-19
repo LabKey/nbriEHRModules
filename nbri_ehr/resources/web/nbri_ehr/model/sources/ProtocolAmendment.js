@@ -21,28 +21,14 @@ EHR.model.DataModelManager.registerMetadata('ProtocolAmendment', {
                     width: 220
                 },
             },
-            amendmentType: {
-                allowBlank: false,
-                nullable: false,
+            // assigned by the server in sequence
+            amendmentNumber: {
+                allowBlank: true,
+                nullable: true,
+                editable: false,
                 columnConfig: {
-                    width: 160
-                },
-            },
-            status: {
-                allowBlank: false,
-                nullable: false,
-                columnConfig: {
-                    width: 140
-                },
-            },
-            cycle: {
-                columnConfig: {
-                    width: 110
-                },
-            },
-            revision: {
-                columnConfig: {
-                    width: 110
+                    width: 110,
+                    editable: false
                 },
             },
             date: {
@@ -54,58 +40,12 @@ EHR.model.DataModelManager.registerMetadata('ProtocolAmendment', {
                     width: 160
                 },
             },
-            submittedDate: {
-                xtype: 'datefield',
-                extFormat: LABKEY.extDefaultDateFormat,
-                columnConfig: {
-                    width: 160
-                },
-            },
-            approvedDate: {
-                xtype: 'datefield',
-                extFormat: LABKEY.extDefaultDateFormat,
-                columnConfig: {
-                    width: 160
-                },
-            },
-            effectiveDate: {
-                xtype: 'datefield',
-                extFormat: LABKEY.extDefaultDateFormat,
-                columnConfig: {
-                    width: 160
-                },
-            },
-            // written by the approval of the next amendment on the protocol
+            // written by the server: the protocol's end date, then the day before the next amendment takes effect
             enddate: {
                 allowBlank: true,
                 nullable: true,
                 hidden: true,
                 editable: false
-            },
-            newExpirationDate: {
-                xtype: 'datefield',
-                extFormat: LABKEY.extDefaultDateFormat,
-                columnConfig: {
-                    width: 180
-                },
-            },
-            amendmentReason: {
-                height: 75,
-                editorConfig: {
-                    resizeDirections: 's'
-                },
-                columnConfig: {
-                    width: 300
-                },
-            },
-            remark: {
-                height: 75,
-                editorConfig: {
-                    resizeDirections: 's'
-                },
-                columnConfig: {
-                    width: 300
-                },
             }
         },
 
@@ -153,8 +93,7 @@ EHR.model.DataModelManager.registerMetadata('ProtocolAmendment', {
                     width: 140
                 },
             },
-            // derived from the amendment: start is its effective date, enddate is written when a later amendment
-            // supersedes this row. Never entered, or the count's window could contradict its own amendment.
+            // unused: a count's window is its amendment's, and a second one here could contradict it
             start: {
                 allowBlank: true,
                 nullable: true,

@@ -43,9 +43,6 @@ public class NBRI_EHRUserSchema extends SimpleUserSchema
     @Nullable
     protected TableInfo createWrappedTable(String name, @NotNull TableInfo schemaTable, ContainerFilter cf)
     {
-        // Approving an amendment additionally requires NBRIProtocolAmendmentApprovePermission, but that is checked on
-        // the status transition in ProtocolAmendment.js -- mapping it to UpdatePermission here would stop submitters
-        // editing their own drafts.
         if ("protocolAmendment".equalsIgnoreCase(name))
         {
             CustomPermissionsTable<?> ti = new CustomPermissionsTable<>(this, schemaTable, cf).init();

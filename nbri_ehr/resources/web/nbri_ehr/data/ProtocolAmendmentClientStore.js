@@ -5,7 +5,7 @@
  */
 
 /**
- * Parent store for the Protocol Amendment form. Every approved amendment states the protocol's complete per-species
+ * Parent store for the Protocol Amendment form. Every amendment states the protocol's complete per-species
  * counts, so when a protocol is chosen the child counts grid is seeded with the counts currently in effect for it and
  * the user adjusts from there rather than retyping every species.
  */
@@ -19,7 +19,40 @@ Ext4.define('NBRI_EHR.data.ProtocolAmendmentClientStore', {
 
         if (Ext4.isArray(modifiedFieldNames) && modifiedFieldNames.indexOf('protocol') > -1){
             this.seedCountsForProtocol(record.get('protocol'));
+            this.showNextAmendmentNumber(record);
         }
+    },
+
+    // the server numbers an amendment on save; show the number it will get while the form is filled in
+    showNextAmendmentNumber: function(record){
+        if (record.get('rowid')){
+            return;
+        }
+
+        var protocol = record.get('protocol');
+        if (!protocol){
+            record.set('amendmentNumber', null);
+            return;
+        }
+
+        LABKEY.Query.selectRows({
+            schemaName: 'nbri_ehr',
+            queryName: 'ProtocolAmendment',
+            columns: 'amendmentNumber',
+            filterArray: [LABKEY.Filter.create('protocol', protocol, LABKEY.Filter.Types.EQUAL)],
+            sort: '-amendmentNumber',
+            maxRows: 1,
+            scope: this,
+            success: function(results){
+                if (record.get('protocol') !== protocol){
+                    return;
+                }
+
+                var latest = results.rows.length ? results.rows[0].amendmentNumber : null;
+                record.set('amendmentNumber', Ext4.isNumber(latest) ? latest + 1 : 0);
+            },
+            failure: EHR.Utils.onError
+        });
     },
 
     getCountsStore: function(){

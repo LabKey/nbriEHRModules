@@ -18,12 +18,14 @@ package org.labkey.nbri_ehr.dataentry.form;
 import org.labkey.api.ehr.dataentry.AbstractFormSection;
 import org.labkey.api.ehr.dataentry.DataEntryFormContext;
 import org.labkey.api.ehr.dataentry.FormSection;
+import org.labkey.api.ehr.security.EHRProtocolEditPermission;
 import org.labkey.api.module.Module;
 import org.labkey.api.view.template.ClientDependency;
 import org.labkey.nbri_ehr.dataentry.section.NBRIProtocolAmendmentFormPanelSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRIProtocolCountsFormSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRITaskFormSection;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class NBRIProtocolAmendmentFormType extends NBRIBaseTaskFormType
@@ -37,7 +39,7 @@ public class NBRIProtocolAmendmentFormType extends NBRIBaseTaskFormType
     {
         // one amendment per form, with its per-species counts as child rows; no animal details, since an amendment
         // names a protocol and never an animal
-        super(ctx, owner, NAME, LABEL, "Colony Management", List.of(
+        super(ctx, owner, NAME, LABEL, "Admin", List.of(
                 new NBRITaskFormSection(),
                 new NBRIProtocolAmendmentFormPanelSection(LABEL),
                 new NBRIProtocolCountsFormSection("Animals Allowed Per Species", PARENT_QUERY_NAME)
@@ -51,5 +53,26 @@ public class NBRIProtocolAmendmentFormType extends NBRIBaseTaskFormType
         {
             s.addConfigSource("ProtocolAmendment");
         }
+    }
+
+    // any save takes effect and closes the prior amendment, since amendments have no QC-state gate
+    @Override
+    protected List<String> getButtonConfigs()
+    {
+        return new ArrayList<>(List.of("SUBMIT"));
+    }
+
+    @Override
+    protected List<String> getMoreActionButtonConfigs()
+    {
+        List<String> configs = super.getMoreActionButtonConfigs();
+        configs.remove("SUBMITANDNEXT");
+        return configs;
+    }
+
+    @Override
+    public boolean isAvailable()
+    {
+        return super.isAvailable() && getCtx().getContainer().hasPermission(getCtx().getUser(), EHRProtocolEditPermission.class);
     }
 }

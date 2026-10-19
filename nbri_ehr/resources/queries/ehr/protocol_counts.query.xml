@@ -17,7 +17,7 @@
                     <column columnName="allowed">
                         <columnTitle># Animals Allowed</columnTitle>
                     </column>
-                    <!-- start and enddate are not used here: a count's window is its amendment's effectiveDate..endDate -->
+                    <!-- start and enddate are not used here: a count's window is its amendment's date..enddate -->
                     <column columnName="start">
                         <isHidden>true</isHidden>
                     </column>
@@ -26,12 +26,12 @@
                     </column>
                     <column columnName="amendmentId">
                         <columnTitle>Amendment</columnTitle>
-                        <description>The amendment that approved this count; the row is only in effect once that amendment is approved</description>
+                        <description>The amendment that set this count; the row is in effect for that amendment's date window</description>
                         <fk>
                             <fkDbSchema>nbri_ehr</fkDbSchema>
                             <fkTable>ProtocolAmendment</fkTable>
                             <fkColumnName>objectid</fkColumnName>
-                            <fkDisplayColumnName>rowid</fkDisplayColumnName>
+                            <fkDisplayColumnName>amendmentNumber</fkDisplayColumnName>
                         </fk>
                     </column>
                     <column columnName="taskid">

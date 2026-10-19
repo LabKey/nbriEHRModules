@@ -17,60 +17,18 @@
                             <fkDisplayColumnName>title</fkDisplayColumnName>
                         </fk>
                     </column>
-                    <column columnName="amendmentType">
-                        <columnTitle>Type</columnTitle>
-                        <required>true</required>
-                        <fk>
-                            <fkDbSchema>ehr_lookups</fkDbSchema>
-                            <fkTable>protocol_type</fkTable>
-                            <fkColumnName>value</fkColumnName>
-                            <fkDisplayColumnName>title</fkDisplayColumnName>
-                        </fk>
-                    </column>
-                    <column columnName="status">
-                        <columnTitle>Amendment Status</columnTitle>
-                        <required>true</required>
-                        <fk>
-                            <fkDbSchema>ehr_lookups</fkDbSchema>
-                            <fkTable>protocol_state</fkTable>
-                            <fkColumnName>value</fkColumnName>
-                            <fkDisplayColumnName>title</fkDisplayColumnName>
-                        </fk>
-                    </column>
-                    <column columnName="cycle">
-                        <columnTitle>Renewal Cycle</columnTitle>
-                    </column>
-                    <column columnName="revision">
-                        <columnTitle>Revision</columnTitle>
-                        <description>Amendment number within the renewal cycle</description>
+                    <column columnName="amendmentNumber">
+                        <columnTitle>Amendment #</columnTitle>
+                        <description>0 for the protocol as first approved; assigned in sequence when left blank</description>
                     </column>
                     <column columnName="date">
-                        <columnTitle>Amendment Date</columnTitle>
+                        <columnTitle>Effective Date</columnTitle>
                         <required>true</required>
                     </column>
-                    <column columnName="submittedDate">
-                        <columnTitle>Submitted To IACUC</columnTitle>
-                    </column>
-                    <column columnName="approvedDate">
-                        <columnTitle>Decision Date</columnTitle>
-                        <description>The date the IACUC approved or declined, as stated on the letter</description>
-                    </column>
-                    <column columnName="effectiveDate">
-                        <columnTitle>Effective From</columnTitle>
-                        <description>When this amendment's counts take effect; defaults to the decision date</description>
-                    </column>
                     <column columnName="enddate">
-                        <columnTitle>Effective Through</columnTitle>
-                        <description>Set when a later amendment on this protocol is approved; blank while this amendment is current</description>
+                        <columnTitle>End Date</columnTitle>
+                        <description>The protocol's end date while this is its latest amendment; the day before the next amendment takes effect once superseded</description>
                     </column>
-                    <column columnName="newExpirationDate">
-                        <columnTitle>New Expiration Date</columnTitle>
-                        <description>For a renewal, the end of the new approval span</description>
-                    </column>
-                    <column columnName="amendmentReason">
-                        <columnTitle>Reason</columnTitle>
-                    </column>
-                    <column columnName="remark"/>
                     <column columnName="objectid">
                         <columnTitle>Key</columnTitle>
                         <isHidden>true</isHidden>
@@ -88,7 +46,7 @@
                     </column>
                     <column columnName="QCState">
                         <columnTitle>Data Entry Status</columnTitle>
-                        <description>Draft/submitted/completed state of this record. Unrelated to the IACUC decision, which is the Amendment Status field.</description>
+                        <description>Draft/submitted/completed state of this record</description>
                         <fk>
                             <fkDbSchema>core</fkDbSchema>
                             <fkTable>qcstate</fkTable>

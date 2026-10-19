@@ -4,32 +4,17 @@
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
 
--- IACUC protocol amendments and renewals. An amendment is an append-only record; approving one rewrites the protocol's
--- date span and closes out the ehr.protocol_counts rows it supersedes.
-
+-- An IACUC protocol amendment; its ehr.protocol_counts rows are in effect from date through enddate.
 CREATE TABLE nbri_ehr.ProtocolAmendment
 (
     rowid               SERIAL NOT NULL,
     protocol            VARCHAR(200),
-    -- Varchar to match the ehr_lookups key; the data entry store's reader drops an integer value on load.
-    amendmentType       VARCHAR(200),
-    status              VARCHAR(200),
-    -- Cycle counts renewals of the protocol; revision counts amendments within a cycle.
-    cycle               INTEGER,
-    revision            INTEGER,
+    amendmentNumber     INTEGER,
     -- Named 'date' so the shared EHR triggers apply their date normalization and future-date guards.
     date                TIMESTAMP,
-    submittedDate       TIMESTAMP,
-    approvedDate        TIMESTAMP,
-    effectiveDate       TIMESTAMP,
-    -- Day before the next approved amendment on the protocol takes effect; null while this one is current.
     enddate             TIMESTAMP,
-    newExpirationDate   TIMESTAMP,
-    amendmentReason     TEXT,
-    remark              TEXT,
     taskid              ENTITYID,
     QCState             INTEGER,
-    -- Stable key for the record; the link to its count rows is taskid.
     objectid            ENTITYID,
     Container           entityId NOT NULL,
     Created             TIMESTAMP,
@@ -37,8 +22,8 @@ CREATE TABLE nbri_ehr.ProtocolAmendment
     Modified            TIMESTAMP,
     ModifiedBy          USERID,
     CONSTRAINT PK_PROTOCOLAMENDMENT PRIMARY KEY (rowid),
+    CONSTRAINT UQ_PROTOCOLAMENDMENT_Number UNIQUE (Container, protocol, amendmentNumber),
     CONSTRAINT FK_PROTOCOLAMENDMENT_Container FOREIGN KEY (Container) REFERENCES core.Containers (EntityId)
 );
 CREATE INDEX IX_Nbri_Ehr_ProtocolAmendment_Container ON nbri_ehr.ProtocolAmendment (Container);
-CREATE INDEX IX_Nbri_Ehr_ProtocolAmendment_Protocol ON nbri_ehr.ProtocolAmendment (Container, protocol);
 CREATE INDEX IX_Nbri_Ehr_ProtocolAmendment_ObjectId ON nbri_ehr.ProtocolAmendment (objectid);

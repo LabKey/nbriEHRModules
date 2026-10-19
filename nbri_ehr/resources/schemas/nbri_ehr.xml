@@ -3,43 +3,50 @@
         xmlns="http://labkey.org/data/xml" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
     <table tableName="ProtocolAmendment" tableDbType="TABLE">
-        <tableTitle>protocol Amendment</tableTitle>
+        <tableTitle>Protocol Amendment</tableTitle>
         <auditLogging>DETAILED</auditLogging>
         <columns>
             <column columnName="rowid"/>
             <column columnName="protocol"/>
-            <column columnName="amendmentType"/>
-            <column columnName="status"/>
-            <column columnName="cycle"/>
-            <column columnName="revision"/>
+            <column columnName="amendmentNumber"/>
             <column columnName="date">
-                <formatString>Date</formatString>
-            </column>
-            <column columnName="submittedDate">
-                <formatString>Date</formatString>
-            </column>
-            <column columnName="approvedDate">
-                <formatString>Date</formatString>
-            </column>
-            <column columnName="effectiveDate">
                 <formatString>Date</formatString>
             </column>
             <column columnName="enddate">
                 <formatString>Date</formatString>
             </column>
-            <column columnName="newExpirationDate">
-                <formatString>Date</formatString>
-            </column>
-            <column columnName="amendmentReason"/>
-            <column columnName="remark"/>
             <column columnName="taskid"/>
             <column columnName="QCState"/>
             <column columnName="objectid"/>
-            <column columnName="Container"/>
-            <column columnName="Created"/>
-            <column columnName="CreatedBy"/>
-            <column columnName="Modified"/>
-            <column columnName="ModifiedBy"/>
+            <column columnName="container">
+                <isUserEditable>false</isUserEditable>
+                <isHidden>true</isHidden>
+                <fk>
+                    <fkDbSchema>core</fkDbSchema>
+                    <fkTable>containers</fkTable>
+                    <fkColumnName>entityid</fkColumnName>
+                </fk>
+            </column>
+            <column columnName="createdby">
+                <isUserEditable>false</isUserEditable>
+                <nullable>true</nullable>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="created">
+                <isUserEditable>false</isUserEditable>
+                <nullable>true</nullable>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="modifiedby">
+                <isUserEditable>false</isUserEditable>
+                <nullable>true</nullable>
+                <isHidden>true</isHidden>
+            </column>
+            <column columnName="modified">
+                <isUserEditable>false</isUserEditable>
+                <nullable>true</nullable>
+                <isHidden>true</isHidden>
+            </column>
         </columns>
     </table>
 

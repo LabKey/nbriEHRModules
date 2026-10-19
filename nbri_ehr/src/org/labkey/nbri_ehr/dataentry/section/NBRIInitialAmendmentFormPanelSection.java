@@ -13,14 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.labkey.nbri_ehr.security;
+package org.labkey.nbri_ehr.dataentry.section;
 
-import org.labkey.api.ehr.security.AbstractEHRPermission;
+import org.labkey.api.ehr.dataentry.ParentFormPanelSection;
 
-public class NBRIProtocolAmendmentApprovePermission extends AbstractEHRPermission
+/** A new protocol's amendment 0, kept hidden: NewProtocolClientStore fills every field from the protocol panel. */
+public class NBRIInitialAmendmentFormPanelSection extends ParentFormPanelSection
 {
-    public NBRIProtocolAmendmentApprovePermission()
+    public static final String QUERY_NAME = "protocolAmendment";
+
+    public NBRIInitialAmendmentFormPanelSection()
     {
-        super("NBRIProtocolAmendmentApprovePermission", "This permission grants the ability to record an IACUC decision on a protocol amendment or renewal. Entering and submitting an amendment requires only EHRProtocolEditPermission.");
+        super("nbri_ehr", QUERY_NAME, "Amendment 0");
+
+        setSupportFormSort(false);
+        setHidden(true);
     }
 }

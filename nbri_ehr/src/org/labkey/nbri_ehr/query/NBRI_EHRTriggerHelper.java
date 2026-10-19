@@ -68,7 +68,6 @@ import org.labkey.nbri_ehr.notification.NBRIDeathNotification;
 import org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification;
 import org.labkey.nbri_ehr.notification.NBRIPregnancyOutcomeNotification;
 import org.labkey.nbri_ehr.notification.TriggerScriptNotification;
-import org.labkey.nbri_ehr.security.NBRIProtocolAmendmentApprovePermission;
 
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
@@ -78,6 +77,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1207,11 +1207,6 @@ public class NBRI_EHRTriggerHelper
         return _container.hasPermission(_user, EHRVeterinarianPermission.class);
     }
 
-    public boolean canApproveProtocolAmendment()
-    {
-        return _container.hasPermission(_user, NBRIProtocolAmendmentApprovePermission.class);
-    }
-
     /**
      * Warns when assigning an animal to a protocol would exceed the animals approved for its species. The shared
      * EHR check reaches the protocol through a project, which cannot see a protocol assignment here, so this keys on
@@ -1266,115 +1261,186 @@ public class NBRI_EHRTriggerHelper
 
             if (used.size() > allowed)
             {
-                String msg = "Protocol " + protocol + ", " + species + ": " + used.size() + " of " + allowed + " approved.";
-                String pending = describePendingAmendments(protocol, species);
-                errors.add(pending == null ? msg : msg + " " + pending);
+                errors.add("Protocol " + protocol + ", " + species + ": " + used.size() + " of " + allowed + " allowed.");
             }
         });
 
         return errors.isEmpty() ? null : StringUtils.join(errors, "<>");
     }
 
-    /**
-     * Applies an amendment the IACUC has approved. Every approved amendment states the protocol's complete per-species
-     * counts, so approval closes the previously current amendment on the protocol -- its window ends the day before this
-     * one takes effect -- and, for a renewal, moves the protocol's approval span. Fired once, on the status transition.
-     */
-    public void applyApprovedAmendment(String protocol, String amendmentId, Object effectiveDateValue, Object newExpirationDateValue, boolean isRenewal) throws Exception
-    {
-        Date effectiveDate = ConvertHelper.convert(effectiveDateValue, Date.class);
-        Date newExpirationDate = ConvertHelper.convert(newExpirationDateValue, Date.class);
+    private record Amendment(int rowId, Integer number, Date date, Date enddate) {}
 
-        if (protocol == null || amendmentId == null || effectiveDate == null)
+    private List<Amendment> getAmendments(String protocol)
+    {
+        TableInfo ti = getTableInfo("nbri_ehr", "protocolAmendment");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
+
+        List<Amendment> amendments = new ArrayList<>();
+        new TableSelector(ti, PageFlowUtil.set("rowid", "amendmentNumber", "date", "enddate"), filter, new Sort("amendmentNumber")).forEachMap(row ->
+                amendments.add(new Amendment((Integer) row.get("rowid"), (Integer) row.get("amendmentNumber"), toDay(row.get("date")), toDay(row.get("enddate")))));
+
+        return amendments;
+    }
+
+    /** The highest-numbered amendment below amendmentNumber, or the latest one when amendmentNumber is null. */
+    private @Nullable Amendment getPredecessor(List<Amendment> amendments, @Nullable Integer amendmentNumber)
+    {
+        return amendments.stream()
+                .filter(a -> a.number() != null && (amendmentNumber == null || a.number() < amendmentNumber))
+                .max(Comparator.comparingInt(Amendment::number))
+                .orElse(null);
+    }
+
+    private @Nullable Date toDay(Object value)
+    {
+        Date date = ConvertHelper.convert(value, Date.class);
+        return date == null ? null : DateUtils.truncate(date, Calendar.DATE);
+    }
+
+    // a null bound leaves that side of the window open
+    private boolean overlaps(@Nullable Date start1, @Nullable Date end1, @Nullable Date start2, @Nullable Date end2)
+    {
+        return (end1 == null || start2 == null || !end1.before(start2)) && (end2 == null || start1 == null || !end2.before(start1));
+    }
+
+    public int getNextAmendmentNumber(String protocol)
+    {
+        Amendment latest = getPredecessor(getAmendments(protocol), null);
+        return latest == null ? 0 : latest.number() + 1;
+    }
+
+    public @Nullable Date getProtocolEnddate(String protocol)
+    {
+        TableInfo ti = getTableInfo("ehr", "protocol");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
+
+        return new TableSelector(ti, Collections.singleton("enddate"), filter, null).getArrayList(Date.class).stream().filter(Objects::nonNull).findFirst().orElse(null);
+    }
+
+    public boolean protocolExists(String protocol)
+    {
+        return new TableSelector(getTableInfo("ehr", "protocol"), new SimpleFilter(FieldKey.fromString("protocol"), protocol), null).exists();
+    }
+
+    public boolean hasAmendments(String protocol)
+    {
+        return !getAmendments(protocol).isEmpty();
+    }
+
+    /** True when another saved count row on this amendment already has this species. */
+    public boolean hasProtocolCount(String amendmentId, String species, Object rowIdValue)
+    {
+        Integer rowId = ConvertHelper.convert(rowIdValue, Integer.class);
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("amendmentId"), amendmentId);
+        filter.addCondition(FieldKey.fromString("species"), species);
+        if (rowId != null)
+            filter.addCondition(FieldKey.fromString("rowid"), rowId, CompareType.NEQ);
+
+        return new TableSelector(getTableInfo("ehr", "protocol_counts"), filter, null).exists();
+    }
+
+    public boolean isBeforeDay(Object value, Object other)
+    {
+        Date date = toDay(value);
+        Date otherDate = toDay(other);
+        return date != null && otherDate != null && date.before(otherDate);
+    }
+
+    public boolean isSameDay(Object value, Object other)
+    {
+        return Objects.equals(toDay(value), toDay(other));
+    }
+
+    /** Field name to message for each rule an amendment save would break. */
+    // Rhino hands over numbers from a row as strings or doubles, which never match an Integer parameter, so these take Object
+    public Map<String, String> validateAmendment(String protocol, Object rowIdValue, Object amendmentNumberValue, Object dateValue, Object enddateValue, boolean isInsert)
+    {
+        Map<String, String> errors = new LinkedHashMap<>();
+        Integer rowId = ConvertHelper.convert(rowIdValue, Integer.class);
+        Integer amendmentNumber = ConvertHelper.convert(amendmentNumberValue, Integer.class);
+        Date date = toDay(dateValue);
+        Date enddate = toDay(enddateValue);
+        if (protocol == null || date == null)
+            return errors;
+
+        if (enddate != null && enddate.before(date))
+            errors.put("enddate", "End date cannot be before the effective date.");
+
+        Date protocolEnd = getProtocolEnddate(protocol);
+        if (protocolEnd != null && date.after(protocolEnd))
+            errors.put("date", "Effective date is after the protocol's end date of " + _dateFormat.format(protocolEnd) + ".");
+
+        List<Amendment> others = getAmendments(protocol).stream().filter(a -> rowId == null || a.rowId() != rowId).toList();
+
+        // closePriorAmendment ends the predecessor the day before a new amendment takes effect, so it cannot overlap
+        Amendment predecessor = isInsert ? getPredecessor(others, amendmentNumber) : null;
+        if (predecessor != null && predecessor.date() != null && !date.after(predecessor.date()))
+            errors.putIfAbsent("date", "Effective date must be after amendment " + predecessor.number() + "'s effective date of " + _dateFormat.format(predecessor.date()) + ".");
+
+        others.stream()
+                .filter(a -> a != predecessor && overlaps(a.date(), a.enddate(), date, enddate))
+                .findFirst()
+                .ifPresent(a -> errors.putIfAbsent("date", "Overlaps amendment " + a.number() + ", in effect " + (a.date() == null ? "" : _dateFormat.format(a.date())) + " to " + (a.enddate() == null ? "open" : _dateFormat.format(a.enddate())) + "."));
+
+        return errors;
+    }
+
+    public void closePriorAmendment(String protocol, Object amendmentNumberValue, Object dateValue) throws Exception
+    {
+        Integer amendmentNumber = ConvertHelper.convert(amendmentNumberValue, Integer.class);
+        Date date = toDay(dateValue);
+        if (protocol == null || amendmentNumber == null || date == null)
             return;
 
-        TableInfo amendmentTi = getTableInfo("nbri_ehr", "protocolAmendment");
+        Amendment predecessor = getPredecessor(getAmendments(protocol), amendmentNumber);
+        if (predecessor == null || (predecessor.enddate() != null && predecessor.enddate().before(date)))
+            return;
 
-        // enddate is inclusive, so the superseded amendment ends the day before this one takes effect
-        Date closeDate = DateUtils.addDays(DateUtils.truncate(effectiveDate, Calendar.DATE), -1);
-
-        SimpleFilter priorFilter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
-        priorFilter.addCondition(FieldKey.fromString("objectid"), amendmentId, CompareType.NEQ);
-        priorFilter.addCondition(FieldKey.fromString("status/title"), "Approved");
-        priorFilter.addCondition(FieldKey.fromString("enddate"), null, CompareType.ISBLANK);
-        // never end an amendment before it began; one that takes effect after this one is not superseded by it
-        priorFilter.addClause(new SimpleFilter.OrClause(
-                CompareType.ISBLANK.createFilterClause(FieldKey.fromString("effectiveDate"), null),
-                CompareType.DATE_LTE.createFilterClause(FieldKey.fromString("effectiveDate"), closeDate)));
-
-        List<Map<String, Object>> toClose = new ArrayList<>();
-        List<Map<String, Object>> oldKeys = new ArrayList<>();
-        new TableSelector(amendmentTi, PageFlowUtil.set("rowid"), priorFilter, null).forEach(Integer.class, rowid -> {
-            Map<String, Object> row = new CaseInsensitiveHashMap<>();
-            row.put("rowid", rowid);
-            row.put("enddate", closeDate);
-            toClose.add(row);
-
-            Map<String, Object> key = new CaseInsensitiveHashMap<>();
-            key.put("rowid", rowid);
-            oldKeys.add(key);
-        });
-
-        if (!toClose.isEmpty())
-        {
-            QueryUpdateService amendmentQus = amendmentTi.getUpdateService();
-            if (amendmentQus == null)
-                throw new IllegalStateException("nbri_ehr.ProtocolAmendment is not updatable");
-
-            BatchValidationException errors = new BatchValidationException();
-            amendmentQus.updateRows(_user, _container, toClose, oldKeys, errors, null, getExtraContext());
-            if (errors.hasErrors())
-                throw errors;
-
-            _log.info("Closed " + toClose.size() + " superseded amendment(s) on protocol " + protocol);
-        }
-
-        if (isRenewal)
-        {
-            TableInfo protocolTi = getTableInfo("ehr", "protocol");
-            Map<String, Object> row = new CaseInsensitiveHashMap<>();
-            row.put("protocol", protocol);
-            row.put("approve", effectiveDate);
-            if (newExpirationDate != null)
-                row.put("enddate", newExpirationDate);
-
-            Map<String, Object> key = new CaseInsensitiveHashMap<>();
-            key.put("protocol", protocol);
-
-            QueryUpdateService protocolQus = protocolTi.getUpdateService();
-            if (protocolQus == null)
-                throw new IllegalStateException("ehr.protocol is not updatable");
-
-            BatchValidationException errors = new BatchValidationException();
-            protocolQus.updateRows(_user, _container, List.of(row), List.of(key), errors, null, getExtraContext());
-            if (errors.hasErrors())
-                throw errors;
-        }
+        updateAmendmentEnddate(predecessor.rowId(), DateUtils.addDays(date, -1));
     }
 
-    /** Rhino cannot construct a JS Date from a java.util.Date, so date arithmetic for the triggers lives here. */
-    public Date plusYears(Object dateValue, int years)
+    /** Null when the protocol's latest amendment can still run to this end date. */
+    public @Nullable String validateProtocolEnddate(String protocol, Object enddateValue)
     {
-        Date date = ConvertHelper.convert(dateValue, Date.class);
-        return date == null ? null : DateUtils.addYears(DateUtils.truncate(date, Calendar.DATE), years);
+        Date enddate = toDay(enddateValue);
+        if (protocol == null || enddate == null)
+            return null;
+
+        Amendment latest = getPredecessor(getAmendments(protocol), null);
+        if (latest == null || latest.date() == null || !enddate.before(latest.date()))
+            return null;
+
+        return "End date is before amendment " + latest.number() + "'s effective date of " + _dateFormat.format(latest.date()) + ".";
     }
 
-    /** Names any submitted-but-undecided amendment proposing a different count, so the warning does not look stale. */
-    private String describePendingAmendments(String protocol, String species)
+    public void syncLatestAmendmentEnddate(String protocol, Object enddateValue) throws Exception
     {
-        TableInfo ti = getTableInfo("ehr", "protocolCountsPending");
-        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
-        filter.addCondition(FieldKey.fromString("species"), species);
-        TableSelector ts = new TableSelector(ti, filter, null);
+        Date enddate = toDay(enddateValue);
+        Amendment latest = protocol == null ? null : getPredecessor(getAmendments(protocol), null);
+        if (latest == null || Objects.equals(latest.enddate(), enddate))
+            return;
 
-        final List<String> pending = new ArrayList<>();
-        ts.forEach(rs -> {
-            int proposed = rs.getInt("allowed");
-            if (!rs.wasNull())
-                pending.add(proposed + " proposed on amendment " + rs.getString("amendmentLabel"));
-        });
+        updateAmendmentEnddate(latest.rowId(), enddate);
+    }
 
-        return pending.isEmpty() ? null : "Pending: " + StringUtils.join(pending, "; ") + ".";
+    private void updateAmendmentEnddate(int rowId, @Nullable Date enddate) throws Exception
+    {
+        TableInfo ti = getTableInfo("nbri_ehr", "protocolAmendment");
+        QueryUpdateService qus = ti.getUpdateService();
+        if (qus == null)
+            throw new IllegalStateException("nbri_ehr.ProtocolAmendment is not updatable");
+
+        Map<String, Object> row = new CaseInsensitiveHashMap<>();
+        row.put("rowid", rowId);
+        row.put("enddate", enddate);
+
+        Map<String, Object> key = new CaseInsensitiveHashMap<>();
+        key.put("rowid", rowId);
+
+        BatchValidationException errors = new BatchValidationException();
+        qus.updateRows(_user, _container, List.of(row), List.of(key), errors, null, getExtraContext());
+        if (errors.hasErrors())
+            throw errors;
     }
 
     public void closeDailyClinicalObs(String caseid, String enddate)

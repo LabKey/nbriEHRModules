@@ -26,7 +26,7 @@ FROM (
     GROUP BY p.protocol, pa.species
 ) i
 
--- approved counts only, and only the row in effect today; see ehr.protocolCountsEffective
+-- only the count in effect today; see ehr.protocolCountsEffective
 LEFT JOIN ehr.protocolCountsEffective pc ON (i.protocol = pc.protocol AND i.species = pc.species)
 
 WHERE i.species IS NOT NULL

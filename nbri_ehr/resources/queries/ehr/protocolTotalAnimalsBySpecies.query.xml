@@ -30,7 +30,7 @@
                     </column>
                     <column columnName="allowed">
                         <columnTitle># Animals Allowed</columnTitle>
-                        <description>Approved for this species by the amendment currently in effect</description>
+                        <description>Allowed for this species by the amendment currently in effect</description>
                     </column>
                     <column columnName="TotalRemaining">
                         <columnTitle># Remaining</columnTitle>

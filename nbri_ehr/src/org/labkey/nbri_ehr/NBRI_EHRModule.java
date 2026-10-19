@@ -63,7 +63,6 @@ import org.labkey.nbri_ehr.notification.NBRIPregnancyOutcomeNotification;
 import org.labkey.nbri_ehr.notification.NBRIProcedureOverdueNotification;
 import org.labkey.nbri_ehr.query.NBRI_EHRUserSchema;
 import org.labkey.nbri_ehr.security.NBRIEHRVetTechRole;
-import org.labkey.nbri_ehr.security.NBRIProtocolAmendmentApproverRole;
 import org.labkey.nbri_ehr.table.NBRI_EHRCustomizer;
 
 import java.io.File;
@@ -83,7 +82,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 26.004;
+        return 26.005;
     }
 
     @Override
@@ -187,7 +186,6 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         ehrService.registerActionOverride("dataEntryFormDetails", this, "views/dataEntryFormDetails.html");
 
         RoleManager.registerRole(new NBRIEHRVetTechRole());
-        RoleManager.registerRole(new NBRIProtocolAmendmentApproverRole());
 
         EHRService.get().registerMoreActionsButton(new ShowEditUIButton(this, "ehr", "observation_types", EHRDataAdminPermission.class), "ehr", "observation_types");
 
@@ -231,6 +229,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIMedicationTreatmentFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProjectFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProtocolFormType.class, this));
+        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRINewProtocolFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIInvestigatorsFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIPregnancyFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIWeightFormType.class, this));
