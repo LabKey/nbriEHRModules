@@ -59,6 +59,7 @@ import org.labkey.test.util.LogMethod;
 import org.labkey.test.util.PortalHelper;
 import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.ehr.EHRClientAPIHelper;
+import org.labkey.test.util.ext4cmp.Ext4CmpRef;
 import org.labkey.test.util.ext4cmp.Ext4ComboRef;
 import org.labkey.test.util.ext4cmp.Ext4FieldRef;
 import org.labkey.test.util.ext4cmp.Ext4GridRef;
@@ -84,6 +85,7 @@ import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.labkey.test.components.ext4.RadioButton.RadioButton;
 import static org.labkey.test.components.html.Input.Input;
 
 @Category({EHR.class})
@@ -1474,6 +1476,61 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table = new AnimalHistoryPage<>(getDriver()).getActiveReportDataRegion();
         table.setFilter("Id", "Equals", animalId);
         Assert.assertEquals("Status is not updated ", "Completed", table.getDataAsText(0, "observationStatus"));
+    }
+
+    @Test
+    public void testAddBatchByLocation() throws IOException, CommandException
+    {
+        // Sibling tests add cages and house animals, so read the expected values rather than hard-coding them.
+        SelectRowsCommand cageSelect = new SelectRowsCommand("ehr_lookups", "cage");
+        cageSelect.setColumns(List.of("location"));
+        List<String> expectedLocations = cageSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().stream()
+                .map(row -> (String) row.get("location"))
+                .sorted()
+                .toList();
+
+        SelectRowsCommand housingSelect = new SelectRowsCommand("study", "housing");
+        housingSelect.setColumns(List.of("Id"));
+        housingSelect.addFilter(new Filter("cage", CAGE_IN_R2));
+        housingSelect.addFilter(new Filter("isActive", true));
+        List<String> expectedIds = housingSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().stream()
+                .map(row -> (String) row.get("Id"))
+                .sorted()
+                .toList();
+        Assert.assertFalse("No animals currently housed in " + CAGE_IN_R2, expectedIds.isEmpty());
+
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Bulk Clinical Entry"));
+        // The form is wider than the window, so the collapsed section's expand tool is off-screen and can't be clicked.
+        Ext4CmpRef.waitForComponent(this, "panel[title='Weights']");
+        _ext4Helper.queryOne("panel[title='Weights']", Ext4CmpRef.class).eval("expand(false)");
+        Ext4GridRef weights = _helper.getExt4GridForFormSection("Weights");
+        weights.clickTbarButton("Add Batch");
+
+        Window<?> chooseAnimals = new Window<>("Choose Animals", getDriver());
+        RadioButton().withLabel("Location").find(chooseAnimals).check();
+
+        log("Verifying the cage picker lists room-qualified locations");
+        Locator.XPathLocator cagePicker = Ext4Helper.Locators.formItemWithLabelContaining("Cage(s)");
+        // Check-combo items are prefixed with a non-breaking space.
+        List<String> options = _ext4Helper.getComboBoxOptions(cagePicker).stream()
+                .map(option -> option.replace(Locator.NBSP, " ").strip())
+                .filter(option -> !"All".equals(option))
+                .sorted()
+                .toList();
+        assertEquals("Cage picker should list each cage's location", expectedLocations, options);
+
+        _ext4Helper.selectItemFromOpenComboList(CAGE_IN_R2, Ext4Helper.TextMatchTechnique.CONTAINS);
+        _ext4Helper.closeComboList(cagePicker);
+        chooseAnimals.clickButton("Submit", true);
+
+        log("Verifying the animals housed in the chosen location were added");
+        weights.waitForRowCount(expectedIds.size());
+        List<String> addedIds = new ArrayList<>();
+        for (int i = 1; i <= weights.getRowCount(); i++)
+            addedIds.add((String) weights.getFieldValue(i, "Id"));
+        Collections.sort(addedIds);
+        assertEquals("Add Batch by location added the wrong animals", expectedIds, addedIds);
     }
 
     // The ehr.tasks formtype for the clinical observations data entry form (NBRIClinicalObservationsFormType.NAME).
