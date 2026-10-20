@@ -41,6 +41,49 @@ Ext4.define('NBRI_EHR.window.AddAnimalsWindow', {
         }
     },
 
+    // NBRI groups are ehr_lookups.breeding_type codes rather than ehr.animal_groups rows.
+    animalGroupHandler: function(){
+        var form = this.resetFormFields(true);
+        form.add([{
+            html: 'This will return any animals currently assigned to the selected group.',
+            style: 'padding-bottom: 10px;'
+        },{
+            xtype: 'combo',
+            fieldLabel: 'Animal Group',
+            itemId: 'groupField',
+            displayField: 'title',
+            valueField: 'value',
+            queryMode: 'local',
+            editable: false,
+            store: Ext4.create('LABKEY.ext4.data.Store', {
+                schemaName: 'ehr_lookups',
+                queryName: 'breeding_type',
+                columns: 'value,title',
+                sort: 'title',
+                autoLoad: true
+            })
+        }]);
+
+        form.getAnimals = function(){
+            var group = this.down('#groupField').getValue();
+            if (!group){
+                Ext4.Msg.alert('Error', 'Must choose a group');
+                return;
+            }
+
+            var filterArray = this.getBaseFilterArray().concat([
+                LABKEY.Filter.create('groupId', group, LABKEY.Filter.Types.EQUAL),
+                LABKEY.Filter.create('isActive', true, LABKEY.Filter.Types.EQUAL)
+            ]);
+
+            this.doQuery({
+                schemaName: 'study',
+                queryName: 'animal_group_members',
+                filterArray: filterArray
+            });
+        }
+    },
+
     projectHandler: function(){
         var form = this.resetFormFields(true);
         form.add([{

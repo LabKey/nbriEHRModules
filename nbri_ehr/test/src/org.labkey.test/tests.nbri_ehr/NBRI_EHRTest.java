@@ -1499,16 +1499,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
                 .toList();
         Assert.assertFalse("No animals currently housed in " + CAGE_IN_R2, expectedIds.isEmpty());
 
-        gotoEnterData();
-        waitAndClickAndWait(Locator.linkWithText("Bulk Clinical Entry"));
-        // The form is wider than the window, so the collapsed section's expand tool is off-screen and can't be clicked.
-        Ext4CmpRef.waitForComponent(this, "panel[title='Weights']");
-        _ext4Helper.queryOne("panel[title='Weights']", Ext4CmpRef.class).eval("expand(false)");
-        Ext4GridRef weights = _helper.getExt4GridForFormSection("Weights");
-        weights.clickTbarButton("Add Batch");
-
-        Window<?> chooseAnimals = new Window<>("Choose Animals", getDriver());
-        RadioButton().withLabel("Location").find(chooseAnimals).check();
+        Ext4GridRef weights = openBulkClinicalWeights();
+        Window<?> chooseAnimals = openAddBatch(weights, "Location");
 
         log("Verifying the cage picker lists room-qualified locations");
         Locator.XPathLocator cagePicker = Ext4Helper.Locators.formItemWithLabelContaining("Cage(s)");
@@ -1525,12 +1517,98 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         chooseAnimals.clickButton("Submit", true);
 
         log("Verifying the animals housed in the chosen location were added");
-        weights.waitForRowCount(expectedIds.size());
-        List<String> addedIds = new ArrayList<>();
-        for (int i = 1; i <= weights.getRowCount(); i++)
-            addedIds.add((String) weights.getFieldValue(i, "Id"));
-        Collections.sort(addedIds);
-        assertEquals("Add Batch by location added the wrong animals", expectedIds, addedIds);
+        assertEquals("Add Batch by location added the wrong animals", expectedIds, getGridIds(weights, expectedIds.size()));
+    }
+
+    @Test
+    public void testAddBatchByAnimalGroup() throws Exception
+    {
+        String group = "T";
+        String groupTitle = "Time-Mated";
+        String currentMember1 = SUBJECTS[0];
+        String currentMember2 = SUBJECTS[1];
+        String otherGroupMember = SUBJECTS[2];
+        String formerMember = SUBJECTS[3];
+
+        Date pastDate = TIME_FORMAT.parse("2012-01-03 09:30");
+        Date endDate = TIME_FORMAT.parse("2012-05-03 19:20");
+        String[] fields = {"Id", "date", "enddate", "groupId", "performedby"};
+        Object[][] data = {
+                {currentMember1, pastDate, null, group, 1004},
+                {currentMember2, pastDate, null, group, 1004},
+                {otherGroupMember, pastDate, null, "C", 1004},
+                {formerMember, pastDate, endDate, group, 1004}
+        };
+        SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "animal_group_members", "lsid", fields, data);
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+
+        SelectRowsCommand groupTypeSelect = new SelectRowsCommand("ehr_lookups", "breeding_type");
+        groupTypeSelect.setColumns(List.of("title"));
+        List<String> expectedTitles = groupTypeSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().stream()
+                .map(row -> (String) row.get("title"))
+                .sorted()
+                .toList();
+
+        // Sibling tests also assign groups, so read the current members rather than hard-coding them.
+        SelectRowsCommand memberSelect = new SelectRowsCommand("study", "animal_group_members");
+        memberSelect.setColumns(List.of("Id"));
+        memberSelect.addFilter(new Filter("groupId", group));
+        memberSelect.addFilter(new Filter("isActive", true));
+        List<String> expectedIds = memberSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().stream()
+                .map(row -> (String) row.get("Id"))
+                .distinct()
+                .sorted()
+                .toList();
+        Assert.assertTrue("Current members missing from " + group + ": " + expectedIds, expectedIds.containsAll(List.of(currentMember1, currentMember2)));
+        Assert.assertFalse("Member of another group returned for " + group, expectedIds.contains(otherGroupMember));
+        Assert.assertFalse("Former member returned for " + group, expectedIds.contains(formerMember));
+
+        Ext4GridRef weights = openBulkClinicalWeights();
+        Window<?> chooseAnimals = openAddBatch(weights, "Animal Group");
+
+        log("Verifying the group picker lists breeding types");
+        // Its label matches the radio's, so locate the picker by component id.
+        Ext4CmpRef groupField = _ext4Helper.queryOne("window[title='Choose Animals'] #groupField", Ext4CmpRef.class);
+        Locator.XPathLocator groupPicker = Locator.tagWithId("table", groupField.getId());
+        List<String> options = _ext4Helper.getComboBoxOptions(groupPicker).stream()
+                .sorted()
+                .toList();
+        assertEquals("Group picker should list each breeding type", expectedTitles, options);
+
+        _ext4Helper.selectItemFromOpenComboList(groupTitle, Ext4Helper.TextMatchTechnique.EXACT);
+        _ext4Helper.closeComboList(groupPicker);
+        chooseAnimals.clickButton("Submit", true);
+
+        log("Verifying the current members of the chosen group were added");
+        assertEquals("Add Batch by animal group added the wrong animals", expectedIds, getGridIds(weights, expectedIds.size()));
+    }
+
+    private Ext4GridRef openBulkClinicalWeights()
+    {
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Bulk Clinical Entry"));
+        // The form is wider than the window, so the collapsed section's expand tool is off-screen and can't be clicked.
+        Ext4CmpRef.waitForComponent(this, "panel[title='Weights']");
+        _ext4Helper.queryOne("panel[title='Weights']", Ext4CmpRef.class).eval("expand(false)");
+        return _helper.getExt4GridForFormSection("Weights");
+    }
+
+    private Window<?> openAddBatch(Ext4GridRef grid, String type)
+    {
+        grid.clickTbarButton("Add Batch");
+        Window<?> chooseAnimals = new Window<>("Choose Animals", getDriver());
+        RadioButton().withLabel(type).find(chooseAnimals).check();
+        return chooseAnimals;
+    }
+
+    private List<String> getGridIds(Ext4GridRef grid, int expectedCount)
+    {
+        grid.waitForRowCount(expectedCount);
+        List<String> ids = new ArrayList<>();
+        for (int i = 1; i <= grid.getRowCount(); i++)
+            ids.add((String) grid.getFieldValue(i, "Id"));
+        Collections.sort(ids);
+        return ids;
     }
 
     // The ehr.tasks formtype for the clinical observations data entry form (NBRIClinicalObservationsFormType.NAME).
