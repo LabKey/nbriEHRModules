@@ -383,6 +383,9 @@
             <column columnName="orderId">
                 <datatype>varchar</datatype>
             </column>
+            <column columnName="observationGroupId">
+                <datatype>varchar</datatype>
+            </column>
         </columns>
     </table>
     <table tableName="clinremarks" tableDbType="TABLE">
@@ -760,7 +763,7 @@
     </table>
     <table tableName="necropsy" tableDbType="TABLE">
         <tableTitle>Necropsy</tableTitle>
-        <description>Documents necropsy (postmortem) examination findings for primates, including gross and histological observations, diagnoses, and reports.</description>
+        <description>Documents preliminary necropsy (postmortem) examination findings for primates.</description>
         <columns>
             <column columnName="Id">
                 <datatype>varchar</datatype>
@@ -774,45 +777,25 @@
                 <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
                 <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
             </column>
-            <column columnName="category">
-                <columnTitle>Category</columnTitle>
-                <datatype>varchar</datatype>
-            </column>
-            <column columnName="accessionNumber">
+            <column columnName="accessionNo">
                 <columnTitle>Accession Number</columnTitle>
                 <datatype>varchar</datatype>
             </column>
-            <column columnName="specimenCondition">
-                <columnTitle>Condition of Specimen</columnTitle>
+            <column columnName="weight">
+                <columnTitle>Body Weight (kg)</columnTitle>
+                <datatype>double</datatype>
+            </column>
+            <column columnName="perfused">
+                <columnTitle>Perfused</columnTitle>
+                <datatype>boolean</datatype>
+            </column>
+            <column columnName="preliminaryCauseOfDeath">
+                <columnTitle>Preliminary Cause of Death</columnTitle>
                 <datatype>varchar</datatype>
             </column>
-            <column columnName="physicalCondition">
-                <columnTitle>Physical Condition</columnTitle>
+            <column columnName="preliminaryComments">
+                <columnTitle>Preliminary Comments</columnTitle>
                 <datatype>varchar</datatype>
-            </column>
-            <column columnName="relevantHistory">
-                <columnTitle>Relevant History</columnTitle>
-                <datatype>varchar</datatype>
-            </column>
-            <column columnName="grossAbnormalities">
-                <columnTitle>Gross Abnormalities</columnTitle>
-                <datatype>varchar</datatype>
-            </column>
-            <column columnName="diagnosis">
-                <columnTitle>Diagnosis</columnTitle>
-                <datatype>varchar</datatype>
-            </column>
-            <column columnName="identification">
-                <columnTitle>Name/State/License no. (quarantine only)</columnTitle>
-                <datatype>varchar</datatype>
-            </column>
-            <column columnName="remark">
-                <datatype>varchar</datatype>
-            </column>
-            <column columnName="attachmentFile">
-                <columnTitle>Attachment File</columnTitle>
-                <datatype>varchar</datatype>
-                <rangeURI>http://cpas.fhcrc.org/exp/xml#fileLink</rangeURI>
             </column>
         </columns>
     </table>
@@ -828,16 +811,9 @@
                 </importAliases>
             </column>
             <column columnName="date">
-                <columnTitle>Date of Exam</columnTitle>
                 <datatype>timestamp</datatype>
                 <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
                 <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
-            </column>
-            <column columnName="systemExamined">
-                <datatype>varchar</datatype>
-            </column>
-            <column columnName="appearance">
-                <datatype>varchar</datatype>
             </column>
         </columns>
     </table>
@@ -861,6 +837,272 @@
                 <datatype>varchar</datatype>
             </column>
             <column columnName="necropsyDispositionCode">
+                <datatype>varchar</datatype>
+            </column>
+        </columns>
+    </table>
+    <table tableName="necropsyRequest" tableDbType="TABLE">
+        <tableTitle>Necropsy Request</tableTitle>
+        <description>Requests a necropsy for a deceased primate, with the clinical history the pathologist needs.</description>
+        <columns>
+            <column columnName="Id">
+                <datatype>varchar</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#ParticipantId</propertyURI>
+                <importAliases>
+                    <importAlias>ptid</importAlias>
+                </importAliases>
+            </column>
+            <column columnName="date">
+                <datatype>timestamp</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
+                <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
+            </column>
+            <column columnName="breed">
+                <columnTitle>Breed/Strain</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="wastingDisease">
+                <columnTitle>Wasting Protocol Requested</columnTitle>
+                <datatype>boolean</datatype>
+            </column>
+            <column columnName="geneticModified">
+                <columnTitle>Genetically Modified</columnTitle>
+                <datatype>boolean</datatype>
+            </column>
+            <column columnName="geneticModifiedBackground">
+                <columnTitle>Genetically Modified Background</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="geneticModifiedGenotype">
+                <columnTitle>Genetically Modified Genotype</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="clinicalDiagnosis">
+                <columnTitle>Clinical Differential Diagnoses</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="testsRequested">
+                <columnTitle>Requested Samples/Tests</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="history">
+                <columnTitle>History</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+        </columns>
+    </table>
+    <table tableName="procedureStaff" tableDbType="TABLE">
+        <tableTitle>Procedure Staff</tableTitle>
+        <description>Records the staff who took part in a procedure such as a necropsy, and their roles.</description>
+        <columns>
+            <column columnName="Id">
+                <datatype>varchar</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#ParticipantId</propertyURI>
+                <importAliases>
+                    <importAlias>ptid</importAlias>
+                </importAliases>
+            </column>
+            <column columnName="date">
+                <datatype>timestamp</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
+                <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
+            </column>
+            <column columnName="staff">
+                <columnTitle>Staff</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="role">
+                <columnTitle>Role</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="category">
+                <columnTitle>Category</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+        </columns>
+    </table>
+    <table tableName="tissueMeasurements" tableDbType="TABLE">
+        <tableTitle>Tissue Measurements</tableTitle>
+        <description>Records tissues collected at necropsy with their preparation, weights and measurements.</description>
+        <columns>
+            <column columnName="Id">
+                <datatype>varchar</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#ParticipantId</propertyURI>
+                <importAliases>
+                    <importAlias>ptid</importAlias>
+                </importAliases>
+            </column>
+            <column columnName="date">
+                <datatype>timestamp</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
+                <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
+            </column>
+            <column columnName="tissueSample">
+                <columnTitle>Tissue</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="qualifier">
+                <columnTitle>Qualifier</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="preparation">
+                <columnTitle>Preparation</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="weight">
+                <columnTitle>Weight</columnTitle>
+                <datatype>double</datatype>
+            </column>
+            <column columnName="weightUnits">
+                <columnTitle>Weight Units</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="measurement1">
+                <columnTitle>Measurement 1</columnTitle>
+                <datatype>double</datatype>
+            </column>
+            <column columnName="measurement2">
+                <columnTitle>Measurement 2</columnTitle>
+                <datatype>double</datatype>
+            </column>
+            <column columnName="measurement3">
+                <columnTitle>Measurement 3</columnTitle>
+                <datatype>double</datatype>
+            </column>
+            <column columnName="units">
+                <columnTitle>Units</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+        </columns>
+    </table>
+    <table tableName="histology" tableDbType="TABLE">
+        <tableTitle>Histology</tableTitle>
+        <description>Records histology slides prepared from necropsy tissues and their descriptions.</description>
+        <columns>
+            <column columnName="Id">
+                <datatype>varchar</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#ParticipantId</propertyURI>
+                <importAliases>
+                    <importAlias>ptid</importAlias>
+                </importAliases>
+            </column>
+            <column columnName="date">
+                <datatype>timestamp</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
+                <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
+            </column>
+            <column columnName="tissueSample">
+                <columnTitle>Tissue</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="qualifier">
+                <columnTitle>Qualifier</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="stain">
+                <columnTitle>Stain</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="slideNo">
+                <columnTitle>Slide No.</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+        </columns>
+    </table>
+    <table tableName="necropsyFinal" tableDbType="TABLE">
+        <tableTitle>Necropsy Final</tableTitle>
+        <description>Records the final necropsy cause of death and comments.</description>
+        <columns>
+            <column columnName="Id">
+                <datatype>varchar</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#ParticipantId</propertyURI>
+                <importAliases>
+                    <importAlias>ptid</importAlias>
+                </importAliases>
+            </column>
+            <column columnName="date">
+                <datatype>timestamp</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
+                <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
+            </column>
+            <column columnName="causeCategory">
+                <columnTitle>Cause of Death Category</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="causeOfDeath">
+                <columnTitle>Cause of Death</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="comments">
+                <columnTitle>Comments</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+        </columns>
+    </table>
+    <table tableName="preliminaryDiagnoses" tableDbType="TABLE">
+        <tableTitle>Gross Diagnoses</tableTitle>
+        <description>Records the gross (preliminary) necropsy diagnoses, one row per lesion.</description>
+        <columns>
+            <column columnName="Id">
+                <datatype>varchar</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#ParticipantId</propertyURI>
+                <importAliases>
+                    <importAlias>ptid</importAlias>
+                </importAliases>
+            </column>
+            <column columnName="date">
+                <datatype>timestamp</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
+                <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
+            </column>
+            <column columnName="tissueSample">
+                <columnTitle>Organ/Tissue</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="diagnosis">
+                <columnTitle>Diagnosis</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="severity">
+                <columnTitle>Severity</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="distribution">
+                <columnTitle>Distribution</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+        </columns>
+    </table>
+    <table tableName="finalDiagnoses" tableDbType="TABLE">
+        <tableTitle>Final Diagnoses</tableTitle>
+        <description>Records the final necropsy diagnoses, one row per lesion.</description>
+        <columns>
+            <column columnName="Id">
+                <datatype>varchar</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#ParticipantId</propertyURI>
+                <importAliases>
+                    <importAlias>ptid</importAlias>
+                </importAliases>
+            </column>
+            <column columnName="date">
+                <datatype>timestamp</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
+                <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
+            </column>
+            <column columnName="tissueSample">
+                <columnTitle>Organ/Tissue</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="diagnosis">
+                <columnTitle>Diagnosis</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="severity">
+                <columnTitle>Severity</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="distribution">
+                <columnTitle>Distribution</columnTitle>
                 <datatype>varchar</datatype>
             </column>
         </columns>

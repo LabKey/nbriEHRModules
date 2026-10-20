@@ -39,8 +39,8 @@ public class NecropsyStatusDemographicsProvider extends AbstractListDemographics
     @Override
     public boolean requiresRecalc(String schema, String query)
     {
-        return ("study".equalsIgnoreCase(schema) && "deaths".equalsIgnoreCase(query)) ||
-                ("study".equalsIgnoreCase(schema) && "demographics".equalsIgnoreCase(query));
+        return "study".equalsIgnoreCase(schema) && ("deaths".equalsIgnoreCase(query) || "demographics".equalsIgnoreCase(query) ||
+                "necropsyRequest".equalsIgnoreCase(query) || "necropsyFinal".equalsIgnoreCase(query));
     }
 
     @Override

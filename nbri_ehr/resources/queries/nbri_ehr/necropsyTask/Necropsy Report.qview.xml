@@ -1,0 +1,12 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="status"/>
+        <column name="Date"/>
+        <column name="SubmittingPI"/>
+        <column name="SubmittingVet"/>
+        <column name="SubmittingVetCell"/>
+        <column name="PriorityCode"/>
+        <column name="Sensitive"/>
+        <column name="SensitiveReason"/>
+    </columns>
+</customView>

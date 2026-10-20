@@ -36,6 +36,16 @@
                             viewName: 'Active Tasks'
                         }
                     }]
+                },{
+                    title: 'Necropsies',
+                    itemId: 'necropsies',
+                    items: [{
+                        xtype: 'ldk-querycmp',
+                        queryConfig:  {
+                            schemaName: 'nbri_ehr',
+                            queryName: 'necropsyTask'
+                        }
+                    }]
                 }]
             }
         });

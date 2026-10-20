@@ -1,0 +1,7 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="staff"/>
+        <column name="role"/>
+        <column name="remark"/>
+    </columns>
+</customView>

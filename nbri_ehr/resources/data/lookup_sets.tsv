@@ -38,6 +38,7 @@ dental_obs	Dental Observations	value
 derm_obs	Dermatologic Observations	value
 digit_amputation	Digit Amputation	value	title
 ear_types	Ear Types	value	title
+encounter_roles	Staff Roles	value
 esig_events	ESig Events	value	title
 euthanasia_type	Euthanasia Type	value	title
 exam_findings	Exam Findings	value
@@ -51,6 +52,7 @@ general_obs	General Observations	value
 genital_types	Genital Types	value
 genitourinary_obs	Genitourinary Observations	value
 hernia_types	Hernia Types	value
+histology_stain	Histology Stain	value
 housing_reason	Housing Reason	value
 hyd_score	Hyd Score	value
 incision_score	Incision Status	value
@@ -61,11 +63,12 @@ mass_type	Mass Type	value	title
 mens_score	Menses	value
 mucous_membranes	Mucous Membranes	value
 musculoskeletal_observations	Musculoskeletal Observations	value
+necropsy_cause_category	Necropsy Cause of Death Category	value
+necropsy_diagnosis	Necropsy Diagnosis	value
+necropsy_diagnosis_distribution	Necropsy Diagnosis Distribution	value
+necropsy_diagnosis_severity	Necropsy Diagnosis Severity	value
 necropsy_disposition_codes	Tissue Disposition Codes	value	title
-necropsy_organ_appearance	Appearance	value	title
-necropsy_organ_systems	Organ Systems	value	title
-necropsy_physical_condition	Physical Condition	value	title
-necropsy_specimen_condition	Specimen Condition	value	title
+necropsy_priority	Necropsy Priority	value
 necropsy_tissue	Tissues	value	title
 neurologic_observations	Neurologic Observations	value
 nhp_training_reason	NHP Training Reason	value
@@ -107,6 +110,11 @@ stool_types	Stool Types	value
 tb_obs_score	TB Obs Score	value
 temperament	Temperament	value	title
 testicular_volume	Testicular Volume	value	title
+tissue	Pathology Tissues	value	value
+tissue_measurement_units	Tissue Measurement Units	value	value
+tissue_preparation	Tissue Preparation	value	value
+tissue_qualifier	Tissue Qualifier	value	value
+tissue_weight_units	Tissue Weight Units	value	value
 trauma_size	Trauma Size	value
 turgor_score	Turgor Score	value
 termination_reason_codes	Termination Reason Codes Codes	value	title

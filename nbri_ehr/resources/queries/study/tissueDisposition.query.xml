@@ -33,6 +33,29 @@
                     <column columnName="taskid">
                         <isHidden>true</isHidden>
                     </column>
+                    <column columnName="necropsyStatus">
+                        <columnTitle>Necropsy Status</columnTitle>
+                        <conditionalFormats>
+                            <conditionalFormat>
+                                <filters>
+                                    <filter operator="eq" value="Request Pending"/>
+                                </filters>
+                                <backgroundColor>FBEC5D</backgroundColor>
+                            </conditionalFormat>
+                            <conditionalFormat>
+                                <filters>
+                                    <filter operator="eq" value="Preliminary Results Submitted"/>
+                                </filters>
+                                <backgroundColor>FBEC5D</backgroundColor>
+                            </conditionalFormat>
+                            <conditionalFormat>
+                                <filters>
+                                    <filter operator="eq" value="Final Results Submitted: Pending Addendum"/>
+                                </filters>
+                                <backgroundColor>FBEC5D</backgroundColor>
+                            </conditionalFormat>
+                        </conditionalFormats>
+                    </column>
                 </columns>
             </table>
         </tables>

@@ -142,6 +142,9 @@ Ext4.define('NBRI_EHR.panel.AnimalDetailsPanel', {
                     fieldLabel: 'Pregnant',
                     name: 'pregnant'
                 },{
+                    fieldLabel: 'BCS',
+                    name: 'mostRecentBCS'
+                },{
                     fieldLabel: 'Weight',
                     name: 'weights'
                 },{

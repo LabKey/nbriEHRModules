@@ -1,0 +1,21 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
+    <sorts>
+        <sort column="date" descending="true"/>
+    </sorts>
+    <columns>
+        <column name="viewNecropsy"/>
+        <column name="Id"/>
+        <column name="date"/>
+        <column name="Id/Demographics/death"/>
+        <column name="breed"/>
+        <column name="wastingDisease"/>
+        <column name="geneticModified"/>
+        <column name="geneticModifiedBackground"/>
+        <column name="geneticModifiedGenotype"/>
+        <column name="clinicalDiagnosis"/>
+        <column name="testsRequested"/>
+        <column name="history"/>
+        <column name="necropsyStatus"/>
+        <column name="QCState"/>
+    </columns>
+</customView>
