@@ -55,16 +55,12 @@
                     });
 
                     searchItems.push({
-                        xtype: 'ehr-simplecombo',
+                        xtype: 'nbri_ehr-locationField',
                         itemId: 'cageField',
                         fieldLabel: 'Cage',
                         name: 'cageField',
-                        value: ctx.cage,
-                        schemaName: 'ehr_lookups',
-                        queryName: 'cage',
-                        displayField: 'cage',
+                        value: ctx.cage ? ctx.cage.split(',') : null,
                         valueField: 'location'
-
                     })
 
                     toAdd.push({
@@ -85,15 +81,30 @@
 
                     return toAdd;
                 },
-                isValid: function(){
-                    if(!this.down('#cageField').getValue()){
-                        return false;
+                getFilterArray: function(tab){
+                    var filterArray = {
+                        removable: [],
+                        nonRemovable: []
+                    };
+
+                    if (this.reportQCStates?.length) {
+                        filterArray.nonRemovable.push(LABKEY.Filter.create('qcstate/label', this.reportQCStates, LABKEY.Filter.Types.EQUALS_ONE_OF));
                     }
 
-                    return true;
+                    var cage = this.down('#cageField').getValue();
+                    if (cage && cage.length) {
+                        cage = Ext4.isArray(cage) ? cage.join(';') : cage;
+                        filterArray.nonRemovable.push(LABKEY.Filter.create(tab.report.cageFieldName, cage, LABKEY.Filter.Types.EQUALS_ONE_OF));
+                    }
+
+                    return filterArray;
+                },
+                isValid: function(){
+                    var cage = this.down('#cageField').getValue();
+                    return !!(cage && cage.length);
                 },
                 getTitle: function(){
-                    return 'Cage: ' + this.down('#cageField').getDisplayValue();
+                    return 'Cage: ' + this.down('#cageField').getRawValue();
                 },
             },{
                 xtype: 'ldk-nofiltersfiltertype',
