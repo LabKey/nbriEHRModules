@@ -19,7 +19,7 @@ Ext4.define('NBRI_EHR.field.LocationField', {
     initComponent: function(){
         Ext4.apply(this, {
             displayField:'location',
-            valueField: 'rowid',
+            valueField: this.initialConfig.valueField || 'rowid',
             queryMode: 'local',
             anyMatch: true,
             store: Ext4.create('LABKEY.ext4.data.Store', {

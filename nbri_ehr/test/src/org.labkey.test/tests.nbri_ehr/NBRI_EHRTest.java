@@ -44,6 +44,7 @@ import org.labkey.test.WebTestHelper;
 import org.labkey.test.categories.EHR;
 import org.labkey.test.components.CustomizeView;
 import org.labkey.test.components.dumbster.EmailRecordTable;
+import org.labkey.test.components.ext4.ComboBox;
 import org.labkey.test.components.ext4.Window;
 import org.labkey.test.components.ui.grids.QueryGrid;
 import org.labkey.test.pages.ehr.AnimalHistoryPage;
@@ -85,6 +86,7 @@ import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.labkey.test.components.ext4.ComboBox.ComboBox;
 import static org.labkey.test.components.ext4.RadioButton.RadioButton;
 import static org.labkey.test.components.html.Input.Input;
 
@@ -1431,6 +1433,56 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
                 .clickReportTab("All Clinical Cases");
         table = reportPage.getActiveReportDataRegion();
         Assert.assertEquals("Case not closed correctly ", LocalDateTime.now().format(_dateFormat) + " 00:00", table.getDataAsText(0, "enddate"));
+    }
+
+    @Test
+    public void testAnimalHistoryLocationSearch() throws IOException, CommandException
+    {
+        List<String> locations = List.of(CAGE_IN_R1, CAGE_IN_R2);
+
+        // Sibling tests add cages and house animals, so read the expected values rather than hard-coding them.
+        SelectRowsCommand cageSelect = new SelectRowsCommand("ehr_lookups", "cage");
+        cageSelect.setColumns(List.of("location"));
+        List<String> expectedLocations = cageSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().stream()
+                .map(row -> (String) row.get("location"))
+                .sorted()
+                .toList();
+
+        SelectRowsCommand housingSelect = new SelectRowsCommand("study", "housing");
+        housingSelect.setColumns(List.of("Id"));
+        housingSelect.addFilter(new Filter("cage", String.join(";", locations), Filter.Operator.IN));
+        housingSelect.addFilter(new Filter("isActive", true));
+        List<String> expectedIds = housingSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().stream()
+                .map(row -> (String) row.get("Id"))
+                .distinct()
+                .sorted()
+                .toList();
+        Assert.assertFalse("No animals currently housed in " + locations, expectedIds.isEmpty());
+
+        AnimalHistoryPage<?> animalHistory = AnimalHistoryPage.beginAt(this, getContainerPath());
+        animalHistory.selectCurrectLocation();
+        ComboBox cagePicker = ComboBox(getDriver()).withIdPrefix("nbri_ehr-locationField").find(getDriver())
+                .setMatcher(Ext4Helper.TextMatchTechnique.LEADING_NBSP);
+
+        log("Verifying the cage dropdown lists room-qualified locations");
+        // Check-combo items are prefixed with a non-breaking space.
+        List<String> options = cagePicker.getComboBoxOptions().stream()
+                .map(option -> option.replace(Locator.NBSP, " ").strip())
+                .filter(option -> !"All".equals(option))
+                .sorted()
+                .toList();
+        assertEquals("Cage dropdown should list each cage's location", expectedLocations, options);
+
+        cagePicker.selectComboBoxItem(locations.toArray(new String[0]));
+        animalHistory.refreshReport();
+
+        log("Verifying the report is limited to animals housed in the chosen locations");
+        animalHistory.clickCategoryTab("Colony Management").clickReportTab("Housing - Active");
+        List<String> reportIds = animalHistory.getActiveReportDataRegion().getColumnDataAsText("Id").stream()
+                .distinct()
+                .sorted()
+                .toList();
+        assertEquals("Location search returned the wrong animals", expectedIds, reportIds);
     }
 
     @Test
