@@ -831,7 +831,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitAndClickAndWait(Locator.linkWithText("Assignment"));
         lockForm();
 
-        Ext4GridRef protocols = _helper.getExt4GridForFormSection("Protocol Assignment");
+        Ext4GridRef protocols = getExpandedFormSectionGrid("Protocol Assignment");
         _helper.addRecordToGrid(protocols);
         protocols.setGridCell(1, "Id", aliveAnimalId);
 
@@ -855,7 +855,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Assert.assertEquals("Protocol Description should not be editable",
                 false, getColumnProperty(protocols, "protocol/description", "editable"));
 
-        Ext4GridRef projects = _helper.getExt4GridForFormSection("Project Assignment");
+        Ext4GridRef projects = getExpandedFormSectionGrid("Project Assignment");
         _helper.addRecordToGrid(projects);
         projects.setGridCell(1, "Id", aliveAnimalId);
         projects.setGridCell(1, "project", PROJECT_ID);
@@ -873,6 +873,100 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         // every check above reads the unsaved row, so discard rather than submit and leave the animal's own
         // assignments alone
         _helper.discardForm();
+    }
+
+    @Test
+    public void testCurrentValueColumns() throws Exception
+    {
+        String animalId = "TESTCURVAL1";
+        String currentGroup = "T";
+        String currentGroupTitle = "Time-Mated";
+        String newGroup = "P";
+        String newGroupTitle = "Project Breeding";
+
+        log("Creating an animal with a current group, protocol and project");
+        Date pastDate = TIME_FORMAT.parse("2012-01-03 09:30");
+        saveRows("demographics", new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"},
+                new Object[][]{{animalId, "MMU", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}});
+        saveRows("Housing", new String[]{"Id", "date", "enddate", "room", "cage", "performedby"},
+                new Object[][]{{animalId, pastDate, null, getRooms()[0], CAGE_IN_R1, 1004}});
+        saveRows("animal_group_members", new String[]{"Id", "date", "enddate", "groupId", "performedby"},
+                new Object[][]{{animalId, pastDate, null, currentGroup, 1004}});
+        saveRows("protocolAssignment", new String[]{"Id", "date", "enddate", "protocol", "performedby"},
+                new Object[][]{{animalId, pastDate, null, PROTOCOL_ID, 1004}});
+        saveRows("Assignment", new String[]{"Id", "date", "enddate", "project", "performedby"},
+                new Object[][]{{animalId, pastDate, null, PROTOCOL_PROJECT_ID, 1004}});
+
+        SelectRowsCommand currentSelect = new SelectRowsCommand("study", "Animal");
+        currentSelect.setColumns(List.of("activeAnimalGroups/groups", "activeProtocolAssignments/protocolDisplayName", "activeProjectAssignments/project"));
+        currentSelect.addFilter(new Filter("Id", animalId));
+        Map<String, Object> current = currentSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().getFirst();
+        assertEquals("Unexpected current group for " + animalId, List.of(currentGroupTitle), current.get("activeAnimalGroups/groups"));
+        String currentProtocol = (String) current.get("activeProtocolAssignments/protocolDisplayName");
+        Assert.assertTrue("No current protocol for " + animalId, StringUtils.isNotBlank(currentProtocol));
+        String currentProject = String.valueOf(current.get("activeProjectAssignments/project"));
+
+        log("Verifying the group assignment form shows the current group");
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Animal Group Assignment"));
+        Ext4GridRef groups = getExpandedFormSectionGrid("Group Assignments");
+        _helper.addRecordToGrid(groups);
+        groups.setGridCell(1, "Id", animalId);
+        verifyCurrentValueColumn(groups, "Id/activeAnimalGroups/groups", "Current Group", currentGroupTitle, "groupId", "New Group");
+        groups.setGridCell(1, "groupId", newGroupTitle);
+        submitForm("Submit Final", "Finalize");
+        verifyPreviousRecordClosed("animal_group_members", "groupId", animalId, currentGroup, newGroup);
+
+        log("Verifying the assignment form shows the current protocol and project");
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Assignment"));
+        lockForm();
+        Ext4GridRef protocols = getExpandedFormSectionGrid("Protocol Assignment");
+        _helper.addRecordToGrid(protocols);
+        protocols.setGridCell(1, "Id", animalId);
+        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayName", "Current Protocol", currentProtocol, "protocol", "New Protocol");
+        protocols.setGridCell(1, "protocol", protocolChoice(DUMMY_PROTOCOL, DUMMY_INVES_LAST_NAME));
+
+        Ext4GridRef projects = getExpandedFormSectionGrid("Project Assignment");
+        _helper.addRecordToGrid(projects);
+        projects.setGridCell(1, "Id", animalId);
+        verifyCurrentValueColumn(projects, "Id/activeProjectAssignments/project", "Current Project", currentProject, "project", "New Project");
+        projects.setGridCell(1, "project", PROJECT_ID);
+        submitForm("Submit Final", "Finalize");
+
+        verifyPreviousRecordClosed("protocolAssignment", "protocol", animalId, PROTOCOL_ID, DUMMY_PROTOCOL);
+        verifyPreviousRecordClosed("assignment", "project", animalId, PROTOCOL_PROJECT_ID, PROJECT_ID);
+    }
+
+    private void saveRows(String queryName, String[] fields, Object[][] data) throws Exception
+    {
+        SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", queryName, "lsid", fields, data);
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+    }
+
+    private void verifyCurrentValueColumn(Ext4GridRef grid, String currentColumn, String currentHeader, String expectedCurrent,
+                                          String newColumn, String newHeader)
+    {
+        waitFor(() -> expectedCurrent.equals(String.valueOf(grid.getFieldValue(1, currentColumn))),
+                currentHeader + " was not filled with " + expectedCurrent + ", found " + grid.getFieldValue(1, currentColumn), WAIT_FOR_JAVASCRIPT);
+        assertEquals("Wrong header over " + currentColumn, currentHeader, getColumnProperty(grid, currentColumn, "text"));
+        assertEquals(currentHeader + " should not be editable", false, getColumnProperty(grid, currentColumn, "editable"));
+        assertEquals("Wrong header over " + newColumn, newHeader, getColumnProperty(grid, newColumn, "text"));
+    }
+
+    /** Saving a new record should end the animal's open one, leaving only the new record open. */
+    private void verifyPreviousRecordClosed(String queryName, String valueColumn, String animalId, String previousValue, String newValue) throws Exception
+    {
+        SelectRowsCommand select = new SelectRowsCommand("study", queryName);
+        select.setColumns(List.of(valueColumn, "enddate"));
+        select.addFilter(new Filter("Id", animalId));
+        Map<String, Boolean> openByValue = new HashMap<>();
+        for (Map<String, Object> row : select.execute(getApiHelper().getConnection(), getContainerPath()).getRows())
+            openByValue.put(String.valueOf(row.get(valueColumn)), row.get("enddate") == null);
+
+        assertEquals("Unexpected " + queryName + " records for " + animalId, Set.of(previousValue, newValue), openByValue.keySet());
+        Assert.assertFalse("Previous " + queryName + " record was not closed", openByValue.get(previousValue));
+        Assert.assertTrue("New " + queryName + " record should be open", openByValue.get(newValue));
     }
 
     /** The text every protocol dropdown displays for a protocol, built by ehr/activeProtocols.sql. */
@@ -1639,10 +1733,16 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     {
         gotoEnterData();
         waitAndClickAndWait(Locator.linkWithText("Bulk Clinical Entry"));
+        return getExpandedFormSectionGrid("Weights");
+    }
+
+    private Ext4GridRef getExpandedFormSectionGrid(String sectionTitle)
+    {
         // The form is wider than the window, so the collapsed section's expand tool is off-screen and can't be clicked.
-        Ext4CmpRef.waitForComponent(this, "panel[title='Weights']");
-        _ext4Helper.queryOne("panel[title='Weights']", Ext4CmpRef.class).eval("expand(false)");
-        return _helper.getExt4GridForFormSection("Weights");
+        String query = "panel[title='" + sectionTitle + "']";
+        Ext4CmpRef.waitForComponent(this, query);
+        _ext4Helper.queryOne(query, Ext4CmpRef.class).eval("expand(false)");
+        return _helper.getExt4GridForFormSection(sectionTitle);
     }
 
     private Window<?> openAddBatch(Ext4GridRef grid, String type)

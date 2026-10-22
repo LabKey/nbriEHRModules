@@ -7,7 +7,7 @@
  * @param fieldConfigs
  */
 Ext4.define('NBRI_EHR.data.AssignmentsClientStore', {
-    extend: 'EHR.data.DataEntryClientStore',
+    extend: 'NBRI_EHR.data.CurrentValueClientStore',
 
     // Read-only columns echoing a value from the row's lookup target. Maintained here rather than from the
     // combo's select event because nothing guarantees a combo: bulk add builds its rows through createModel(),
@@ -106,42 +106,28 @@ Ext4.define('NBRI_EHR.data.AssignmentsClientStore', {
     },
 
     getExtraContext: function(){
+        // Only the study.assignment triggers read this, and both sections send it under the same key, where the
+        // later one would replace the other, so the protocol section contributes nothing.
+        if (this.getFields().get('protocol'))
+            return null;
+
         var rows = [];
-        var allRecords = this.getRange();
-        for (var idx = 0; idx < allRecords.length; ++idx){
-            var record = allRecords[idx];
-
-            var date = record.get('date');
+        this.each(function(record){
             var id = record.get('Id');
-            var protocol = record.get('protocol');
+            var date = record.get('date');
             var project = record.get('project');
-            if (!id || !date || !protocol || !project)
-                continue;
+            if (!id || !date || !project)
+                return;
 
-            date = Ext4.Date.format(date, LABKEY.extDefaultDateFormat);
-
-            if (protocol) {
-                rows.push({
-                    Id: id,
-                    objectid: record.get('objectid'),
-                    date: date,
-                    enddate: record.get('enddate'),
-                    qcstate: record.get('QCState'),
-                    protocol: record.get('protocol')
-                });
-            }
-            else if (project) {
-                rows.push({
-                    Id: id,
-                    objectid: record.get('objectid'),
-                    date: date,
-                    enddate: record.get('enddate'),
-                    qcstate: record.get('QCState'),
-                    project: record.get('project')
-                });
-            }
-
-        }
+            rows.push({
+                Id: id,
+                objectid: record.get('objectid'),
+                date: Ext4.Date.format(date, LABKEY.extDefaultDateFormat),
+                enddate: record.get('enddate'),
+                qcstate: record.get('QCState'),
+                project: project
+            });
+        }, this);
 
         if (!Ext4.isEmpty(rows)){
             rows = Ext4.encode(rows);

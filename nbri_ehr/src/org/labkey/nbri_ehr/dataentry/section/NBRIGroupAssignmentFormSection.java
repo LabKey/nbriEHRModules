@@ -15,7 +15,11 @@
  */
 package org.labkey.nbri_ehr.dataentry.section;
 
+import org.labkey.api.data.TableInfo;
+import org.labkey.api.query.FieldKey;
 import org.labkey.api.view.template.ClientDependency;
+
+import java.util.List;
 
 public class NBRIGroupAssignmentFormSection extends BaseFormSection
 {
@@ -28,5 +32,15 @@ public class NBRIGroupAssignmentFormSection extends BaseFormSection
             setClientStoreClass("NBRI_EHR.data.AllowAnyIdClientStore");
             addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/data/AllowAnyIdClientStore.js"));
         }
+        else
+        {
+            setClientStoreClass("NBRI_EHR.data.CurrentValueClientStore");
+        }
+    }
+
+    @Override
+    protected List<FieldKey> getFieldKeys(TableInfo ti)
+    {
+        return withCurrentValueColumn(super.getFieldKeys(ti), "Id/activeAnimalGroups/groups", "groupId");
     }
 }

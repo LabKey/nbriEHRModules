@@ -19,8 +19,10 @@ import org.json.JSONObject;
 import org.labkey.api.ehr.EHRService;
 import org.labkey.api.ehr.dataentry.DataEntryFormContext;
 import org.labkey.api.ehr.dataentry.SimpleFormSection;
+import org.labkey.api.query.FieldKey;
 import org.labkey.api.view.template.ClientDependency;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class BaseFormSection extends SimpleFormSection
@@ -84,6 +86,7 @@ public class BaseFormSection extends SimpleFormSection
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/plugin/RowEditor.js"));
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/window/AddAnimalsWindow.js"));
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/field/LocationField.js"));
+        addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/data/CurrentValueClientStore.js"));
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/window/CopyFromSectionWindow.js"));
         addClientDependency(ClientDependency.supplierFromPath("ehr/window/FormBulkAddWindow.js"));
         addClientDependency(ClientDependency.supplierFromPath("nbri_ehr/window/FormBulkAddWindow.js"));
@@ -125,6 +128,23 @@ public class BaseFormSection extends SimpleFormSection
         defaultButtons.remove("GUESSPROJECT");
         defaultButtons.add("NBRI_FORM_BULK_ADD");
         return defaultButtons;
+    }
+
+    /**
+     * Places a display-only current-value column after Id, followed by the editable column that replaces it.
+     * Not a dataset column, so insert/update ignores it; NBRI_EHR.data.CurrentValueClientStore fills it.
+     */
+    protected static List<FieldKey> withCurrentValueColumn(List<FieldKey> keys, String currentValuePath, String editableColumn)
+    {
+        List<FieldKey> ret = new ArrayList<>(keys);
+        int idIdx = ret.indexOf(FieldKey.fromParts("Id"));
+        ret.add(idIdx + 1, FieldKey.fromString(currentValuePath));
+
+        FieldKey editable = FieldKey.fromParts(editableColumn);
+        if (ret.remove(editable))
+            ret.add(idIdx + 2, editable);
+
+        return ret;
     }
 
     @Override
