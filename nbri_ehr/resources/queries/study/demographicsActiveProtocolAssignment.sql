@@ -8,7 +8,7 @@
 SELECT
   d.id,
   cast(group_concat(DISTINCT a.protocol.displayName, ', ') as varchar) as protocolDisplayName,
-  cast(group_concat(DISTINCT initcap(a.protocol.investigatorId.firstName) ||' '|| initcap(a.protocol.investigatorId.lastName), ', ') as varchar) as investigator,
+  cast(group_concat(DISTINCT (initcap(a.protocol.investigatorId.firstName) ||' '|| initcap(a.protocol.investigatorId.lastName)), ', ') as varchar) as investigator,
   cast(group_concat(DISTINCT a.protocol.title, ', ') as varchar) as protocolTitle,
   cast(group_concat(DISTINCT
        CASE
