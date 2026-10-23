@@ -7,10 +7,8 @@ SELECT
 
 d2.id,
 
--- Adding case statement because when cage is null no value is returned even when there is a room.
-case when d2.cage is null THEN
-d2.room
-else (d2.room || '-' || d2.cage) end AS Location,
+-- NBRI housing stores the ehr_lookups.cage location key in cage, so it already carries the room.
+d2.cage AS Location,
 
 d2.room.area,
 

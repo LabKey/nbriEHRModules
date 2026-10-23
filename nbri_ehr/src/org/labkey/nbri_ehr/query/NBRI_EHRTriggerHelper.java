@@ -888,7 +888,7 @@ public class NBRI_EHRTriggerHelper
         }
 
         TableInfo ti = getTableInfo("study", "demographicsLastHousing");
-        FieldKey cageKey = FieldKey.fromString("cage/cage");
+        FieldKey cageKey = FieldKey.fromString("cage/location");
         final Map<FieldKey, ColumnInfo> cols = QueryService.get().getColumns(ti, PageFlowUtil.set(cageKey));
         TableSelector ts = new TableSelector(ti, cols.values(), getRecordFilter(id, true), null);
         final Mutable<String> cage = new MutableObject<>();
