@@ -760,7 +760,7 @@ public class NBRI_EHRTriggerHelper
                         StringBuilder html = new StringBuilder();
                         html.append("Status: ").append(PageFlowUtil.filter(status)).append("<br>");
                         appendNecropsyRequestDetails(html, request);
-                        appendAnimalDetails(html, id, _container);
+                        appendAnimalDetails(html, id, _container, true);
                         appendNecropsyLinks(html, taskid, formType);
 
                         TriggerScriptNotification.sendMessage(notification.getEmailSubject(_container) + ": " + id, html.toString(), recipients, _container, _user);

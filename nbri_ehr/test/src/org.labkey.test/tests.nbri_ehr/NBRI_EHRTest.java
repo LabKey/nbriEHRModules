@@ -2008,6 +2008,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitForTextWithRefresh(WAIT_FOR_PAGE + WAIT_FOR_JAVASCRIPT, "Necropsy Request: " + aliveAnimalId);
         notifications = new EmailRecordTable(this);
         notifications.clickMessage(notifications.getMessageWithSubjectContaining("Necropsy Request: " + aliveAnimalId));
+        String requestBody = notifications.getMessageWithSubjectContaining("Necropsy Request: " + aliveAnimalId).getBody();
+        Assert.assertTrue("Necropsy notification is missing the final location: " + requestBody, requestBody.contains(CAGE_IN_R3));
+        Assert.assertTrue("Necropsy notification is missing the final protocol: " + requestBody, requestBody.contains(PROTOCOL_ID + " - " + INVES_LAST_NAME));
         String preliminaryUrl = Locator.linkWithText("Click here to enter preliminary necropsy results").findElement(notifications).getAttribute("href");
 
         log("Entering the preliminary necropsy");
