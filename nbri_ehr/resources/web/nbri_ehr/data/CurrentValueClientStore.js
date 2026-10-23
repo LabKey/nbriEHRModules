@@ -4,104 +4,100 @@
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
 /**
- * Fills the read-only current-value columns from the animal's open records, which saving the new row closes.
- * The demographics cache lacks groups, so these are read from study.Animal like the server does for saved rows.
- * Set silently: the grid redraws the row on the 'validation' event once any open cell editor closes.
+ * Fills the read-only current-value columns from the demographics cache, which the Id editor has usually loaded by
+ * the time the edit commits. Set before the parent's update so the row draws them with the Id; an async fallback
+ * only appears once any open cell editor closes, as the grid defers 'validation' redraws until then.
  */
 Ext4.define('NBRI_EHR.data.CurrentValueClientStore', {
     extend: 'EHR.data.DataEntryClientStore',
 
-    currentValueFields: [
-        'Id/activeAnimalGroups/groups',
-        'Id/activeProtocolAssignments/protocolDisplayName',
-        'Id/activeProjectAssignments/project'
-    ],
+    // demographics property and its column for each current-value field
+    currentValueSources: {
+        'Id/activeAnimalGroups/groups': {property: 'activeAnimalGroups', column: 'groupId/title'},
+        'Id/activeProtocolAssignments/protocolDisplayName': {property: 'protocolAssignments', column: 'protocol/displayName'},
+        'Id/activeProjectAssignments/project': {property: 'activeAssignments', column: 'project/name'}
+    },
 
     constructor: function(){
         this.callParent(arguments);
 
-        this.activeCurrentValueFields = Ext4.Array.filter(this.currentValueFields, function(name){
+        this.activeCurrentValueFields = Ext4.Array.filter(Ext4.Object.getKeys(this.currentValueSources), function(name){
             return !!this.getFields().get(name);
         }, this);
     },
 
     onUpdate: function(record, operation, modified){
         if (modified && Ext4.Array.contains(modified, 'Id'))
-            this.retrieveCurrentValues([record]);
+            this.updateCurrentValues([record]);
 
         this.callParent(arguments);
     },
 
     insert: function(index, records){
-        var ret = this.callParent(arguments);
+        this.updateCurrentValues(Ext4.Array.from(records));
 
-        this.retrieveCurrentValues(Ext4.Array.from(records));
-
-        return ret;
+        return this.callParent(arguments);
     },
 
-    retrieveCurrentValues: function(records){
+    updateCurrentValues: function(records){
         if (!this.activeCurrentValueFields.length)
             return;
 
-        var ids = [];
+        var pending = [];
         Ext4.Array.forEach(records, function(record){
             var id = record.get('Id');
-            if (id)
-                ids.push(id);
-            else
-                this.setCurrentValues(record, []);
+            var cached = id ? EHR.DemographicsCache.getDemographicsSynchronously(id) : null;
+            this.setCurrentValues(record, cached ? cached[id] : null);
+
+            if (id && !(cached && cached[id]))
+                pending.push(record);
         }, this);
 
-        if (!ids.length)
+        if (!pending.length)
             return;
 
-        ids = Ext4.Array.unique(ids);
-        LABKEY.Query.selectRows({
-            schemaName: 'study',
-            queryName: 'Animal',
-            columns: ['Id'].concat(Ext4.Array.map(this.activeCurrentValueFields, function(name){
-                return name.substring('Id/'.length);
-            })),
-            filterArray: [LABKEY.Filter.create('Id', ids.join(';'), LABKEY.Filter.Types.EQUALS_ONE_OF)],
-            scope: this,
-            success: function(results){
-                var rowsById = {};
-                Ext4.Array.forEach(results.rows || [], function(row){
-                    var key = String(row.Id).toLowerCase();
-                    rowsById[key] = rowsById[key] || [];
-                    rowsById[key].push(row);
-                });
+        EHR.DemographicsCache.getDemographics(Ext4.Array.unique(Ext4.Array.map(pending, function(record){
+            return record.get('Id');
+        })), function(ids, idMap){
+            if (!idMap)
+                return;
 
-                // the Id may have changed while the query ran, so match on each record's current Id
-                this.each(function(record){
-                    var id = record.get('Id');
-                    if (id && Ext4.Array.contains(ids, id))
-                        this.setCurrentValues(record, rowsById[String(id).toLowerCase()] || []);
-                }, this);
-            },
-            failure: LDK.Utils.getErrorCallback()
-        });
+            // the record may have been removed, or its Id changed, while this loaded
+            Ext4.Array.forEach(pending, function(record){
+                var demographics = idMap[record.get('Id')];
+                if (demographics && this.indexOf(record) !== -1 && this.setCurrentValues(record, demographics))
+                    this.fireEvent('validation', this, record);
+            }, this);
+        }, this, -1);
     },
 
-    setCurrentValues: function(record, rows){
+    /** Returns whether any value changed. Skips equal values so syncing a loaded row doesn't dirty it. */
+    setCurrentValues: function(record, demographics){
+        var changed = false;
         record.beginEdit();
         Ext4.Array.forEach(this.activeCurrentValueFields, function(name){
-            var values = [];
-            Ext4.Array.forEach(rows, function(row){
-                // group_concat comes back as an array
-                var value = row[name.substring('Id/'.length)];
-                Ext4.Array.forEach(Ext4.isArray(value) ? value : [value], function(v){
-                    v = Ext4.isEmpty(v) ? null : Ext4.String.trim(String(v));
-                    if (v && !Ext4.Array.contains(values, v))
-                        values.push(v);
-                });
-            });
+            var value = demographics ? this.getCurrentValue(demographics, this.currentValueSources[name]) : null;
+            var current = record.get(name);
+            if (current === value || (Ext4.isEmpty(current) && Ext4.isEmpty(value)))
+                return;
 
-            record.set(name, values.length ? values.join(', ') : null);
+            record.set(name, value);
+            changed = true;
         }, this);
         record.endEdit(true);
 
-        this.fireEvent('validation', this, record);
+        return changed;
+    },
+
+    getCurrentValue: function(demographics, source){
+        var values = [];
+        Ext4.Array.forEach(demographics.getProperty(source.property) || [], function(row){
+            var v = row[source.column];
+            v = Ext4.isEmpty(v) ? null : Ext4.String.trim(String(v));
+            if (v && !Ext4.Array.contains(values, v))
+                values.push(v);
+        });
+
+        return values.length ? values.join(', ') : null;
     }
 });
