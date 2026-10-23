@@ -138,6 +138,14 @@ public class NBRI_EHRTriggerHelper
         return map;
     }
 
+    /** Post-commit, so the rebuild can't re-cache the values this transaction is replacing. */
+    public void recalcCachedDemographicsAfterCommit(String schemaName, String queryName)
+    {
+        StudyService.get().getDatasetSchema().getScope().addCommitTask(
+                () -> EHRDemographicsService.get().recalculateForAllIdsInCache(_container, schemaName, queryName, true),
+                DbScope.CommitTaskOption.POSTCOMMIT);
+    }
+
     public String createHousingRecord(String id, Map<String, Object> row, String formName) throws QueryUpdateServiceException, DuplicateKeyException, SQLException, BatchValidationException, InvalidKeyException
     {
         BatchValidationException errors = new BatchValidationException();

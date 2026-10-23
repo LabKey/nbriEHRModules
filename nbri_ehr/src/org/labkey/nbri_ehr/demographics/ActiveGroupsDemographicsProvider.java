@@ -32,6 +32,14 @@ public class ActiveGroupsDemographicsProvider extends org.labkey.api.ehr.demogra
     }
 
     @Override
+    public boolean requiresRecalc(String schema, String query)
+    {
+        // breeding_type.js reports title edits, as nothing else refreshes the cached titles
+        return super.requiresRecalc(schema, query) ||
+                ("ehr_lookups".equalsIgnoreCase(schema) && "breeding_type".equalsIgnoreCase(query));
+    }
+
+    @Override
     public boolean isAvailable(Container c, User u)
     {
         return super.isAvailable(c, u) && c.getActiveModules().contains(_owner);
