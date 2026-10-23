@@ -15,4 +15,4 @@ SELECT
       END as varchar(500)) as protocolString
 
 FROM study.demographics d
-LEFT JOIN study.protocolAssignment a ON (a.id = d.id AND a.enddate IS NULL)
+LEFT JOIN study.protocolAssignment a ON (a.id = d.id AND a.enddate IS NULL AND a.qcstate.publicdata = true)

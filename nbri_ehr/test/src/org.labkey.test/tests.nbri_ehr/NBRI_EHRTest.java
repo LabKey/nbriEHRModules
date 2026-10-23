@@ -897,10 +897,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         saveRows("Assignment", new String[]{"Id", "date", "enddate", "project", "performedby"},
                 new Object[][]{{animalId, pastDate, null, PROTOCOL_PROJECT_ID, 1004}});
 
-        SelectRowsCommand currentSelect = new SelectRowsCommand("study", "Animal");
-        currentSelect.setColumns(List.of("activeAnimalGroups/groups", "activeProtocolAssignments/protocolDisplayName", "activeProjectAssignments/project"));
-        currentSelect.addFilter(new Filter("Id", animalId));
-        Map<String, Object> current = currentSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().getFirst();
+        Map<String, Object> current = getCurrentValues(animalId);
         assertEquals("Unexpected current group for " + animalId, List.of(currentGroupTitle), current.get("activeAnimalGroups/groups"));
         String currentProtocol = (String) current.get("activeProtocolAssignments/protocolDisplayName");
         Assert.assertTrue("No current protocol for " + animalId, StringUtils.isNotBlank(currentProtocol));
@@ -932,10 +929,44 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         projects.setGridCell(1, "Id", animalId);
         verifyCurrentValueColumn(projects, "Id/activeProjectAssignments/project", "Current Project", currentProject, "project", "New Project");
         projects.setGridCell(1, "project", PROJECT_ID);
+
+        log("Verifying a saved draft does not count as the current protocol or project");
+        waitForFormValidationToClear();
+        clickAndWait(Locator.linkWithText("Save Draft"));
+        Map<String, Object> afterDraft = getCurrentValues(animalId);
+        assertEquals("A draft protocol assignment counted as current", currentProtocol, afterDraft.get("activeProtocolAssignments/protocolDisplayName"));
+        assertEquals("A draft project assignment counted as current", currentProject, String.valueOf(afterDraft.get("activeProjectAssignments/project")));
+
+        SelectRowsCommand draftSelect = new SelectRowsCommand("study", "assignment");
+        draftSelect.setColumns(List.of("taskid"));
+        draftSelect.addFilter(new Filter("Id", animalId));
+        draftSelect.addFilter(new Filter("project", PROJECT_ID));
+        String taskid = (String) draftSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().getFirst().get("taskid");
+
+        beginAt(WebTestHelper.buildURL("ehr", getContainerPath(), "dataEntryForm", Map.of("formType", "Assignment", "taskid", taskid)));
+        waitForElement(Locator.linkWithText("Submit Final"), WAIT_FOR_PAGE);
+        lockForm();
+        protocols = getExpandedFormSectionGrid("Protocol Assignment");
+        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayName", "Current Protocol", currentProtocol, "protocol", "New Protocol");
+        assertEquals("Reopened draft has the wrong number of protocol rows", 1, protocols.getRowCount());
+        projects = getExpandedFormSectionGrid("Project Assignment");
+        verifyCurrentValueColumn(projects, "Id/activeProjectAssignments/project", "Current Project", currentProject, "project", "New Project");
+        assertEquals("Reopened draft has the wrong number of project rows", 1, projects.getRowCount());
         submitForm("Submit Final", "Finalize");
 
         verifyPreviousRecordClosed("protocolAssignment", "protocol", animalId, PROTOCOL_ID, DUMMY_PROTOCOL);
         verifyPreviousRecordClosed("assignment", "project", animalId, PROTOCOL_PROJECT_ID, PROJECT_ID);
+    }
+
+    /** The values the current-value columns read, which the client store fetches the same way. */
+    private Map<String, Object> getCurrentValues(String animalId) throws Exception
+    {
+        SelectRowsCommand select = new SelectRowsCommand("study", "Animal");
+        select.setColumns(List.of("activeAnimalGroups/groups", "activeProtocolAssignments/protocolDisplayName", "activeProjectAssignments/project"));
+        select.addFilter(new Filter("Id", animalId));
+        List<Map<String, Object>> rows = select.execute(getApiHelper().getConnection(), getContainerPath()).getRows();
+        assertEquals("Expected one study.Animal row for " + animalId, 1, rows.size());
+        return rows.getFirst();
     }
 
     private void saveRows(String queryName, String[] fields, Object[][] data) throws Exception
