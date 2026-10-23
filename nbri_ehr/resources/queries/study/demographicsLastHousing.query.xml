@@ -14,24 +14,6 @@
                           <fkColumnName>location</fkColumnName>
                         </fk>
                     </column>
-                    <column columnName="room">
-                        <!--<fk>-->
-                          <!--<fkDbSchema>ehr_lookups</fkDbSchema>-->
-                          <!--<fkTable>rooms</fkTable>-->
-                          <!--<fkColumnName>room</fkColumnName>-->
-                        <!--</fk>-->
-                    </column>
-                    <column columnName="cage">
-                    </column>
-                    <column columnName="cond">
-                        <url>/query/executeQuery.view?schemaName=study&amp;
-                            query.queryName=housing&amp;
-                            query.room~eq=${room}&amp;
-                            query.cage~eq=${cage}&amp;
-                            query.enddate~isblank&amp;
-                            query.sort=Id&amp;
-                        </url>
-                    </column>
                 </columns>
                 <titleColumn>Location</titleColumn>
             </table>
