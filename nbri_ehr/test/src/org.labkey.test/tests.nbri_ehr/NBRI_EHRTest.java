@@ -115,6 +115,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String aliveAnimalId = "A4545";
     // never inserted into demographics; exercises the deaths trigger's unknown-Id rejection
     private static final String unknownAnimalId = "X9999";
+    // Given completed housing and assignments followed by newer drafts, so the demographicsLast* queries must skip the drafts.
+    private static final String FINAL_RECORDS_ANIMAL = "FIN0001";
     // Dedicated animal for testScheduledObservationTaskGrouping; provisioned (alive, housed, assigned) in
     // createTestSubjects so the clinical case form raises no warnings that would keep the validation banner up.
     private static final String taskGroupAnimalId = "TESTGRP9090";
@@ -2029,11 +2031,16 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         log("Verify a second death insert is rejected with a validation error, not a unique constraint violation");
         assertDeathRejected(aliveAnimalId, "ERROR: Death record already exists for this animal.");
 
-        log("Verify the death notification offers a necropsy request");
+        log("Verify the death notification shows the records the death closed and offers a necropsy request");
         goToModule("Dumbster");
         EmailRecordTable notifications = new EmailRecordTable(this);
         waitForTextWithRefresh(WAIT_FOR_PAGE + WAIT_FOR_JAVASCRIPT, "Death Notification: " + aliveAnimalId);
         notifications.clickMessage(notifications.getMessageWithSubjectContaining("Death Notification: " + aliveAnimalId));
+        String deathBody = notifications.getMessageWithSubjectContaining("Death Notification: " + aliveAnimalId).getBody();
+        Assert.assertFalse("Death notification did not find the final housing: " + deathBody, deathBody.contains("Not Found"));
+        Assert.assertTrue("Death notification is missing the final location: " + deathBody, deathBody.contains(CAGE_IN_R3));
+        Assert.assertTrue("Death notification is missing the final project: " + deathBody, deathBody.contains(PROJECT_ID));
+        Assert.assertTrue("Death notification is missing the final protocol: " + deathBody, deathBody.contains(PROTOCOL_ID + " - " + INVES_LAST_NAME));
         String requestUrl = Locator.linkWithText("Click here to request a Necropsy").findElement(notifications).getAttribute("href");
 
         log("Requesting the necropsy");
@@ -2053,6 +2060,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitForTextWithRefresh(WAIT_FOR_PAGE + WAIT_FOR_JAVASCRIPT, "Necropsy Request: " + aliveAnimalId);
         notifications = new EmailRecordTable(this);
         notifications.clickMessage(notifications.getMessageWithSubjectContaining("Necropsy Request: " + aliveAnimalId));
+        String requestBody = notifications.getMessageWithSubjectContaining("Necropsy Request: " + aliveAnimalId).getBody();
+        Assert.assertTrue("Necropsy notification is missing the final location: " + requestBody, requestBody.contains(CAGE_IN_R3));
+        Assert.assertTrue("Necropsy notification is missing the final protocol: " + requestBody, requestBody.contains(PROTOCOL_ID + " - " + INVES_LAST_NAME));
         String preliminaryUrl = Locator.linkWithText("Click here to enter preliminary necropsy results").findElement(notifications).getAttribute("href");
 
         log("Entering the preliminary necropsy");
@@ -2158,6 +2168,40 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
             assertEquals("End date is not updated for study." + dataset, LocalDateTime.now().format(_dateFormat),
                     getDatasetDay(dataset, aliveAnimalId, "enddate"));
         }
+    }
+
+    @Test
+    public void testFinalRecordsIgnoreDrafts() throws Exception
+    {
+        String animalId = FINAL_RECORDS_ANIMAL;
+        createAliveAnimals(new String[]{animalId});
+
+        log("Giving the animal completed housing and assignments, then newer drafts");
+        insertHousingAndAssignments(animalId, LocalDateTime.now().minusDays(10), CAGE_IN_R1, PROJECT_ID, PROTOCOL_ID, EHRQCState.COMPLETED);
+        insertHousingAndAssignments(animalId, LocalDateTime.now().minusDays(2), CAGE_IN_R3, PROTOCOL_PROJECT_ID, DUMMY_PROTOCOL, EHRQCState.IN_PROGRESS);
+
+        Map<String, Object> lastHousing = getSingleRowForAnimal("demographicsLastHousing", animalId, List.of("Id", "cage", "Location"));
+        assertEquals("Final housing should skip the draft", CAGE_IN_R1, lastHousing.get("cage"));
+        assertEquals("Final location should be the cage's location key, not prefixed with the room again", CAGE_IN_R1, lastHousing.get("Location"));
+        assertEquals("Final project should skip the draft", PROJECT_ID,
+                String.valueOf(getSingleRowForAnimal("demographicsLastProject", animalId, List.of("Id", "project")).get("project")));
+        assertEquals("Final protocol should skip the draft", PROTOCOL_ID,
+                getSingleRowForAnimal("demographicsLastProtocol", animalId, List.of("Id", "protocol")).get("protocol"));
+    }
+
+    private void insertHousingAndAssignments(String animalId, LocalDateTime date, String cage, String project, String protocol, EHRQCState qcState) throws IOException, CommandException
+    {
+        InsertRowsCommand housing = new InsertRowsCommand("study", "housing");
+        housing.addRow(Map.of("Id", animalId, "date", date, "cage", cage, "QCStateLabel", qcState.label, "performedby", 1004));
+        housing.execute(getApiHelper().getConnection(), getContainerPath());
+
+        InsertRowsCommand assignment = new InsertRowsCommand("study", "assignment");
+        assignment.addRow(Map.of("Id", animalId, "date", date, "project", project, "QCStateLabel", qcState.label, "performedby", 1004));
+        assignment.execute(getApiHelper().getConnection(), getContainerPath());
+
+        InsertRowsCommand protocolAssignment = new InsertRowsCommand("study", "protocolAssignment");
+        protocolAssignment.addRow(Map.of("Id", animalId, "date", date, "protocol", protocol, "QCStateLabel", qcState.label, "performedby", 1004));
+        protocolAssignment.execute(getApiHelper().getConnection(), getContainerPath());
     }
 
     private void assertDeathRejected(String animalId, String expectedError)
