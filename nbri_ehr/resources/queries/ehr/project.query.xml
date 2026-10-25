@@ -37,8 +37,8 @@
                     <column columnName="projectType">
                         <fk>
                             <fkDbSchema>ehr_lookups</fkDbSchema>
-                            <fkTable>project_type</fkTable>
-                            <fkColumnName>value</fkColumnName>
+                            <fkTable>project_types</fkTable>
+                            <fkColumnName>type</fkColumnName>
                         </fk>
                     </column>
                     <column columnName="alwaysavailable">

@@ -91,7 +91,6 @@ pregnancy_result	Pregnancy Results	value
 procedure_category	Category of procedures	value
 problem_list_category	Problem List Category	value
 problem_list_subcategory	Problem List Sub-Category	value
-project_type	Project Type	value
 protocol_category	Protocol Category	value	title
 protocol_state	Protocol State	value	title
 protocol_type	Protocol Type	value	title
