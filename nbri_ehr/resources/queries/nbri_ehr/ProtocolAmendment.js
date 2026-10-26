@@ -22,6 +22,11 @@ function onInit(event, helper) {
 }
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'nbri_ehr', 'ProtocolAmendment', function (helper, scriptErrors, row, oldRow) {
+    // counts reference their amendment by objectid, which only the data entry form generates
+    if (!oldRow && !row.objectid) {
+        row.objectid = LABKEY.Utils.generateUUID().toUpperCase();
+    }
+
     if (!row.protocol) {
         return;
     }
