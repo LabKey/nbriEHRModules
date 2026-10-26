@@ -642,7 +642,7 @@ public class NBRI_EHRTriggerHelper
                         html.append("Performed By: ").append(PageFlowUtil.filter(performedBy.get())).append("<br><br>");
 
                         //append animal details
-                        appendAnimalDetails(html, animalId, container);
+                        appendAnimalDetails(html, animalId, container, true);
 
                         //append link to a new Necropsy Request
                         String url = new ActionURL("ehr", "dataEntryForm", container)
@@ -765,7 +765,7 @@ public class NBRI_EHRTriggerHelper
                         StringBuilder html = new StringBuilder();
                         html.append("Status: ").append(PageFlowUtil.filter(status)).append("<br>");
                         appendNecropsyRequestDetails(html, request);
-                        appendAnimalDetails(html, id, _container);
+                        appendAnimalDetails(html, id, _container, true);
                         appendNecropsyLinks(html, taskid, formType);
 
                         TriggerScriptNotification.sendMessage(notification.getEmailSubject(_container) + ": " + id, html.toString(), recipients, _container, _user);
@@ -846,6 +846,12 @@ public class NBRI_EHRTriggerHelper
 
     private void appendAnimalDetails(StringBuilder html, String id, final Container container)
     {
+        appendAnimalDetails(html, id, container, false);
+    }
+
+    /** With finalRecords set, reports the animal's last housing and assignments instead of its active ones. */
+    private void appendAnimalDetails(StringBuilder html, String id, final Container container, boolean finalRecords)
+    {
         String url = AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + "/ehr" + container.getPath() + "/participantView.view?participantId=" + id;
 
         String tdFieldStyle = "\"border: 1px solid #000000;padding:5px;background-color:lightgray\"";
@@ -855,43 +861,61 @@ public class NBRI_EHRTriggerHelper
                 "        border-collapse: collapse;" +
                 "        border: 1px solid #000000;\"";
 
-        String cage;
-        List<Map<String, Object>> activeHousing = EHRDemographicsService.get().getAnimal(container, id).getActiveHousing();
-        if (null != activeHousing && !activeHousing.isEmpty())
-        {
-            cage = (String) activeHousing.getFirst().get("cage/cage");
-        }
-        else
-        {
+        String cage = getCage(id, container, finalRecords);
+        if (cage == null)
             cage = "Not Found";
-        }
 
         html.append("<table style=").append(tableStyle).append(">");
         html.append("<tr><td style=").append(tdFieldStyle).append(">").append("Id").append("</td>").append("<td style=").append(tdValueStyle).append(">").append(PageFlowUtil.filter(id)).append("</td></tr>");
         html.append("<tr><td style=").append(tdFieldStyle).append(">").append("Location").append("</td>").append("<td style=").append(tdValueStyle).append(">").append(PageFlowUtil.filter(cage)).append("</td></tr>");
-        html.append("<tr><td style=").append(tdFieldStyle).append(">").append("Project").append("</td>").append("<td style=").append(tdValueStyle).append(">").append(PageFlowUtil.filter(getProject(id))).append("</td></tr>");
-        html.append("<tr><td style=").append(tdFieldStyle).append(">").append("Protocol").append("</td>").append("<td style=").append(tdValueStyle).append(">").append(PageFlowUtil.filter(getProtocol(id))).append("</td></tr>");
+        html.append("<tr><td style=").append(tdFieldStyle).append(">").append("Project").append("</td>").append("<td style=").append(tdValueStyle).append(">").append(PageFlowUtil.filter(getProject(id, finalRecords))).append("</td></tr>");
+        html.append("<tr><td style=").append(tdFieldStyle).append(">").append("Protocol").append("</td>").append("<td style=").append(tdValueStyle).append(">").append(PageFlowUtil.filter(getProtocol(id, finalRecords))).append("</td></tr>");
         html.append("</table>");
         html.append("<br>");
         html.append("<a href='").append(url).append("'>");
         html.append("Click here to view this animal's clinical details</a><br>");
     }
 
-    private String getProject(String id)
+    private SimpleFilter getRecordFilter(String id, boolean finalRecords)
     {
-        TableInfo ti = getTableInfo("study", "notificationAnimalProject");
         SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
-        TableSelector ts = new TableSelector(ti, PageFlowUtil.set("project"), filter, null);
+        if (!finalRecords)
+            filter.addCondition(FieldKey.fromString("enddate"), null, CompareType.ISBLANK);
+        return filter;
+    }
+
+    private @Nullable String getCage(String id, Container container, boolean finalRecords)
+    {
+        if (!finalRecords)
+        {
+            List<Map<String, Object>> activeHousing = EHRDemographicsService.get().getAnimal(container, id).getActiveHousing();
+            return activeHousing == null || activeHousing.isEmpty() ? null : (String) activeHousing.getFirst().get("cage/cage");
+        }
+
+        TableInfo ti = getTableInfo("study", "demographicsLastHousing");
+        FieldKey cageKey = FieldKey.fromString("cage/location");
+        final Map<FieldKey, ColumnInfo> cols = QueryService.get().getColumns(ti, PageFlowUtil.set(cageKey));
+        TableSelector ts = new TableSelector(ti, cols.values(), getRecordFilter(id, true), null);
+        final Mutable<String> cage = new MutableObject<>();
+        ts.forEach(object -> cage.setValue(new ResultsImpl(object, cols).getString(cageKey)));
+        return cage.get();
+    }
+
+    private String getProject(String id, boolean finalRecords)
+    {
+        TableInfo ti = getTableInfo("study", finalRecords ? "demographicsLastProject" : "assignment");
+        FieldKey projectKey = FieldKey.fromString("project/name");
+        final Map<FieldKey, ColumnInfo> cols = QueryService.get().getColumns(ti, PageFlowUtil.set(projectKey));
+        TableSelector ts = new TableSelector(ti, cols.values(), getRecordFilter(id, finalRecords), null);
         final Mutable<String> project = new MutableObject<>();
-        ts.forEach(rs -> project.setValue(rs.getString("project")));
+        ts.forEach(object -> project.setValue(new ResultsImpl(object, cols).getString(projectKey)));
         return project.get();
     }
 
-    private String getProtocol(String id)
+    private String getProtocol(String id, boolean finalRecords)
     {
-        TableInfo ti = getTableInfo("study", "protocolAssignment");
-        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
-        filter.addCondition(FieldKey.fromString("enddate"), null, CompareType.ISBLANK);
+        TableInfo ti = getTableInfo("study", finalRecords ? "demographicsLastProtocol" : "protocolAssignment");
+        SimpleFilter filter = getRecordFilter(id, finalRecords);
 
         Set<FieldKey> keys = new HashSet<>();
         keys.add(FieldKey.fromString("protocol/title"));

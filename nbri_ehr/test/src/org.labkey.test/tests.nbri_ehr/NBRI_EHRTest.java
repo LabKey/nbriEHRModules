@@ -45,6 +45,7 @@ import org.labkey.test.WebTestHelper;
 import org.labkey.test.categories.EHR;
 import org.labkey.test.components.CustomizeView;
 import org.labkey.test.components.dumbster.EmailRecordTable;
+import org.labkey.test.components.ext4.ComboBox;
 import org.labkey.test.components.ext4.Window;
 import org.labkey.test.components.ui.grids.QueryGrid;
 import org.labkey.test.pages.ehr.AnimalHistoryPage;
@@ -60,6 +61,7 @@ import org.labkey.test.util.LogMethod;
 import org.labkey.test.util.PortalHelper;
 import org.labkey.test.util.PostgresOnlyTest;
 import org.labkey.test.util.ehr.EHRClientAPIHelper;
+import org.labkey.test.util.ext4cmp.Ext4CmpRef;
 import org.labkey.test.util.ext4cmp.Ext4ComboRef;
 import org.labkey.test.util.ext4cmp.Ext4FieldRef;
 import org.labkey.test.util.ext4cmp.Ext4GridRef;
@@ -86,6 +88,8 @@ import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.labkey.test.components.ext4.ComboBox.ComboBox;
+import static org.labkey.test.components.ext4.RadioButton.RadioButton;
 import static org.labkey.test.components.html.Input.Input;
 
 @Category({EHR.class})
@@ -113,6 +117,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String aliveAnimalId = "A4545";
     // never inserted into demographics; exercises the deaths trigger's unknown-Id rejection
     private static final String unknownAnimalId = "X9999";
+    // Given completed housing and assignments followed by newer drafts, so the demographicsLast* queries must skip the drafts.
+    private static final String FINAL_RECORDS_ANIMAL = "FIN0001";
     // Dedicated animal for testScheduledObservationTaskGrouping; provisioned (alive, housed, assigned) in
     // createTestSubjects so the clinical case form raises no warnings that would keep the validation banner up.
     private static final String taskGroupAnimalId = "TESTGRP9090";
@@ -1684,6 +1690,56 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     }
 
     @Test
+    public void testAnimalHistoryLocationSearch() throws IOException, CommandException
+    {
+        List<String> locations = List.of(CAGE_IN_R1, CAGE_IN_R2);
+
+        // Sibling tests add cages and house animals, so read the expected values rather than hard-coding them.
+        SelectRowsCommand cageSelect = new SelectRowsCommand("ehr_lookups", "cage");
+        cageSelect.setColumns(List.of("location"));
+        List<String> expectedLocations = cageSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().stream()
+                .map(row -> (String) row.get("location"))
+                .sorted()
+                .toList();
+
+        SelectRowsCommand housingSelect = new SelectRowsCommand("study", "housing");
+        housingSelect.setColumns(List.of("Id"));
+        housingSelect.addFilter(new Filter("cage", String.join(";", locations), Filter.Operator.IN));
+        housingSelect.addFilter(new Filter("isActive", true));
+        List<String> expectedIds = housingSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().stream()
+                .map(row -> (String) row.get("Id"))
+                .distinct()
+                .sorted()
+                .toList();
+        Assert.assertFalse("No animals currently housed in " + locations, expectedIds.isEmpty());
+
+        AnimalHistoryPage<?> animalHistory = AnimalHistoryPage.beginAt(this, getContainerPath());
+        animalHistory.selectCurrectLocation();
+        ComboBox cagePicker = ComboBox(getDriver()).withIdPrefix("nbri_ehr-locationField").find(getDriver())
+                .setMatcher(Ext4Helper.TextMatchTechnique.LEADING_NBSP);
+
+        log("Verifying the cage dropdown lists room-qualified locations");
+        // Check-combo items are prefixed with a non-breaking space.
+        List<String> options = cagePicker.getComboBoxOptions().stream()
+                .map(option -> option.replace(Locator.NBSP, " ").strip())
+                .filter(option -> !"All".equals(option))
+                .sorted()
+                .toList();
+        assertEquals("Cage dropdown should list each cage's location", expectedLocations, options);
+
+        cagePicker.selectComboBoxItem(locations.toArray(new String[0]));
+        animalHistory.refreshReport();
+
+        log("Verifying the report is limited to animals housed in the chosen locations");
+        animalHistory.clickCategoryTab("Colony Management").clickReportTab("Housing - Active");
+        List<String> reportIds = animalHistory.getActiveReportDataRegion().getColumnDataAsText("Id").stream()
+                .distinct()
+                .sorted()
+                .toList();
+        assertEquals("Location search returned the wrong animals", expectedIds, reportIds);
+    }
+
+    @Test
     public void testBulkClinicalEntry()
     {
         String animalId = "44443";
@@ -1726,6 +1782,139 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         table = new AnimalHistoryPage<>(getDriver()).getActiveReportDataRegion();
         table.setFilter("Id", "Equals", animalId);
         Assert.assertEquals("Status is not updated ", "Completed", table.getDataAsText(0, "observationStatus"));
+    }
+
+    @Test
+    public void testAddBatchByLocation() throws IOException, CommandException
+    {
+        // Sibling tests add cages and house animals, so read the expected values rather than hard-coding them.
+        SelectRowsCommand cageSelect = new SelectRowsCommand("ehr_lookups", "cage");
+        cageSelect.setColumns(List.of("location"));
+        List<String> expectedLocations = cageSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().stream()
+                .map(row -> (String) row.get("location"))
+                .sorted()
+                .toList();
+
+        SelectRowsCommand housingSelect = new SelectRowsCommand("study", "housing");
+        housingSelect.setColumns(List.of("Id"));
+        housingSelect.addFilter(new Filter("cage", CAGE_IN_R2));
+        housingSelect.addFilter(new Filter("isActive", true));
+        List<String> expectedIds = housingSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().stream()
+                .map(row -> (String) row.get("Id"))
+                .sorted()
+                .toList();
+        Assert.assertFalse("No animals currently housed in " + CAGE_IN_R2, expectedIds.isEmpty());
+
+        Ext4GridRef weights = openBulkClinicalWeights();
+        Window<?> chooseAnimals = openAddBatch(weights, "Location");
+
+        log("Verifying the cage picker lists room-qualified locations");
+        Locator.XPathLocator cagePicker = Ext4Helper.Locators.formItemWithLabelContaining("Cage(s)");
+        // Check-combo items are prefixed with a non-breaking space.
+        List<String> options = _ext4Helper.getComboBoxOptions(cagePicker).stream()
+                .map(option -> option.replace(Locator.NBSP, " ").strip())
+                .filter(option -> !"All".equals(option))
+                .sorted()
+                .toList();
+        assertEquals("Cage picker should list each cage's location", expectedLocations, options);
+
+        _ext4Helper.selectItemFromOpenComboList(CAGE_IN_R2, Ext4Helper.TextMatchTechnique.CONTAINS);
+        _ext4Helper.closeComboList(cagePicker);
+        chooseAnimals.clickButton("Submit", true);
+
+        log("Verifying the animals housed in the chosen location were added");
+        assertEquals("Add Batch by location added the wrong animals", expectedIds, getGridIds(weights, expectedIds.size()));
+    }
+
+    @Test
+    public void testAddBatchByAnimalGroup() throws Exception
+    {
+        String group = "T";
+        String groupTitle = "Time-Mated";
+        String currentMember1 = SUBJECTS[0];
+        String currentMember2 = SUBJECTS[1];
+        String otherGroupMember = SUBJECTS[2];
+        String formerMember = SUBJECTS[3];
+
+        Date pastDate = TIME_FORMAT.parse("2012-01-03 09:30");
+        Date endDate = TIME_FORMAT.parse("2012-05-03 19:20");
+        String[] fields = {"Id", "date", "enddate", "groupId", "performedby"};
+        Object[][] data = {
+                {currentMember1, pastDate, null, group, 1004},
+                {currentMember2, pastDate, null, group, 1004},
+                {otherGroupMember, pastDate, null, "C", 1004},
+                {formerMember, pastDate, endDate, group, 1004}
+        };
+        SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "animal_group_members", "lsid", fields, data);
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+
+        SelectRowsCommand groupTypeSelect = new SelectRowsCommand("ehr_lookups", "breeding_type");
+        groupTypeSelect.setColumns(List.of("title"));
+        List<String> expectedTitles = groupTypeSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().stream()
+                .map(row -> (String) row.get("title"))
+                .sorted()
+                .toList();
+
+        // Sibling tests also assign groups, so read the current members rather than hard-coding them.
+        SelectRowsCommand memberSelect = new SelectRowsCommand("study", "animal_group_members");
+        memberSelect.setColumns(List.of("Id"));
+        memberSelect.addFilter(new Filter("groupId", group));
+        memberSelect.addFilter(new Filter("isActive", true));
+        List<String> expectedIds = memberSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().stream()
+                .map(row -> (String) row.get("Id"))
+                .distinct()
+                .sorted()
+                .toList();
+        Assert.assertTrue("Current members missing from " + group + ": " + expectedIds, expectedIds.containsAll(List.of(currentMember1, currentMember2)));
+        Assert.assertFalse("Member of another group returned for " + group, expectedIds.contains(otherGroupMember));
+        Assert.assertFalse("Former member returned for " + group, expectedIds.contains(formerMember));
+
+        Ext4GridRef weights = openBulkClinicalWeights();
+        Window<?> chooseAnimals = openAddBatch(weights, "Animal Group");
+
+        log("Verifying the group picker lists breeding types");
+        // Its label matches the radio's, so locate the picker by component id.
+        Ext4CmpRef groupField = _ext4Helper.queryOne("window[title='Choose Animals'] #groupField", Ext4CmpRef.class);
+        Locator.XPathLocator groupPicker = Locator.tagWithId("table", groupField.getId());
+        List<String> options = _ext4Helper.getComboBoxOptions(groupPicker).stream()
+                .sorted()
+                .toList();
+        assertEquals("Group picker should list each breeding type", expectedTitles, options);
+
+        _ext4Helper.selectItemFromOpenComboList(groupTitle, Ext4Helper.TextMatchTechnique.EXACT);
+        _ext4Helper.closeComboList(groupPicker);
+        chooseAnimals.clickButton("Submit", true);
+
+        log("Verifying the current members of the chosen group were added");
+        assertEquals("Add Batch by animal group added the wrong animals", expectedIds, getGridIds(weights, expectedIds.size()));
+    }
+
+    private Ext4GridRef openBulkClinicalWeights()
+    {
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Bulk Clinical Entry"));
+        // The form is wider than the window, so the collapsed section's expand tool is off-screen and can't be clicked.
+        Ext4CmpRef.waitForComponent(this, "panel[title='Weights']");
+        _ext4Helper.queryOne("panel[title='Weights']", Ext4CmpRef.class).eval("expand(false)");
+        return _helper.getExt4GridForFormSection("Weights");
+    }
+
+    private Window<?> openAddBatch(Ext4GridRef grid, String type)
+    {
+        grid.clickTbarButton("Add Batch");
+        Window<?> chooseAnimals = new Window<>("Choose Animals", getDriver());
+        RadioButton().withLabel(type).find(chooseAnimals).check();
+        return chooseAnimals;
+    }
+
+    private List<String> getGridIds(Ext4GridRef grid, int expectedCount)
+    {
+        grid.waitForRowCount(expectedCount);
+        List<String> ids = new ArrayList<>();
+        for (int i = 1; i <= grid.getRowCount(); i++)
+            ids.add((String) grid.getFieldValue(i, "Id"));
+        Collections.sort(ids);
+        return ids;
     }
 
     // The ehr.tasks formtype for the clinical observations data entry form (NBRIClinicalObservationsFormType.NAME).
@@ -2094,11 +2283,16 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         log("Verify a second death insert is rejected with a validation error, not a unique constraint violation");
         assertDeathRejected(aliveAnimalId, "ERROR: Death record already exists for this animal.");
 
-        log("Verify the death notification offers a necropsy request");
+        log("Verify the death notification shows the records the death closed and offers a necropsy request");
         goToModule("Dumbster");
         EmailRecordTable notifications = new EmailRecordTable(this);
         waitForTextWithRefresh(WAIT_FOR_PAGE + WAIT_FOR_JAVASCRIPT, "Death Notification: " + aliveAnimalId);
         notifications.clickMessage(notifications.getMessageWithSubjectContaining("Death Notification: " + aliveAnimalId));
+        String deathBody = notifications.getMessageWithSubjectContaining("Death Notification: " + aliveAnimalId).getBody();
+        Assert.assertFalse("Death notification did not find the final housing: " + deathBody, deathBody.contains("Not Found"));
+        Assert.assertTrue("Death notification is missing the final location: " + deathBody, deathBody.contains(CAGE_IN_R3));
+        Assert.assertTrue("Death notification is missing the final project: " + deathBody, deathBody.contains(PROJECT_ID));
+        Assert.assertTrue("Death notification is missing the final protocol: " + deathBody, deathBody.contains(PROTOCOL_ID + " - " + INVES_LAST_NAME));
         String requestUrl = Locator.linkWithText("Click here to request a Necropsy").findElement(notifications).getAttribute("href");
 
         log("Requesting the necropsy");
@@ -2118,6 +2312,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitForTextWithRefresh(WAIT_FOR_PAGE + WAIT_FOR_JAVASCRIPT, "Necropsy Request: " + aliveAnimalId);
         notifications = new EmailRecordTable(this);
         notifications.clickMessage(notifications.getMessageWithSubjectContaining("Necropsy Request: " + aliveAnimalId));
+        String requestBody = notifications.getMessageWithSubjectContaining("Necropsy Request: " + aliveAnimalId).getBody();
+        Assert.assertTrue("Necropsy notification is missing the final location: " + requestBody, requestBody.contains(CAGE_IN_R3));
+        Assert.assertTrue("Necropsy notification is missing the final protocol: " + requestBody, requestBody.contains(PROTOCOL_ID + " - " + INVES_LAST_NAME));
         String preliminaryUrl = Locator.linkWithText("Click here to enter preliminary necropsy results").findElement(notifications).getAttribute("href");
 
         log("Entering the preliminary necropsy");
@@ -2223,6 +2420,40 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
             assertEquals("End date is not updated for study." + dataset, LocalDateTime.now().format(_dateFormat),
                     getDatasetDay(dataset, aliveAnimalId, "enddate"));
         }
+    }
+
+    @Test
+    public void testFinalRecordsIgnoreDrafts() throws Exception
+    {
+        String animalId = FINAL_RECORDS_ANIMAL;
+        createAliveAnimals(new String[]{animalId});
+
+        log("Giving the animal completed housing and assignments, then newer drafts");
+        insertHousingAndAssignments(animalId, LocalDateTime.now().minusDays(10), CAGE_IN_R1, PROJECT_ID, PROTOCOL_ID, EHRQCState.COMPLETED);
+        insertHousingAndAssignments(animalId, LocalDateTime.now().minusDays(2), CAGE_IN_R3, PROTOCOL_PROJECT_ID, DUMMY_PROTOCOL, EHRQCState.IN_PROGRESS);
+
+        Map<String, Object> lastHousing = getSingleRowForAnimal("demographicsLastHousing", animalId, List.of("Id", "cage", "Location"));
+        assertEquals("Final housing should skip the draft", CAGE_IN_R1, lastHousing.get("cage"));
+        assertEquals("Final location should be the cage's location key, not prefixed with the room again", CAGE_IN_R1, lastHousing.get("Location"));
+        assertEquals("Final project should skip the draft", PROJECT_ID,
+                String.valueOf(getSingleRowForAnimal("demographicsLastProject", animalId, List.of("Id", "project")).get("project")));
+        assertEquals("Final protocol should skip the draft", PROTOCOL_ID,
+                getSingleRowForAnimal("demographicsLastProtocol", animalId, List.of("Id", "protocol")).get("protocol"));
+    }
+
+    private void insertHousingAndAssignments(String animalId, LocalDateTime date, String cage, String project, String protocol, EHRQCState qcState) throws IOException, CommandException
+    {
+        InsertRowsCommand housing = new InsertRowsCommand("study", "housing");
+        housing.addRow(Map.of("Id", animalId, "date", date, "cage", cage, "QCStateLabel", qcState.label, "performedby", 1004));
+        housing.execute(getApiHelper().getConnection(), getContainerPath());
+
+        InsertRowsCommand assignment = new InsertRowsCommand("study", "assignment");
+        assignment.addRow(Map.of("Id", animalId, "date", date, "project", project, "QCStateLabel", qcState.label, "performedby", 1004));
+        assignment.execute(getApiHelper().getConnection(), getContainerPath());
+
+        InsertRowsCommand protocolAssignment = new InsertRowsCommand("study", "protocolAssignment");
+        protocolAssignment.addRow(Map.of("Id", animalId, "date", date, "protocol", protocol, "QCStateLabel", qcState.label, "performedby", 1004));
+        protocolAssignment.execute(getApiHelper().getConnection(), getContainerPath());
     }
 
     private void assertDeathRejected(String animalId, String expectedError)
