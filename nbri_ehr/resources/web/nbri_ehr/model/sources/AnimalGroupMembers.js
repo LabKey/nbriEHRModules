@@ -31,7 +31,19 @@ EHR.model.DataModelManager.registerMetadata('AnimalGroupMembers', {
                 shownInGrid: false,
                 hidden: true
             },
+            // display-only; NBRI_EHR.data.CurrentValueClientStore fills it
+            'Id/activeAnimalGroups/groups': {
+                header: 'Current Group',
+                label: 'Current Group',
+                editable: false,
+                columnConfig: {
+                    editable: false,
+                    width: 200
+                }
+            },
             groupId: {
+                header: 'New Group',
+                label: 'New Group',
                 allowBlank: false,
                 nullable: false,
                 lookup: {
