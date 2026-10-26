@@ -112,6 +112,7 @@ ehr_lookups	procedures	Clinical	Procedures	List of animal procedures.F
 ehr_lookups	problem_list_category	Clinical	Problem List Category	Used in problem list dataset. Set when opening a case.
 ehr_lookups	problem_list_subcategory	Clinical	Problem List Subcategory	Used in problem list to categorize problems.
 ehr	project	Colony Management	Projects	Projects animals can be assigned to.
+ehr_lookups	project_types	Colony Management	Project Types	Used in projects.
 ehr	protocol	Colony Management	Protocols	IACUC protocols animals can be assigned to.
 ehr_lookups	protocol_category	Colony Management	Protocol Category	
 ehr_lookups	protocol_state	Colony Management	Protocol State	
@@ -130,13 +131,14 @@ ehr_lookups	skin_problem	Clinical	Skin Problems	Clinical observation fixed value
 ehr_lookups	social_code	Colony Management	Social Code	Rearing and acquisition codes recorded once per animal at birth or arrival.
 ehr_lookups	source	Colony Management	Source	
 ehr_lookups	species	Colony Management	Species	
-ehr_lookups	snomed	Research	Treatments	List of animal treatments.
+ehr_lookups	snomed	Research	Treatments	List of animal treatments and drugs.
 ehr_lookups	species_codes	Colony Management	Species Codes	
+ehr_lookups	status_codes	Colony Management	Status Codes	Status field values.
 ehr_lookups	stool_score	Clinical	Stool Score	
 ehr_lookups	stool_types	Clinical	Stool Types	
 ehr_lookups	tb_obs_score	Clinical	TB Observation Scores	Clinical observation fixed values.
 ehr_lookups	temperament	Behavior	Temperament	Behavior observation fixed values.
-ehr_lookups	testicular_volume    	Clinical	Testicular Volume   	Testicular volume values.
+ehr_lookups	testicular_volume	Clinical	Testicular Volume	Testicular volume values.
 ehr_lookups	termination_reason_codes	Clinical	Termination Reason Codes	Clinical observation fixed values.
 ehr_lookups	tissue	Pathology	Pathology Tissues	Tissues recorded at necropsy and in histology.
 ehr_lookups	tissue_measurement_units	Pathology	Tissue Measurement Units	Units for tissue measurements.
