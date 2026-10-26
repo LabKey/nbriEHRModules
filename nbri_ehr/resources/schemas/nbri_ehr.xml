@@ -15,6 +15,7 @@
             <column columnName="enddate">
                 <formatString>Date</formatString>
             </column>
+            <column columnName="remark"/>
             <column columnName="taskid"/>
             <column columnName="QCState"/>
             <column columnName="objectid"/>

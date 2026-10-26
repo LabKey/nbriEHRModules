@@ -29,6 +29,9 @@
                         <columnTitle>End Date</columnTitle>
                         <description>The protocol's end date while this is its latest amendment; the day before the next amendment takes effect once superseded</description>
                     </column>
+                    <column columnName="remark">
+                        <columnTitle>Remark</columnTitle>
+                    </column>
                     <column columnName="objectid">
                         <columnTitle>Key</columnTitle>
                         <isHidden>true</isHidden>

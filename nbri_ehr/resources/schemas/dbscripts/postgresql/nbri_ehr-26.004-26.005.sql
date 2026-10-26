@@ -13,6 +13,7 @@ CREATE TABLE nbri_ehr.ProtocolAmendment
     -- Named 'date' so the shared EHR triggers apply their date normalization and future-date guards.
     date                TIMESTAMP,
     enddate             TIMESTAMP,
+    remark              TEXT,
     taskid              ENTITYID,
     QCState             INTEGER,
     objectid            ENTITYID,

@@ -4,6 +4,7 @@
         <column name="amendmentNumber"/>
         <column name="date"/>
         <column name="enddate"/>
+        <column name="remark"/>
         <column name="QCState"/>
     </columns>
     <sorts>
