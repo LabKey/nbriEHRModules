@@ -14,9 +14,11 @@ function orNull(value) {
 }
 
 function onInit(event, helper) {
-    // amendments are routinely entered after the fact, from a letter that arrived weeks later
+    // amendments are routinely entered after the fact, from a letter that arrived weeks later, or approved ahead of
+    // taking effect; the protocol's end date bounds them instead
     helper.setScriptOptions({
         allowDatesInDistantPast: true,
+        allowFutureDates: true,
         requiresStatusRecalc: false
     });
 }
