@@ -1385,7 +1385,7 @@ public class NBRI_EHRTriggerHelper
 
     /** Field name to message for each rule an amendment save would break. */
     // Rhino hands over numbers from a row as strings or doubles, which never match an Integer parameter, so these take Object
-    public Map<String, String> validateAmendment(String protocol, Object rowIdValue, Object amendmentNumberValue, Object dateValue, Object enddateValue, boolean isInsert)
+    public Map<String, String> validateAmendment(String protocol, Object rowIdValue, Object amendmentNumberValue, Object dateValue, Object enddateValue, boolean movesPredecessor)
     {
         Map<String, String> errors = new LinkedHashMap<>();
         Integer rowId = ConvertHelper.convert(rowIdValue, Integer.class);
@@ -1404,8 +1404,8 @@ public class NBRI_EHRTriggerHelper
 
         List<Amendment> others = getAmendments(protocol).stream().filter(a -> rowId == null || a.rowId() != rowId).toList();
 
-        // closePriorAmendment ends the predecessor the day before a new amendment takes effect, so it cannot overlap
-        Amendment predecessor = isInsert ? getPredecessor(others, amendmentNumber) : null;
+        // closePriorAmendment ends the predecessor the day before this amendment takes effect, so it cannot overlap
+        Amendment predecessor = movesPredecessor ? getPredecessor(others, amendmentNumber) : null;
         if (predecessor != null && predecessor.date() != null && !date.after(predecessor.date()))
             errors.putIfAbsent("date", "Effective date must be after amendment " + predecessor.number() + "'s effective date of " + _dateFormat.format(predecessor.date()) + ".");
 
@@ -1417,15 +1417,22 @@ public class NBRI_EHRTriggerHelper
         return errors;
     }
 
-    public void closePriorAmendment(String protocol, Object amendmentNumberValue, Object dateValue) throws Exception
+    /** oldDateValue is the amendment's effective date before an update, or null on insert. */
+    public void closePriorAmendment(String protocol, Object amendmentNumberValue, Object dateValue, Object oldDateValue) throws Exception
     {
         Integer amendmentNumber = ConvertHelper.convert(amendmentNumberValue, Integer.class);
         Date date = toDay(dateValue);
+        Date oldDate = toDay(oldDateValue);
         if (protocol == null || amendmentNumber == null || date == null)
             return;
 
         Amendment predecessor = getPredecessor(getAmendments(protocol), amendmentNumber);
-        if (predecessor == null || (predecessor.enddate() != null && predecessor.enddate().before(date)))
+        if (predecessor == null)
+            return;
+
+        // a predecessor that ended the day before the old date follows the move; one already ended earlier is left alone
+        boolean wasAdjacent = oldDate != null && Objects.equals(predecessor.enddate(), DateUtils.addDays(oldDate, -1));
+        if (!wasAdjacent && predecessor.enddate() != null && predecessor.enddate().before(date))
             return;
 
         updateAmendmentEnddate(predecessor.rowId(), DateUtils.addDays(date, -1));
@@ -1453,6 +1460,39 @@ public class NBRI_EHRTriggerHelper
             return;
 
         updateAmendmentEnddate(latest.rowId(), enddate);
+    }
+
+    /** Null when this is the protocol's latest amendment; removing an earlier one would leave a gap between windows. */
+    public @Nullable String validateAmendmentDelete(String protocol, Object amendmentNumberValue)
+    {
+        Integer amendmentNumber = ConvertHelper.convert(amendmentNumberValue, Integer.class);
+        if (protocol == null || amendmentNumber == null)
+            return null;
+
+        Amendment latest = getPredecessor(getAmendments(protocol), null);
+        if (latest == null || latest.number() <= amendmentNumber)
+            return null;
+
+        return "Only the latest amendment, " + latest.number() + ", can be deleted.";
+    }
+
+    /** Deletes the amendment's counts and runs the amendment now latest to the protocol's end date again. */
+    public void afterAmendmentDelete(String protocol, String objectid) throws Exception
+    {
+        if (objectid != null)
+        {
+            TableInfo ti = getTableInfo("ehr", "protocol_counts");
+            QueryUpdateService qus = ti.getUpdateService();
+            if (qus == null)
+                throw new IllegalStateException("ehr.protocol_counts is not updatable");
+
+            List<Map<String, Object>> keys = List.of(new TableSelector(ti, PageFlowUtil.set("rowid"), new SimpleFilter(FieldKey.fromString("amendmentId"), objectid), null).getMapArray());
+            if (!keys.isEmpty())
+                qus.deleteRows(_user, _container, keys, null, getExtraContext());
+        }
+
+        if (protocol != null)
+            syncLatestAmendmentEnddate(protocol, getProtocolEnddate(protocol));
     }
 
     private void updateAmendmentEnddate(int rowId, @Nullable Date enddate) throws Exception

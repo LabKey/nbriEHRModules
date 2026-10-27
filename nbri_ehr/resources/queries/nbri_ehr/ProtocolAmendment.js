@@ -43,7 +43,8 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
     }
 
     // the Java Map arrives as a plain JS object
-    var problems = triggerHelper.validateAmendment(row.protocol, orNull(row.rowid), orNull(row.amendmentNumber), orNull(row.date), orNull(row.enddate), !oldRow);
+    var movesPredecessor = !oldRow || !triggerHelper.isSameDay(orNull(row.date), orNull(oldRow.date));
+    var problems = triggerHelper.validateAmendment(row.protocol, orNull(row.rowid), orNull(row.amendmentNumber), orNull(row.date), orNull(row.enddate), movesPredecessor);
     for (var field in problems) {
         EHR.Server.Utils.addError(scriptErrors, field, String(problems[field]), 'ERROR');
     }
@@ -54,5 +55,28 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         return;
     }
 
-    triggerHelper.closePriorAmendment(row.protocol, orNull(row.amendmentNumber), orNull(row.date));
+    triggerHelper.closePriorAmendment(row.protocol, orNull(row.amendmentNumber), orNull(row.date), null);
+});
+
+EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.AFTER_UPDATE, 'nbri_ehr', 'ProtocolAmendment', function (helper, errors, row, oldRow) {
+    if (helper.isValidateOnly() || triggerHelper.isSameDay(orNull(row.date), orNull(oldRow.date))) {
+        return;
+    }
+
+    triggerHelper.closePriorAmendment(row.protocol, orNull(row.amendmentNumber), orNull(row.date), orNull(oldRow.date));
+});
+
+EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_DELETE, 'nbri_ehr', 'ProtocolAmendment', function (helper, errors, row) {
+    var msg = triggerHelper.validateAmendmentDelete(row.protocol, orNull(row.amendmentNumber));
+    if (msg) {
+        errors._form = String(msg);
+    }
+});
+
+EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.AFTER_DELETE, 'nbri_ehr', 'ProtocolAmendment', function (helper, errors, row) {
+    if (helper.isValidateOnly()) {
+        return;
+    }
+
+    triggerHelper.afterAmendmentDelete(row.protocol, orNull(row.objectid));
 });

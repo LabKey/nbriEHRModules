@@ -1119,6 +1119,21 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assertAmendmentWindow(getAmendments(protocol), 1, first, extended);
         assertRejected("End date is before amendment 1", () -> updateProtocolEnddate(protocol, first.minusDays(1)));
 
+        log("Verifying moving an amendment's effective date moves the end of the one before it");
+        LocalDate later = first.plusDays(5);
+        updateAmendmentDate(amendments.get(1), later);
+        Map<Integer, Map<String, Object>> moved = getAmendments(protocol);
+        assertAmendmentWindow(moved, 0, approve, later.minusDays(1));
+        assertAmendmentWindow(moved, 1, later, extended);
+        LocalDate earlier = first.minusDays(5);
+        updateAmendmentDate(amendments.get(1), earlier);
+        moved = getAmendments(protocol);
+        assertAmendmentWindow(moved, 0, approve, earlier.minusDays(1));
+        assertAmendmentWindow(moved, 1, earlier, extended);
+        assertRejected("Effective date must be after amendment 0", () -> updateAmendmentDate(amendments.get(1), approve));
+        updateAmendmentDate(amendments.get(1), first);
+        assertAmendmentWindow(getAmendments(protocol), 0, approve, first.minusDays(1));
+
         log("Verifying a protocol with amendments cannot be deleted or duplicated");
         assertRejected("has amendments and cannot be deleted", () -> {
             DeleteRowsCommand delete = new DeleteRowsCommand("ehr", "protocol");
@@ -1133,6 +1148,28 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         insertCounts(protocol, amendmentId, "MMU");
         assertRejected("Species MMU is entered more than once", () -> insertCounts(protocol, amendmentId, "MMU"));
         insertCounts(protocol, (String) amendments.get(0).get("objectid"), "MMU");
+
+        log("Verifying only the latest amendment can be deleted, and deleting it reopens the one before");
+        assertRejected("Only the latest amendment, 1, can be deleted", () -> deleteAmendment(amendments.get(0)));
+        deleteAmendment(amendments.get(1));
+        Map<Integer, Map<String, Object>> remaining = getAmendments(protocol);
+        assertEquals("Expected only amendment 0 after the delete", Set.of(0), remaining.keySet());
+        assertAmendmentWindow(remaining, 0, approve, extended);
+        assertCounts(amendments.get(1), Map.of());
+    }
+
+    private void updateAmendmentDate(Map<String, Object> amendment, LocalDate date) throws IOException, CommandException
+    {
+        UpdateRowsCommand update = new UpdateRowsCommand("nbri_ehr", "ProtocolAmendment");
+        update.addRow(Map.of("rowid", amendment.get("rowid"), "date", date.format(_dateFormat)));
+        update.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    private void deleteAmendment(Map<String, Object> amendment) throws IOException, CommandException
+    {
+        DeleteRowsCommand delete = new DeleteRowsCommand("nbri_ehr", "ProtocolAmendment");
+        delete.addRow(Map.of("rowid", amendment.get("rowid")));
+        delete.execute(getApiHelper().getConnection(), getContainerPath());
     }
 
     private void insertCounts(String protocol, String amendmentId, String... species) throws IOException, CommandException
