@@ -1053,6 +1053,15 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitFor(ibcNumber::isVisible, "IBC approval number did not appear", WAIT_FOR_JAVASCRIPT);
         getProtocolFormField("ibc_approval_required").setChecked(false);
 
+        log("Entering the description and TB exemption");
+        // a hidden field still accepts a value, so check visibility before setting it
+        Ext4FieldRef description = getProtocolFormField("description");
+        Assert.assertTrue("Description should be visible", description.isVisible());
+        description.setValue("New protocol form description");
+        Ext4FieldRef exemptTB = getProtocolFormField("exemptTB");
+        Assert.assertTrue("Exempt TB should be visible", exemptTB.isVisible());
+        exemptTB.setChecked(true);
+
         Ext4GridRef counts = _helper.getExt4GridForFormSection("Animals Allowed Per Species");
         _helper.addRecordToGrid(counts);
         counts.setGridCell(1, "species", "Rhesus Macaque");
@@ -1062,13 +1071,15 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Verifying the protocol was saved with its approval defaults");
         SelectRowsCommand select = new SelectRowsCommand("ehr", "protocol");
-        select.setColumns(List.of("protocol", "approve", "first_approval", "enddate"));
+        select.setColumns(List.of("protocol", "approve", "first_approval", "enddate", "description", "exemptTB"));
         select.addFilter(new Filter("protocol", protocol));
         List<Map<String, Object>> protocols = select.execute(getApiHelper().getConnection(), getContainerPath()).getRows();
         assertEquals("Expected one protocol row", 1, protocols.size());
         assertEquals("Wrong approval date", approve.format(_dateFormat), toDay(protocols.get(0).get("approve")));
         assertEquals("First approval should follow the approval date", approve.format(_dateFormat), toDay(protocols.get(0).get("first_approval")));
         assertEquals("Wrong end date", expectedEnd.format(_dateFormat), toDay(protocols.get(0).get("enddate")));
+        assertEquals("Wrong description", "New protocol form description", protocols.get(0).get("description"));
+        assertEquals("Exempt TB was not saved", true, protocols.get(0).get("exemptTB"));
 
         log("Verifying amendment 0 and its counts were saved with the protocol");
         Map<Integer, Map<String, Object>> amendments = getAmendments(protocol);
