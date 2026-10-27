@@ -66,10 +66,15 @@ EHR.model.DataModelManager.registerMetadata('NewProtocol', {
                     }
                 }
             },
-            // shown once IBC approval is marked required
+            // EHR forms drop fields configured hidden, so hide after render instead
             ibc_approval_num: {
                 editorConfig: {
-                    hidden: true
+                    listeners: {
+                        afterrender: function(field){
+                            var required = field.up('form').getForm().findField('ibc_approval_required');
+                            field.setVisible(!!(required && required.getValue()));
+                        }
+                    }
                 }
             },
             first_approval: {
