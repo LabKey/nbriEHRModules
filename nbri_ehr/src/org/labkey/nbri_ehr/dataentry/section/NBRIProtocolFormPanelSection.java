@@ -27,7 +27,7 @@ public class NBRIProtocolFormPanelSection extends SimpleFormPanelSection
 {
     // display order; first_approval is hidden and filled from the approval date
     private static final List<String> FIELDS = List.of("protocol", "title", "investigatorId", "project_type", "approve", "enddate",
-            "description", "usda_level", "ibc_approval_required", "ibc_approval_num", "exemptFood", "exemptHousing", "exemptPairing",
+            "description", "usda_level", "ibc_approval_required", "ibc_approval_num", "exemptFood", "exemptHousing", "exemptPairing", "exemptTB",
             "first_approval", "objectid");
 
     public NBRIProtocolFormPanelSection(String label)

@@ -15,6 +15,9 @@
                 <dat:column columnName="exemptPairing">
                     <dat:rangeURI>boolean</dat:rangeURI>
                 </dat:column>
+                <dat:column columnName="exemptTB">
+                    <dat:rangeURI>boolean</dat:rangeURI>
+                </dat:column>
             </dat:columns>
         </table>
     </template>
