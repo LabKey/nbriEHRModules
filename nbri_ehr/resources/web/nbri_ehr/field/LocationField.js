@@ -18,17 +18,17 @@ Ext4.define('NBRI_EHR.field.LocationField', {
 
     initComponent: function(){
         Ext4.apply(this, {
-            displayField:'cage',
-            valueField: 'rowid',
+            displayField:'location',
+            valueField: this.initialConfig.valueField || 'rowid',
             queryMode: 'local',
             anyMatch: true,
             store: Ext4.create('LABKEY.ext4.data.Store', {
                 type: 'labkey-store',
                 schemaName: 'ehr_lookups',
                 queryName: 'cage',
-                sort: 'cage',
+                sort: 'location',
                 autoLoad: true,
-                columns: 'rowid,cage',
+                columns: 'rowid,location',
             })
         });
 

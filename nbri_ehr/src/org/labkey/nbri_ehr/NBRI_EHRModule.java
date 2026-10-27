@@ -49,6 +49,7 @@ import org.labkey.nbri_ehr.demographics.ActiveAssignmentsDemographicsProvider;
 import org.labkey.nbri_ehr.demographics.ActiveCasesDemographicsProvider;
 import org.labkey.nbri_ehr.demographics.ActiveConceptionsDemographicsProvider;
 import org.labkey.nbri_ehr.demographics.ActiveFlagsDemographicsProvider;
+import org.labkey.nbri_ehr.demographics.ActiveGroupsDemographicsProvider;
 import org.labkey.nbri_ehr.demographics.ActiveTreatmentsDemographicsProvider;
 import org.labkey.nbri_ehr.demographics.CagematesDemographicsProvider;
 import org.labkey.nbri_ehr.demographics.HousingDemographicsProvider;
@@ -131,6 +132,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         ehrService.registerDemographicsProvider(new ParentsDemographicsProvider(this));
         ehrService.registerDemographicsProvider(new ActiveAssignmentsDemographicsProvider(this));
         ehrService.registerDemographicsProvider(new ProtocolAssignmentDemographicsProvider(this));
+        ehrService.registerDemographicsProvider(new ActiveGroupsDemographicsProvider(this));
         ehrService.registerDemographicsProvider(new HousingDemographicsProvider(this));
         ehrService.registerDemographicsProvider(new CagematesDemographicsProvider(this));
         ehrService.registerDemographicsProvider(new ActiveCasesDemographicsProvider(this));

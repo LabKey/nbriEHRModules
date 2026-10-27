@@ -11,7 +11,19 @@ EHR.model.DataModelManager.registerMetadata('Assignment', {
             'enddate': {
                 hidden: true
             },
+            // display-only; NBRI_EHR.data.CurrentValueClientStore fills it
+            'Id/activeProjectAssignments/project': {
+                header: 'Current Project',
+                label: 'Current Project',
+                editable: false,
+                columnConfig: {
+                    editable: false,
+                    width: 200
+                }
+            },
             'project': {
+                header: 'New Project',
+                label: 'New Project',
                 xtype: 'combo',
                 nullable: false,
                 lookup: {
@@ -42,7 +54,19 @@ EHR.model.DataModelManager.registerMetadata('Assignment', {
             'project': {
               hidden: true
             },
+            // display-only; NBRI_EHR.data.CurrentValueClientStore fills it
+            'Id/activeProtocolAssignments/protocolDisplayName': {
+                header: 'Current Protocol',
+                label: 'Current Protocol',
+                editable: false,
+                columnConfig: {
+                    editable: false,
+                    width: 250
+                }
+            },
             'protocol': {
+                header: 'New Protocol',
+                label: 'New Protocol',
                 xtype: 'combo',
                 nullable: false,
                 columnConfig: {

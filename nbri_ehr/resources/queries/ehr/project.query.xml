@@ -34,7 +34,13 @@
                     </column>
                     <column columnName="avail" />
                     <column columnName="use_category" />
-                    <column columnName="projectType" />
+                    <column columnName="projectType">
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>project_types</fkTable>
+                            <fkColumnName>type</fkColumnName>
+                        </fk>
+                    </column>
                     <column columnName="alwaysavailable">
                         <isHidden>false</isHidden>
                     </column>
