@@ -258,7 +258,7 @@
             <column columnName="conceptId">
                 <datatype>varchar</datatype>
             </column>
-            <column columnName="breedingType">
+            <column columnName="pregnancyType">
                 <datatype>varchar</datatype>
             </column>
             <column columnName="type">
@@ -1661,6 +1661,9 @@
                 <rangeURI>http://cpas.fhcrc.org/exp/xml#fileLink</rangeURI>
             </column>
             <column columnName="conceptId">
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="pregnancyType">
                 <datatype>varchar</datatype>
             </column>
         </columns>

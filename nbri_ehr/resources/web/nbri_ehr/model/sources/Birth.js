@@ -135,7 +135,7 @@ EHR.model.DataModelManager.registerMetadata('Birth', {
                     width: 150
                 }
             },
-            breedingType: {
+            pregnancyType: {
                 columnConfig: {
                     width: 200
                 }

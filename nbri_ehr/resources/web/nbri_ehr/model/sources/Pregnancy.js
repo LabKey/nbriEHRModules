@@ -35,6 +35,11 @@ EHR.model.DataModelManager.registerMetadata('Pregnancy', {
                 columnConfig: {
                     width: 200
                 }
+            },
+            pregnancyType: {
+                columnConfig: {
+                    width: 200
+                }
             }
         },
 
