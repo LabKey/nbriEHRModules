@@ -44,7 +44,9 @@ EHR.model.DataModelManager.registerMetadata('NewProtocol', {
                 allowBlank: false,
                 nullable: false
             },
+            // the shared EHR defaults hide every description column
             description: {
+                hidden: false,
                 xtype: 'textarea',
                 height: 75,
                 editorConfig: {
