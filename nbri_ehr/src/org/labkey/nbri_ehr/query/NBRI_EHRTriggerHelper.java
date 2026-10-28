@@ -1349,11 +1349,6 @@ public class NBRI_EHRTriggerHelper
         return new TableSelector(ti, Collections.singleton("enddate"), filter, null).getArrayList(Date.class).stream().filter(Objects::nonNull).findFirst().orElse(null);
     }
 
-    public boolean protocolExists(String protocol)
-    {
-        return new TableSelector(getTableInfo("ehr", "protocol"), new SimpleFilter(FieldKey.fromString("protocol"), protocol), null).exists();
-    }
-
     public boolean hasAmendments(String protocol)
     {
         return !getAmendments(protocol).isEmpty();

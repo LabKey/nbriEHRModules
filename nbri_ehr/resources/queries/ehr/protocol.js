@@ -14,11 +14,6 @@ function orNull(value) {
 }
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'ehr', 'protocol', function (helper, scriptErrors, row, oldRow) {
-    // the table's database key is objectid, so nothing below this stops a second row for the same protocol
-    if (!oldRow && row.protocol && triggerHelper.protocolExists(row.protocol)) {
-        EHR.Server.Utils.addError(scriptErrors, 'protocol', 'Protocol ' + row.protocol + ' already exists.', 'ERROR');
-    }
-
     var datesChanged = !oldRow || !triggerHelper.isSameDay(orNull(row.approve), orNull(oldRow.approve)) || !triggerHelper.isSameDay(orNull(row.enddate), orNull(oldRow.enddate));
     if (datesChanged && triggerHelper.isBeforeDay(orNull(row.enddate), orNull(row.approve))) {
         EHR.Server.Utils.addError(scriptErrors, 'enddate', 'End date cannot be before the approval date.', 'ERROR');

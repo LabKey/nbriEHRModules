@@ -1140,7 +1140,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
             delete.addRow(Map.of("protocol", protocol));
             delete.execute(getApiHelper().getConnection(), getContainerPath());
         });
-        assertRejected("already exists", () -> insertProtocol(protocol, approve, end));
+        assertRejected("There is already a record where protocol equals", () -> insertProtocol(protocol, approve, end));
 
         log("Verifying a species can be entered only once per amendment");
         String amendmentId = (String) amendments.get(1).get("objectid");
