@@ -50,8 +50,8 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         return;
     }
 
-    // on an update, only re-check when the animal actually changed
-    if (oldRow && oldRow.Id && oldRow.Id === row.Id) {
+    // on an update, only re-check when the animal or protocol actually changed
+    if (oldRow && oldRow.Id && oldRow.Id === row.Id && oldRow.protocol === row.protocol) {
         return;
     }
 
