@@ -1,0 +1,14 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="protocol"/>
+        <column name="amendmentNumber"/>
+        <column name="date"/>
+        <column name="enddate"/>
+        <column name="remark"/>
+        <column name="QCState"/>
+    </columns>
+    <sorts>
+        <sort column="protocol"/>
+        <sort column="amendmentNumber" descending="true"/>
+    </sorts>
+</customView>

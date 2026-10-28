@@ -30,6 +30,7 @@ import org.labkey.remoteapi.CommandException;
 import org.labkey.remoteapi.SimplePostCommand;
 import org.labkey.remoteapi.core.SaveModulePropertiesCommand;
 import org.labkey.remoteapi.query.ContainerFilter;
+import org.labkey.remoteapi.query.DeleteRowsCommand;
 import org.labkey.remoteapi.query.Filter;
 import org.labkey.remoteapi.query.ImportDataCommand;
 import org.labkey.remoteapi.query.InsertRowsCommand;
@@ -70,6 +71,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -316,6 +318,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitFor(() -> Input(Locator.textarea("populateLookupResults"), getDriver()).waitFor().getValue().contains("Loading reports is complete."),
                 "Reports didn't finish loading", 60000);
         populateFormulary();
+
+        // The study import's trigger scripts query template columns such as protocol_counts.amendmentId
+        addExtensibleCols();
     }
 
     private void populateFormulary() throws IOException, CommandException
@@ -400,7 +405,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         goToEHRFolder();
         createTestSubjects();
         addNBRIEhrLinks();
-        addExtensibleCols();
         enableSiteNotification();
         populateLocations();
         addUsersAndPermissions();//create users and assign roles, created for the death and necropsy forms, but users can be repurposed for other forms.
@@ -1018,6 +1022,303 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private String getLastVisibleColumn(Ext4GridRef grid)
     {
         return (String) grid.getFnEval("var last = null; for (var i=0;i<this.columns.length;i++){if (!this.columns[i].hidden) last = this.columns[i].dataIndex;} return last;");
+    }
+
+    @Test
+    public void testNewProtocolForm() throws Exception
+    {
+        String protocol = "NEWPROT-01";
+        LocalDate approve = LocalDate.now().minusDays(30);
+        LocalDate expectedEnd = approve.plusYears(3);
+
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("New Protocol"));
+        lockForm();
+
+        log("Entering the protocol");
+        _helper.getExt4FieldForFormSection("Protocol", "IACUC Protocol").setValue(protocol);
+        _helper.getExt4FieldForFormSection("Protocol", "Title").setValue("New protocol form fixture");
+        _helper.getExt4FieldForFormSection("Protocol", "PI").setValue(getInvestigatorRowId(INVES_LAST_NAME));
+        getProtocolFormField("project_type").setValue("E");
+        _helper.getExt4FieldForFormSection("Protocol", "Approval Date").setValue(approve.format(_dateFormat));
+
+        log("Verifying the end date defaults to three years after approval");
+        waitFor(() -> expectedEnd.format(_dateFormat).equals(toDay(_helper.getExt4FieldForFormSection("Protocol", "End Date").getDateValue())),
+                "End date did not default from the approval date", WAIT_FOR_JAVASCRIPT);
+
+        log("Verifying the IBC approval number appears only once IBC approval is required");
+        Ext4FieldRef ibcNumber = getProtocolFormField("ibc_approval_num");
+        Assert.assertFalse("IBC approval number should start hidden", ibcNumber.isVisible());
+        getProtocolFormField("ibc_approval_required").setChecked(true);
+        waitFor(ibcNumber::isVisible, "IBC approval number did not appear", WAIT_FOR_JAVASCRIPT);
+        getProtocolFormField("ibc_approval_required").setChecked(false);
+        waitForFormValidationToSettle();
+
+        log("Entering the description and TB exemption");
+        // a hidden field still accepts a value, so check visibility before setting it
+        Ext4FieldRef description = getProtocolFormField("description");
+        Assert.assertTrue("Description should be visible", description.isVisible());
+        description.setValue("New protocol form description");
+        Ext4FieldRef exemptTB = getProtocolFormField("exemptTB");
+        Assert.assertTrue("Exempt TB should be visible", exemptTB.isVisible());
+        exemptTB.setChecked(true);
+
+        Ext4GridRef counts = _helper.getExt4GridForFormSection("Animals Allowed Per Species");
+        _helper.addRecordToGrid(counts);
+        counts.setGridCell(1, "species", "Rhesus Macaque");
+        counts.setGridCell(1, "allowed", "12");
+
+        submitForm("Submit Final", "Finalize");
+
+        log("Verifying the protocol was saved with its approval defaults");
+        SelectRowsCommand select = new SelectRowsCommand("ehr", "protocol");
+        select.setColumns(List.of("protocol", "approve", "first_approval", "enddate", "description", "exemptTB"));
+        select.addFilter(new Filter("protocol", protocol));
+        List<Map<String, Object>> protocols = select.execute(getApiHelper().getConnection(), getContainerPath()).getRows();
+        assertEquals("Expected one protocol row", 1, protocols.size());
+        assertEquals("Wrong approval date", approve.format(_dateFormat), toDay(protocols.get(0).get("approve")));
+        assertEquals("First approval should follow the approval date", approve.format(_dateFormat), toDay(protocols.get(0).get("first_approval")));
+        assertEquals("Wrong end date", expectedEnd.format(_dateFormat), toDay(protocols.get(0).get("enddate")));
+        assertEquals("Wrong description", "New protocol form description", protocols.get(0).get("description"));
+        assertEquals("Exempt TB was not saved", true, protocols.get(0).get("exemptTB"));
+
+        log("Verifying amendment 0 and its counts were saved with the protocol");
+        Map<Integer, Map<String, Object>> amendments = getAmendments(protocol);
+        assertEquals("Expected only amendment 0", Set.of(0), amendments.keySet());
+        assertAmendmentWindow(amendments, 0, approve, expectedEnd);
+        assertCounts(amendments.get(0), Map.of("MMU", 12));
+    }
+
+    @Test
+    public void testProtocolAmendmentRules() throws Exception
+    {
+        String protocol = "AMENDRULES-01";
+        LocalDate approve = LocalDate.now().minusYears(1);
+        LocalDate end = approve.plusYears(3);
+        LocalDate first = approve.plusMonths(6);
+        insertProtocol(protocol, approve, end);
+
+        log("Verifying the first amendment is numbered 0 and runs to the protocol's end date");
+        insertAmendment(protocol, approve, null);
+        assertAmendmentWindow(getAmendments(protocol), 0, approve, end);
+
+        log("Verifying a new amendment takes the next number and closes the previous one the day before it takes effect");
+        insertAmendment(protocol, first, null);
+        Map<Integer, Map<String, Object>> amendments = getAmendments(protocol);
+        assertAmendmentWindow(amendments, 0, approve, first.minusDays(1));
+        assertAmendmentWindow(amendments, 1, first, end);
+
+        log("Verifying the amendment date rules");
+        assertRejected("Effective date must be after amendment 1", () -> insertAmendment(protocol, first, null));
+        assertRejected("Effective date is after the protocol's end date", () -> insertAmendment(protocol, end.plusDays(1), end.plusDays(30)));
+        assertRejected("End date cannot be before the effective date", () -> updateAmendmentEnddate(amendments.get(1), first.minusDays(1)));
+        assertRejected("Overlaps amendment 1", () -> updateAmendmentEnddate(amendments.get(0), first.plusDays(10)));
+
+        log("Verifying the latest amendment follows the protocol's end date");
+        LocalDate extended = end.plusYears(1);
+        updateProtocolEnddate(protocol, extended);
+        assertAmendmentWindow(getAmendments(protocol), 1, first, extended);
+        assertRejected("End date is before amendment 1", () -> updateProtocolEnddate(protocol, first.minusDays(1)));
+
+        log("Verifying moving an amendment's effective date moves the end of the one before it");
+        LocalDate later = first.plusDays(5);
+        updateAmendmentDate(amendments.get(1), later);
+        Map<Integer, Map<String, Object>> moved = getAmendments(protocol);
+        assertAmendmentWindow(moved, 0, approve, later.minusDays(1));
+        assertAmendmentWindow(moved, 1, later, extended);
+        LocalDate earlier = first.minusDays(5);
+        updateAmendmentDate(amendments.get(1), earlier);
+        moved = getAmendments(protocol);
+        assertAmendmentWindow(moved, 0, approve, earlier.minusDays(1));
+        assertAmendmentWindow(moved, 1, earlier, extended);
+        assertRejected("Effective date must be after amendment 0", () -> updateAmendmentDate(amendments.get(1), approve));
+        updateAmendmentDate(amendments.get(1), first);
+        assertAmendmentWindow(getAmendments(protocol), 0, approve, first.minusDays(1));
+
+        log("Verifying a protocol with amendments cannot be deleted or duplicated");
+        assertRejected("has amendments and cannot be deleted", () -> {
+            DeleteRowsCommand delete = new DeleteRowsCommand("ehr", "protocol");
+            delete.addRow(Map.of("protocol", protocol));
+            delete.execute(getApiHelper().getConnection(), getContainerPath());
+        });
+        assertRejected("There is already a record where protocol equals", () -> insertProtocol(protocol, approve, end));
+
+        log("Verifying a species can be entered only once per amendment");
+        String amendmentId = (String) amendments.get(1).get("objectid");
+        assertRejected("Species MMU is entered more than once", () -> insertCounts(protocol, amendmentId, "MMU", "MMU"));
+        insertCounts(protocol, amendmentId, "MMU");
+        assertRejected("Species MMU is entered more than once", () -> insertCounts(protocol, amendmentId, "MMU"));
+        insertCounts(protocol, (String) amendments.get(0).get("objectid"), "MMU");
+
+        log("Verifying only the latest amendment can be deleted, and deleting it reopens the one before");
+        assertRejected("Only the latest amendment, 1, can be deleted", () -> deleteAmendment(amendments.get(0)));
+        deleteAmendment(amendments.get(1));
+        Map<Integer, Map<String, Object>> remaining = getAmendments(protocol);
+        assertEquals("Expected only amendment 0 after the delete", Set.of(0), remaining.keySet());
+        assertAmendmentWindow(remaining, 0, approve, extended);
+        assertCounts(amendments.get(1), Map.of());
+    }
+
+    private void updateAmendmentDate(Map<String, Object> amendment, LocalDate date) throws IOException, CommandException
+    {
+        UpdateRowsCommand update = new UpdateRowsCommand("nbri_ehr", "ProtocolAmendment");
+        update.addRow(Map.of("rowid", amendment.get("rowid"), "date", date.format(_dateFormat)));
+        update.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    private void deleteAmendment(Map<String, Object> amendment) throws IOException, CommandException
+    {
+        DeleteRowsCommand delete = new DeleteRowsCommand("nbri_ehr", "ProtocolAmendment");
+        delete.addRow(Map.of("rowid", amendment.get("rowid")));
+        delete.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    private void insertCounts(String protocol, String amendmentId, String... species) throws IOException, CommandException
+    {
+        InsertRowsCommand insert = new InsertRowsCommand("ehr", "protocol_counts");
+        for (String s : species)
+            insert.addRow(Map.of("protocol", protocol, "amendmentId", amendmentId, "species", s, "allowed", 5));
+        insert.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    @Test
+    public void testProtocolAmendmentFormSeedsCounts() throws Exception
+    {
+        String protocol = "AMENDSEED-01";
+        LocalDate approve = LocalDate.now().minusYears(1);
+        LocalDate end = approve.plusYears(3);
+        LocalDate effective = LocalDate.now().minusDays(1);
+        insertProtocol(protocol, approve, end);
+        insertAmendment(protocol, approve, null);
+
+        InsertRowsCommand insertCounts = new InsertRowsCommand("ehr", "protocol_counts");
+        String originalId = (String) getAmendments(protocol).get(0).get("objectid");
+        insertCounts.addRow(Map.of("protocol", protocol, "amendmentId", originalId, "species", "CAP", "allowed", 3));
+        insertCounts.addRow(Map.of("protocol", protocol, "amendmentId", originalId, "species", "MMU", "allowed", 8));
+        insertCounts.execute(getApiHelper().getConnection(), getContainerPath());
+
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Protocol Amendment"));
+        lockForm();
+
+        log("Verifying choosing a protocol seeds the grid with the counts in effect");
+        _helper.getExt4FieldForFormSection("Protocol Amendment", "IACUC Protocol").setValue(protocol);
+        Ext4GridRef counts = _helper.getExt4GridForFormSection("Animals Allowed Per Species");
+        counts.waitForRowCount(2);
+        assertEquals("Wrong species seeded first", "CAP", counts.getFieldValue(1, "species"));
+        assertEquals("Wrong count seeded for CAP", 3, ((Number) counts.getFieldValue(1, "allowed")).intValue());
+        assertEquals("Wrong species seeded second", "MMU", counts.getFieldValue(2, "species"));
+        assertEquals("Wrong count seeded for MMU", 8, ((Number) counts.getFieldValue(2, "allowed")).intValue());
+
+        counts.setGridCell(2, "allowed", "10");
+        _helper.getExt4FieldForFormSection("Protocol Amendment", "Effective Date").setValue(effective.format(_dateFormat));
+        submitForm("Submit Final", "Finalize");
+
+        log("Verifying the amendment was saved with its counts and superseded amendment 0");
+        Map<Integer, Map<String, Object>> amendments = getAmendments(protocol);
+        assertAmendmentWindow(amendments, 0, approve, effective.minusDays(1));
+        assertAmendmentWindow(amendments, 1, effective, end);
+        assertCounts(amendments.get(1), Map.of("CAP", 3, "MMU", 10));
+    }
+
+    private interface ApiCall
+    {
+        void run() throws IOException, CommandException;
+    }
+
+    private void assertRejected(String expectedMessage, ApiCall call)
+    {
+        try
+        {
+            call.run();
+            Assert.fail("Save should have been rejected with: " + expectedMessage);
+        }
+        catch (IOException | CommandException e)
+        {
+            Assert.assertTrue("Unexpected failure, expected \"" + expectedMessage + "\": " + e.getMessage(),
+                    e.getMessage() != null && e.getMessage().contains(expectedMessage));
+        }
+    }
+
+    private Ext4FieldRef getProtocolFormField(String name)
+    {
+        return _ext4Helper.queryOne("panel[title='Protocol'] [name='" + name + "']", Ext4FieldRef.class);
+    }
+
+    private Object getInvestigatorRowId(String lastName) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("ehr", "investigators");
+        select.setColumns(List.of("rowid"));
+        select.addFilter(new Filter("lastName", lastName));
+        return select.execute(getApiHelper().getConnection(), getContainerPath()).getRows().get(0).get("rowid");
+    }
+
+    private void insertProtocol(String protocol, LocalDate approve, LocalDate enddate) throws IOException, CommandException
+    {
+        InsertRowsCommand insert = new InsertRowsCommand("ehr", "protocol");
+        insert.addRow(Map.of("protocol", protocol, "title", protocol, "approve", approve.format(_dateFormat), "enddate", enddate.format(_dateFormat)));
+        insert.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    private void updateProtocolEnddate(String protocol, LocalDate enddate) throws IOException, CommandException
+    {
+        UpdateRowsCommand update = new UpdateRowsCommand("ehr", "protocol");
+        update.addRow(Map.of("protocol", protocol, "enddate", enddate.format(_dateFormat)));
+        update.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    /** A null end date leaves it to the server. */
+    private void insertAmendment(String protocol, LocalDate date, @Nullable LocalDate enddate) throws IOException, CommandException
+    {
+        Map<String, Object> row = new HashMap<>(Map.of("protocol", protocol, "date", date.format(_dateFormat)));
+        if (enddate != null)
+            row.put("enddate", enddate.format(_dateFormat));
+
+        InsertRowsCommand insert = new InsertRowsCommand("nbri_ehr", "ProtocolAmendment");
+        insert.addRow(row);
+        insert.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    private void updateAmendmentEnddate(Map<String, Object> amendment, LocalDate enddate) throws IOException, CommandException
+    {
+        UpdateRowsCommand update = new UpdateRowsCommand("nbri_ehr", "ProtocolAmendment");
+        update.addRow(Map.of("rowid", amendment.get("rowid"), "enddate", enddate.format(_dateFormat)));
+        update.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    /** A protocol's amendments, keyed by amendment number. */
+    private Map<Integer, Map<String, Object>> getAmendments(String protocol) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("nbri_ehr", "ProtocolAmendment");
+        select.setColumns(List.of("rowid", "objectid", "amendmentNumber", "date", "enddate"));
+        select.addFilter(new Filter("protocol", protocol));
+
+        Map<Integer, Map<String, Object>> amendments = new HashMap<>();
+        for (Map<String, Object> row : select.execute(getApiHelper().getConnection(), getContainerPath()).getRows())
+            amendments.put(((Number) row.get("amendmentNumber")).intValue(), row);
+
+        return amendments;
+    }
+
+    private void assertAmendmentWindow(Map<Integer, Map<String, Object>> amendments, int number, LocalDate date, LocalDate enddate)
+    {
+        Map<String, Object> amendment = amendments.get(number);
+        assertNotNull("No amendment " + number, amendment);
+        assertEquals("Wrong effective date on amendment " + number, date.format(_dateFormat), toDay(amendment.get("date")));
+        assertEquals("Wrong end date on amendment " + number, enddate.format(_dateFormat), toDay(amendment.get("enddate")));
+    }
+
+    private void assertCounts(Map<String, Object> amendment, Map<String, Integer> expected) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("ehr", "protocol_counts");
+        select.setColumns(List.of("species", "allowed"));
+        select.addFilter(new Filter("amendmentId", amendment.get("objectid")));
+
+        Map<String, Integer> counts = new HashMap<>();
+        for (Map<String, Object> row : select.execute(getApiHelper().getConnection(), getContainerPath()).getRows())
+            counts.put((String) row.get("species"), ((Number) row.get("allowed")).intValue());
+
+        assertEquals("Wrong counts on amendment " + amendment.get("amendmentNumber"), expected, counts);
     }
 
     @Test

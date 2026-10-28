@@ -1138,6 +1138,22 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         var descriptionCol = ti.getMutableColumn("description");
         if (null != descriptionCol)
             descriptionCol.setDisplayColumnFactory(new HtmlDisplayColumnFactory());
+
+        // replaces maxAnimals, which is a single number with no species
+        UserSchema us = ti.getUserSchema();
+        if (us != null && ti.getColumn("allowedAnimals") == null && ti.getColumn("protocol") != null)
+        {
+            WrappedColumn col = new WrappedColumn(ti.getColumn("protocol"), "allowedAnimals");
+            col.setLabel("Animals Allowed");
+            col.setDescription("Animals allowed by the amendment currently in effect; expand for the per-species counts");
+            col.setReadOnly(true);
+            col.setUserEditable(false);
+            col.setFk(new QueryForeignKey(QueryForeignKey.from(us, ti.getContainerFilter())
+                    .table("protocolAllowedAnimals")
+                    .key("protocol")
+                    .display("totalAllowed")));
+            ti.addColumn(col);
+        }
     }
 
     private void customizeProtocolExemptions(AbstractTableInfo ti)
