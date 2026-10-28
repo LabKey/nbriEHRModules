@@ -1030,7 +1030,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         String damSpeciesCode = "CAP";
         String damSpecies = "Brown-Tufted Capuchin";
         String conceptId = "TESTCONCEPT1";
-        String breedingType = "Time-Mated";
+        String pregnancyType = "Research Breeding";
         int damGeneration = 2;
         // demographics.socialCode holds an ehr_lookups.social_code code; the grids display its title
         String socialCode = "Mother-rearing (for indoors)";
@@ -1078,7 +1078,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         births.setGridCell(1, "Id", bornAnimal);
         births.setGridCell(1, "cage", CAGE_IN_R2);
         births.setGridCell(1, "Id/demographics/gender", "Female");
-        births.setGridCell(1, "breedingType", breedingType);
+        births.setGridCell(1, "pregnancyType", pregnancyType);
         births.setGridCell(1, "Id/demographics/socialCode", socialCode);
 
         log("Verifying Social Code is required");
@@ -1118,7 +1118,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Assert.assertEquals("Invalid Birth record", Arrays.asList(bornAnimal), table.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList(CAGE_IN_R2), table.getRowDataAsText(0, "cage"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
-        Assert.assertEquals("Invalid Birth record", Arrays.asList(breedingType), table.getRowDataAsText(0, "breedingType"));
+        Assert.assertEquals("Invalid Birth record", Arrays.asList(pregnancyType), table.getRowDataAsText(0, "pregnancyType"));
 
         log("Verifying the dam and sire of the conception reached demographics");
         goToSchemaBrowser();
@@ -1282,14 +1282,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Ext4GridRef births = _helper.getExt4GridForFormSection("Births");
         startWithConception(births, firstConcept, 1);
         fillBirthRow(births, 1, bornAnimal, now.minusDays(1), socialCode, animalGroup, CAGE_IN_R1);
-        births.setGridCell(1, "breedingType", "Time-Mated");
+        births.setGridCell(1, "pregnancyType", "Research Breeding");
 
         // the codes behind these lookups are not spelled out in the test, so remember what the row carries and
         // compare afterwards rather than asserting against a literal
         Object dateBefore = births.getFieldValue(1, "date");
         Object genderBefore = births.getFieldValue(1, "Id/demographics/gender");
         Object socialCodeBefore = births.getFieldValue(1, "Id/demographics/socialCode");
-        Object breedingTypeBefore = births.getFieldValue(1, "breedingType");
+        Object pregnancyTypeBefore = births.getFieldValue(1, "pregnancyType");
         Object groupBefore = births.getFieldValue(1, "groupId");
 
         log("Opening the picker from the Conception Id cell of the existing row");
@@ -1320,7 +1320,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assertEquals("Birth date should have been left alone", dateBefore, births.getFieldValue(1, "date"));
         assertEquals("Gender should have been left alone", genderBefore, births.getFieldValue(1, "Id/demographics/gender"));
         assertEquals("Social Code should have been left alone", socialCodeBefore, births.getFieldValue(1, "Id/demographics/socialCode"));
-        assertEquals("Breeding Type should have been left alone", breedingTypeBefore, births.getFieldValue(1, "breedingType"));
+        assertEquals("Pregnancy Type should have been left alone", pregnancyTypeBefore, births.getFieldValue(1, "pregnancyType"));
         assertEquals("Group should have been left alone", groupBefore, births.getFieldValue(1, "groupId"));
         assertEquals("Project should have been left alone", "795644", String.valueOf(births.getFieldValue(1, "project")));
         assertEquals("Protocol should have been left alone", "protocol101", births.getFieldValue(1, "birthProtocol"));
@@ -1351,6 +1351,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         // a non-live outcome, so ConceptionsByDam reports it rather than falling through to 'Live Birth'
         String result = "Fetal Death";
         String deliveryMode = "Vaginal";
+        String pregnancyType = "Research Intervention";
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating conception record");
@@ -1369,6 +1370,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         outcomes.setGridCell(1, "result", result);
         outcomes.setGridCell(1, "conceptId", conceptId);
         outcomes.setGridCell(1, "type", deliveryMode);
+        outcomes.setGridCell(1, "pregnancyType", pregnancyType);
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -1378,6 +1380,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(result), table.getRowDataAsText(0, "result"));
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(deliveryMode), table.getRowDataAsText(0, "type"));
+        Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(pregnancyType), table.getRowDataAsText(0, "pregnancyType"));
 
         log("Verifying conception outcome in ConceptionsByDam");
         goToSchemaBrowser();
@@ -3188,7 +3191,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         List<String> expectedOrder = List.of("Id", "date", "conceptId", "Id/demographics/species", "Id/demographics/gender",
                 "Id/demographics/dam", "Id/demographics/sire", "cage", "Id/demographics/socialCode",
                 "Id/demographics/generation", "project",
-                "birthProtocol", "groupId", "type", "breedingType", "remark", "performedby");
+                "birthProtocol", "groupId", "type", "pregnancyType", "remark", "performedby");
 
         int previousIdx = 0;
         String previousCol = null;

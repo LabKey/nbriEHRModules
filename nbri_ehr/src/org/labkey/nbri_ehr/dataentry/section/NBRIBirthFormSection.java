@@ -43,7 +43,7 @@ public class NBRIBirthFormSection extends NewAnimalFormSection
             FieldKey.fromString("birthProtocol"),
             FieldKey.fromString("groupId"),
             FieldKey.fromString("type"),
-            FieldKey.fromString("breedingType"),
+            FieldKey.fromString("pregnancyType"),
             FieldKey.fromString("remark"),
             FieldKey.fromString("performedby")
     );

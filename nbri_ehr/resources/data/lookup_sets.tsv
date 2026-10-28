@@ -88,6 +88,7 @@ pairing_separation_reason	Pairing Status Change Reason	value	value
 per_diem	Per Diem	value	title
 preferences	Preferences	value
 pregnancy_result	Pregnancy Results	value
+pregnancy_type	Pregnancy Type	value	title
 procedure_category	Category of procedures	value
 problem_list_category	Problem List Category	value
 problem_list_subcategory	Problem List Sub-Category	value
