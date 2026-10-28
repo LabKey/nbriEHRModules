@@ -1052,6 +1052,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         getProtocolFormField("ibc_approval_required").setChecked(true);
         waitFor(ibcNumber::isVisible, "IBC approval number did not appear", WAIT_FOR_JAVASCRIPT);
         getProtocolFormField("ibc_approval_required").setChecked(false);
+        waitForFormValidationToSettle();
 
         log("Entering the description and TB exemption");
         // a hidden field still accepts a value, so check visibility before setting it
