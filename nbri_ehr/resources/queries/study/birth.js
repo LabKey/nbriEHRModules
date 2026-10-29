@@ -80,6 +80,12 @@ function verifyProtocol(helper, scriptErrors, fieldName, row, oldRow, species) {
         return;
     }
 
+    if (!species) {
+        // nothing to count the animal against, so this stays a warning even on Submit Final
+        EHR.Server.Utils.addError(scriptErrors, fieldName, 'Unknown species: ' + row.Id, 'WARN');
+        return;
+    }
+
     var msgs = triggerHelper.verifyProtocolCountsForProtocol(row.Id, protocol, row.date, species, null, inSave);
     if (msgs) {
         // the server commits WARN rows, so only an ERROR keeps a public assignment off a full protocol

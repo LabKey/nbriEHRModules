@@ -77,9 +77,16 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         return;
     }
 
+    var species = triggerHelper.getAnimalSpecies(row.Id);
+    if (!species) {
+        // nothing to count the animal against, so this stays a warning even on Submit Final
+        EHR.Server.Utils.addError(scriptErrors, 'protocol', 'Unknown species: ' + row.Id, 'WARN');
+        return;
+    }
+
     var inTransaction = helper.getProperty('protocolAssignmentsInTransaction') || [];
 
-    var msgs = triggerHelper.verifyProtocolCountsForProtocol(row.Id, row.protocol, row.date, null, row.objectid || null, inTransaction);
+    var msgs = triggerHelper.verifyProtocolCountsForProtocol(row.Id, row.protocol, row.date, species, row.objectid || null, inTransaction);
     if (msgs) {
         // the server commits WARN rows, so only an ERROR keeps a public assignment off a full protocol
         var movingPublicRow = row._publicData && oldRow && oldRow.protocol !== row.protocol;

@@ -66,6 +66,12 @@ function verifyProtocol(helper, scriptErrors, fieldName, row, oldRow, species) {
         return;
     }
 
+    if (!species) {
+        // nothing to count the animal against, so this stays a warning even on Submit Final
+        EHR.Server.Utils.addError(scriptErrors, fieldName, 'Unknown species: ' + row.Id, 'WARN');
+        return;
+    }
+
     var msgs = triggerHelper.verifyProtocolCountsForProtocol(row.Id, protocol, row.date, species, null, inSave);
     if (msgs) {
         // the server commits WARN rows, so only an ERROR keeps a public assignment off a full protocol
@@ -107,8 +113,8 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
     helper.registerArrival(row.Id, row.date);
 
-    // a rearrival leaves this blank, so the check falls back to the animal's demographics record
-    verifyProtocol(helper, scriptErrors, 'arrivalProtocol', row, oldRow, row['Id/demographics/species'] || null);
+    // a rearrival leaves this blank, so fall back to the animal's demographics record
+    verifyProtocol(helper, scriptErrors, 'arrivalProtocol', row, oldRow, row['Id/demographics/species'] || triggerHelper.getAnimalSpecies(row.Id) || null);
 
     // These records are created for rearrivals too: the animal's departure closed the ones it had.
     if (!helper.isETL() && !helper.isGeneratedByServer() && !helper.isValidateOnly()) {

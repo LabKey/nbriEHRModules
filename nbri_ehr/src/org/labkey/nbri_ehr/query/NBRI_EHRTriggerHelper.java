@@ -21,6 +21,7 @@ import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.collections.CaseInsensitiveHashMap;
 import org.labkey.api.collections.CaseInsensitiveHashSet;
@@ -1260,18 +1261,14 @@ public class NBRI_EHRTriggerHelper
      * Warns when assigning an animal to a protocol would exceed the animals approved for its species under any
      * amendment in effect on or after the assignment date. The shared EHR check reaches the protocol through a
      * project, which cannot see a protocol assignment here, so this keys on the protocol directly. Returns the
-     * messages joined with "&lt;&gt;", or null when nothing is wrong. A species, here or on an in-transaction row,
-     * stands in for an animal whose demographics record is not written yet.
+     * messages joined with "&lt;&gt;", or null when nothing is wrong. The species is passed in, and may be carried
+     * by an in-transaction row, because an animal's demographics record may not be written yet.
      */
-    public String verifyProtocolCountsForProtocol(final String id, final String protocol, final Date date, @Nullable final String speciesOverride, @Nullable final String objectid, final List<Map<String, Object>> recordsInTransaction)
+    public String verifyProtocolCountsForProtocol(final String id, final String protocol, final Date date, @NotNull final String species, @Nullable final String objectid, final List<Map<String, Object>> recordsInTransaction)
     {
         Date day = toDay(date);
         if (id == null || protocol == null || day == null)
             return null;
-
-        final String species = speciesOverride != null ? speciesOverride : getAnimalSpecies(id);
-        if (species == null)
-            return "Unknown species: " + id;
 
         // An animal counts against every amendment window that ends on or after its earliest assignment
         final Map<String, Date> firstAssigned = new CaseInsensitiveHashMap<>();
@@ -1342,7 +1339,7 @@ public class NBRI_EHRTriggerHelper
         return errors.isEmpty() ? null : StringUtils.join(errors, "<>");
     }
 
-    private @Nullable String getAnimalSpecies(String id)
+    public @Nullable String getAnimalSpecies(String id)
     {
         AnimalRecord ar = EHRDemographicsService.get().getAnimal(_container, id);
         return ar == null ? null : ar.getSpecies();
