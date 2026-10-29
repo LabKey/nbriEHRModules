@@ -6,6 +6,8 @@
 require("ehr/triggers").initScript(this);
 EHR.Server.Utils = require("ehr/utils").EHR.Server.Utils;
 
+var protocolChecks = require("nbri_ehr/protocolChecks");
+
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 var idsToSync = [];
 
@@ -48,54 +50,8 @@ function createAssignment(scriptErrors, dataset, fieldName, value, row) {
     }
 }
 
-// rows of this save, the one being checked included; a validate-only request writes no protocol assignment, so the count check cannot find them saved
+// rows of this save, the one being checked included
 var protocolAssignmentsInSave = [];
-
-function sameDay(a, b) {
-    a = EHR.Server.Utils.normalizeDate(a);
-    b = EHR.Server.Utils.normalizeDate(b);
-    if (!a || !b) {
-        return !a && !b;
-    }
-
-    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
-// the protocol assignment created from this row skips the protocol checks, so they run here against the entered protocol
-function verifyProtocol(helper, scriptErrors, fieldName, row, oldRow, species) {
-    var protocol = row[fieldName];
-    if (helper.isETL() || helper.isQuickValidation() || !protocol || !row.Id || !row.date)
-        return;
-
-    protocolAssignmentsInSave.push({Id: row.Id, date: EHR.Server.Utils.datetimeToString(row.date), protocol: protocol, species: species});
-
-    // as in study.protocolAssignment, an unchanged animal, protocol and date only needs a recheck on Submit Final
-    if (oldRow && !row._becomingPublicData && oldRow.Id === row.Id && oldRow[fieldName] === protocol && sameDay(oldRow.date, row.date))
-        return;
-
-    var protocolError = triggerHelper.verifyProtocolActive(protocol, row.date);
-    if (protocolError) {
-        EHR.Server.Utils.addError(scriptErrors, fieldName, protocolError, 'ERROR');
-        return;
-    }
-
-    if (!species) {
-        // nothing to count the animal against, so this stays a warning even on Submit Final
-        EHR.Server.Utils.addError(scriptErrors, fieldName, 'Unknown species: ' + row.Id, 'WARN');
-        return;
-    }
-
-    var msgs = triggerHelper.verifyProtocolCountsForProtocol(row.Id, protocol, row.date, species, null, protocolAssignmentsInSave);
-    if (msgs) {
-        // the server commits WARN rows, so only an ERROR keeps a public assignment off a full protocol; a public row
-        // that gets this far has a new animal, protocol or date
-        var severity = (row._becomingPublicData || (row._publicData && oldRow)) ? 'ERROR' : 'WARN';
-        msgs = msgs.split("<>");
-        for (var i = 0; i < msgs.length; i++) {
-            EHR.Server.Utils.addError(scriptErrors, fieldName, msgs[i], severity);
-        }
-    }
-}
 
 // resolves the dam of a conception so the birth can announce her; the conception carries the dam, the birth row does not
 function addConceptionDam(conceptId) {
@@ -183,7 +139,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
     // the newborn's demographics record is written after its assignments, so take the species the way that record will
     var dam = knownParent(row['Id/demographics/dam']);
-    verifyProtocol(helper, scriptErrors, 'birthProtocol', row, oldRow, row['Id/demographics/species'] || (dam ? helper.getJavaHelper().getSpecies(dam) : null) || null);
+    protocolChecks.verifyEnteredProtocol(triggerHelper, helper, scriptErrors, 'birthProtocol', row, oldRow, row['Id/demographics/species'] || (dam ? helper.getJavaHelper().getSpecies(dam) : null) || null, protocolAssignmentsInSave);
 
     if (!helper.isETL() && !helper.isValidateOnly()) {
         addConceptionDam(row.conceptId);

@@ -41,59 +41,20 @@ function onInit(event, helper){
     });
 }
 
+var protocolChecks = require("nbri_ehr/protocolChecks");
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 
-function sameDay(a, b) {
-    a = EHR.Server.Utils.normalizeDate(a);
-    b = EHR.Server.Utils.normalizeDate(b);
-    if (!a || !b) {
-        return !a && !b;
-    }
-
-    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
-// Rejects an unknown or expired protocol, and warns when an assignment would put the protocol over the animals
-// approved for that animal's species. The shared EHR check reaches the protocol through a project, which cannot see
-// a protocol assignment here.
+// the shared EHR check reaches the protocol through a project, which cannot see a protocol assignment here
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'study', 'protocolAssignment', function (helper, scriptErrors, row, oldRow) {
     if (helper.isETL() || helper.isQuickValidation()) {
         return;
     }
 
-    // an edit that leaves the animal, protocol and date alone (e.g. closing the assignment) changes neither result,
-    // unless it is Submit Final, the first point at which the row counts against the limit
-    if (oldRow && !row._becomingPublicData && oldRow.Id === row.Id && oldRow.protocol === row.protocol && sameDay(oldRow.date, row.date)) {
-        return;
-    }
-
-    if (!row.Id || !row.protocol || !row.date) {
-        return;
-    }
-
-    var protocolError = triggerHelper.verifyProtocolActive(row.protocol, row.date);
-    if (protocolError) {
-        EHR.Server.Utils.addError(scriptErrors, 'protocol', protocolError, 'ERROR');
-        return;
-    }
-
-    var species = triggerHelper.getAnimalSpecies(row.Id);
-    if (!species) {
-        // nothing to count the animal against, so this stays a warning even on Submit Final
-        EHR.Server.Utils.addError(scriptErrors, 'protocol', 'Unknown species: ' + row.Id, 'WARN');
+    if (protocolChecks.isUnchanged('protocol', row, oldRow) || !row.Id || !row.protocol || !row.date) {
         return;
     }
 
     var inTransaction = helper.getProperty('protocolAssignmentsInTransaction') || [];
-
-    var msgs = triggerHelper.verifyProtocolCountsForProtocol(row.Id, row.protocol, row.date, species, row.objectid || (oldRow && oldRow.objectid) || null, inTransaction);
-    if (msgs) {
-        // the server commits WARN rows, so only an ERROR keeps a public assignment off a full protocol; a public row
-        // that gets this far has a new animal, protocol or date
-        var severity = (row._becomingPublicData || (row._publicData && oldRow)) ? 'ERROR' : 'WARN';
-        msgs = msgs.split("<>");
-        for (var i = 0; i < msgs.length; i++) {
-            EHR.Server.Utils.addError(scriptErrors, 'protocol', msgs[i], severity);
-        }
-    }
+    protocolChecks.verifyProtocol(triggerHelper, scriptErrors, 'protocol', row, oldRow, triggerHelper.getAnimalSpecies(row.Id),
+            row.objectid || (oldRow && oldRow.objectid) || null, inTransaction);
 });
