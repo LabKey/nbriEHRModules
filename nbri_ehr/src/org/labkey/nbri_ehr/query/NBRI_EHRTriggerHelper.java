@@ -17,6 +17,7 @@ package org.labkey.nbri_ehr.query;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.logging.log4j.LogManager;
@@ -1258,8 +1259,8 @@ public class NBRI_EHRTriggerHelper
     }
 
     /**
-     * Warns when assigning an animal to a protocol would exceed the animals approved for its species under any
-     * amendment in effect on or after the assignment date. The shared EHR check reaches the protocol through a
+     * Reports an assignment whose species the amendment in effect on its date does not list, or that would exceed the
+     * animals approved for its species under any amendment in effect on or after that date. The shared EHR check reaches the protocol through a
      * project, which cannot see a protocol assignment here, so this keys on the protocol directly. Returns the
      * messages joined with "&lt;&gt;", or null when nothing is wrong. The species is passed in, and may be carried
      * by an in-transaction row, because an animal's demographics record may not be written yet.
@@ -1341,16 +1342,20 @@ public class NBRI_EHRTriggerHelper
                 new CompareType.CompareClause(FieldKey.fromString("amendmentId/enddate"), CompareType.ISBLANK, null)));
 
         TableInfo counts = getTableInfo("ehr", "protocol_counts");
-        Set<FieldKey> keys = PageFlowUtil.set(FieldKey.fromString("allowed"), FieldKey.fromString("amendmentId/amendmentNumber"), FieldKey.fromString("amendmentId/enddate"));
+        Set<FieldKey> keys = PageFlowUtil.set(FieldKey.fromString("allowed"), FieldKey.fromString("amendmentId/amendmentNumber"), FieldKey.fromString("amendmentId/date"), FieldKey.fromString("amendmentId/enddate"));
         final Map<FieldKey, ColumnInfo> cols = QueryService.get().getColumns(counts, keys);
 
         final List<String> errors = new ArrayList<>();
+        final MutableBoolean approved = new MutableBoolean(false);
         new TableSelector(counts, cols.values(), countFilter, new Sort("amendmentId/amendmentNumber")).forEach(object -> {
             Results rs = new ResultsImpl(object, cols);
-            Integer allowed = ConvertHelper.convert(rs.getObject(FieldKey.fromString("allowed")), Integer.class);
-            // a protocol with no approved count row is not the same as a protocol approved for zero animals
-            if (allowed == null)
-                return;
+            Object allowedValue = rs.getObject(FieldKey.fromString("allowed"));
+            // federal approval: no count entered approves no animals
+            int allowed = allowedValue == null ? 0 : ConvertHelper.convert(allowedValue, Integer.class);
+
+            Date windowStart = toDay(rs.getObject(FieldKey.fromString("amendmentId/date")));
+            if (allowedValue != null && windowStart != null && !windowStart.after(day))
+                approved.setTrue();
 
             Date windowEnd = toDay(rs.getObject(FieldKey.fromString("amendmentId/enddate")));
             // an animal already counted in this window adds nothing, even when the window is over its limit
@@ -1361,6 +1366,10 @@ public class NBRI_EHRTriggerHelper
                 errors.add("Protocol " + protocol + ", " + species + ": " + used + " of " + allowed + " allowed under amendment " + rs.getObject(FieldKey.fromString("amendmentId/amendmentNumber")) + ".");
             }
         });
+
+        // only the species listed on the amendment in effect on the assignment date may be assigned
+        if (approved.isFalse())
+            errors.addFirst("Protocol " + protocol + " is not approved for " + species + " on " + _dateFormat.format(day) + ".");
 
         return errors.isEmpty() ? null : StringUtils.join(errors, "<>");
     }

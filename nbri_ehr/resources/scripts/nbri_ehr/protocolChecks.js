@@ -21,9 +21,9 @@ function isUnchanged(fieldName, row, oldRow) {
     return !!oldRow && !row._becomingPublicData && oldRow.Id === row.Id && oldRow[fieldName] === row[fieldName] && sameDay(oldRow.date, row.date);
 }
 
-// Rejects an unknown or expired protocol, and reports an assignment that would put the protocol over the animals
-// approved for the animal's species. The shared EHR check reaches the protocol through a project, which cannot see
-// a protocol assignment here.
+// Rejects an unknown or expired protocol, and reports an assignment of a species the protocol is not approved for or
+// that would put the protocol over the animals approved for that species. The shared EHR check reaches the protocol
+// through a project, which cannot see a protocol assignment here.
 function verifyProtocol(triggerHelper, scriptErrors, fieldName, row, oldRow, species, objectId, inTransaction) {
     var protocol = row[fieldName];
     var protocolError = triggerHelper.verifyProtocolActive(protocol, row.date);
@@ -32,17 +32,18 @@ function verifyProtocol(triggerHelper, scriptErrors, fieldName, row, oldRow, spe
         return;
     }
 
+    // the server commits WARN rows, so only an ERROR keeps a public assignment off a protocol; a public row that gets
+    // this far has a new animal, protocol or date
+    var severity = (row._becomingPublicData || (row._publicData && oldRow)) ? 'ERROR' : 'WARN';
+
     if (!species) {
-        // nothing to count the animal against, so this stays a warning even on Submit Final
-        EHR_UTILS.addError(scriptErrors, fieldName, 'Unknown species: ' + row.Id, 'WARN');
+        // approval is per species, so an animal of unknown species cannot be shown to be approved
+        EHR_UTILS.addError(scriptErrors, fieldName, 'Unknown species: ' + row.Id, severity);
         return;
     }
 
     var msgs = triggerHelper.verifyProtocolCountsForProtocol(row.Id, protocol, row.date, species, objectId, inTransaction);
     if (msgs) {
-        // the server commits WARN rows, so only an ERROR keeps a public assignment off a full protocol; a public row
-        // that gets this far has a new animal, protocol or date
-        var severity = (row._becomingPublicData || (row._publicData && oldRow)) ? 'ERROR' : 'WARN';
         msgs = msgs.split("<>");
         for (var i = 0; i < msgs.length; i++) {
             EHR_UTILS.addError(scriptErrors, fieldName, msgs[i], severity);

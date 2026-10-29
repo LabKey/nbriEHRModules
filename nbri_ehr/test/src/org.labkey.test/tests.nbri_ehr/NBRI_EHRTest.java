@@ -250,6 +250,25 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         insertCmd.addRow(rowMap);
 
         insertCmd.execute(createDefaultConnection(), getContainerPath());
+
+        approveForAllSpecies(PROTOCOL_ID);
+        approveForAllSpecies(DUMMY_PROTOCOL);
+    }
+
+    // an assignment is refused unless its protocol is approved for the species, and the sample data's assignments go back years
+    private void approveForAllSpecies(String protocol) throws IOException, CommandException
+    {
+        insertAmendment(protocol, LocalDate.now().minusYears(30), null);
+        String amendmentId = (String) getAmendments(protocol).get(0).get("objectid");
+
+        SelectRowsCommand select = new SelectRowsCommand("ehr_lookups", "species_codes");
+        select.setColumns(List.of("code"));
+        List<Map<String, Object>> species = select.execute(createDefaultConnection(), getContainerPath()).getRows();
+        Assert.assertFalse("No species codes to approve " + protocol + " for", species.isEmpty());
+
+        InsertRowsCommand insert = new InsertRowsCommand("ehr", "protocol_counts");
+        species.forEach(s -> insert.addRow(Map.of("protocol", protocol, "amendmentId", amendmentId, "species", s.get("code"), "allowed", 1000)));
+        insert.execute(createDefaultConnection(), getContainerPath());
     }
 
     public void importFolderByPath(File path, String containerPath, int finishedJobsExpected)
@@ -1370,15 +1389,35 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         String expired = "PAEXPIRED-01";
         String expiring = "PAEXPIRING-01";
         String open = "PAOPEN-01";
+        String uncounted = "PAUNCOUNTED-01";
+        String unamended = "PAUNAMENDED-01";
+        String late = "PALATE-01";
         String[] animals = {"PAV0001", "PAV0002", "PAV0003", "PAV0004", "PAV0005", "PAV0006", "PAV0007", "PAV0008", "PAV0009", "PAV0010", "PAV0011"};
+        String otherSpecies = "PAV0012";
         LocalDate today = LocalDate.now();
         createAnimals("MMU", animals);
+        createAnimals("MNE", otherSpecies);
 
         createLimitedProtocol(limited, today.minusYears(1), today.plusYears(1), "MMU", 2);
         createLimitedProtocol(batch, today.minusYears(1), today.plusYears(1), "MMU", 1);
         insertProtocol(expired, today.minusYears(2), today.minusDays(30));
-        insertProtocol(expiring, today.minusYears(2), today.plusYears(1));
-        insertProtocol(open, today.minusYears(1), today.plusYears(1));
+        createLimitedProtocol(expiring, today.minusYears(2), today.plusYears(1), "MMU", 10);
+        createLimitedProtocol(open, today.minusYears(1), today.plusYears(1), "MMU", 10);
+        insertProtocol(uncounted, today.minusYears(1), today.plusYears(1));
+        insertAmendment(uncounted, today.minusYears(1), null);
+        insertProtocol(unamended, today.minusYears(1), today.plusYears(1));
+        createLimitedProtocol(late, today.minusMonths(6), today.plusYears(1), "MMU", 10);
+
+        log("Verifying a species the protocol does not list is refused on Submit Final");
+        assertFieldError(validateOnly(protocolAssignmentInsert(open, today, EHRQCState.IN_PROGRESS, otherSpecies)), "protocol", "WARN", notApproved(open, "MNE"));
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(open, today, EHRQCState.COMPLETED, otherSpecies)), "protocol", "ERROR", notApproved(open, "MNE"));
+
+        log("Verifying a protocol with no counts, or no amendment, approves no animals");
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(uncounted, today, EHRQCState.COMPLETED, animals[0])), "protocol", "ERROR", notApproved(uncounted, "MMU"));
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(unamended, today, EHRQCState.COMPLETED, animals[0])), "protocol", "ERROR", notApproved(unamended, "MMU"));
+
+        log("Verifying an assignment dated before the protocol's first amendment is refused");
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(late, today.minusYears(1), EHRQCState.COMPLETED, animals[0])), "protocol", "ERROR", notApproved(late, "MMU"));
 
         log("Verifying an expired protocol is refused, draft or final");
         assertFieldError(validateOnly(protocolAssignmentInsert(expired, today, EHRQCState.IN_PROGRESS, animals[0])), "protocol", "ERROR", "Protocol " + expired + " expired on ");
@@ -1519,6 +1558,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         InsertRowsCommand insert = new InsertRowsCommand("ehr", "protocol_counts");
         insert.addRow(Map.of("protocol", protocol, "amendmentId", amendmentId, "species", species, "allowed", allowed));
         insert.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    // the message goes on to name the assignment date, in the server's date format
+    private static String notApproved(String protocol, String species)
+    {
+        return "Protocol " + protocol + " is not approved for " + species + " on ";
     }
 
     private static String overLimit(String protocol, String species, int used, int allowed, int amendment)
