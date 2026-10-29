@@ -48,6 +48,50 @@ function createAssignment(scriptErrors, dataset, fieldName, value, row) {
     }
 }
 
+// earlier rows of this save; a validate-only request writes no protocol assignment, so the count check cannot find them saved
+var protocolAssignmentsInSave = [];
+
+function sameDay(a, b) {
+    a = EHR.Server.Utils.normalizeDate(a);
+    b = EHR.Server.Utils.normalizeDate(b);
+    if (!a || !b) {
+        return !a && !b;
+    }
+
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+// the protocol assignment created from this row skips the protocol checks, so they run here against the entered protocol
+function verifyProtocol(helper, scriptErrors, fieldName, row, oldRow, species) {
+    var protocol = row[fieldName];
+    if (helper.isETL() || helper.isQuickValidation() || !protocol || !row.Id || !row.date)
+        return;
+
+    var inSave = protocolAssignmentsInSave.slice();
+    protocolAssignmentsInSave.push({Id: row.Id, date: EHR.Server.Utils.datetimeToString(row.date), protocol: protocol, species: species});
+
+    // as in study.protocolAssignment, an unchanged animal, protocol and date only needs a recheck on Submit Final
+    if (oldRow && !row._becomingPublicData && oldRow.Id === row.Id && oldRow[fieldName] === protocol && sameDay(oldRow.date, row.date))
+        return;
+
+    var protocolError = triggerHelper.verifyProtocolActive(protocol, row.date);
+    if (protocolError) {
+        EHR.Server.Utils.addError(scriptErrors, fieldName, protocolError, 'ERROR');
+        return;
+    }
+
+    var msgs = triggerHelper.verifyProtocolCountsForProtocol(row.Id, protocol, row.date, species, null, inSave);
+    if (msgs) {
+        // the server commits WARN rows, so only an ERROR keeps a public assignment off a full protocol
+        var movingPublicRow = row._publicData && oldRow && oldRow[fieldName] !== protocol;
+        var severity = (row._becomingPublicData || movingPublicRow) ? 'ERROR' : 'WARN';
+        msgs = msgs.split("<>");
+        for (var i = 0; i < msgs.length; i++) {
+            EHR.Server.Utils.addError(scriptErrors, fieldName, msgs[i], severity);
+        }
+    }
+}
+
 // resolves the dam of a conception so the birth can announce her; the conception carries the dam, the birth row does not
 function addConceptionDam(conceptId) {
     if (!conceptId)
@@ -75,6 +119,7 @@ function onInit(event, helper){
     idsToSync = [];
     conceptIdsInSave = [];
     damsToSync = [];
+    protocolAssignmentsInSave = [];
 
     helper.decodeExtraContextProperty('birthsInTransaction');
 }
@@ -130,6 +175,10 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
             EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id is already used by a pregnancy outcome record', 'WARN');
         }
     }
+
+    // the newborn's demographics record is written after its assignments, so take the species the way that record will
+    var dam = knownParent(row['Id/demographics/dam']);
+    verifyProtocol(helper, scriptErrors, 'birthProtocol', row, oldRow, row['Id/demographics/species'] || (dam ? helper.getJavaHelper().getSpecies(dam) : null) || null);
 
     if (!helper.isETL() && !helper.isValidateOnly()) {
         addConceptionDam(row.conceptId);
