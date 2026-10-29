@@ -86,6 +86,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -1084,10 +1085,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         // a hidden field still accepts a value, so check visibility before setting it
         Ext4FieldRef description = getProtocolFormField("description");
         Assert.assertTrue("Description should be visible", description.isVisible());
-        description.setValue("New protocol form description");
+        setProtocolFormValue(description, "New protocol form description");
         Ext4FieldRef exemptTB = getProtocolFormField("exemptTB");
         Assert.assertTrue("Exempt TB should be visible", exemptTB.isVisible());
-        exemptTB.setChecked(true);
+        setProtocolFormValue(exemptTB, true);
 
         Ext4GridRef counts = _helper.getExt4GridForFormSection("Animals Allowed Per Species");
         _helper.addRecordToGrid(counts);
@@ -1269,6 +1270,19 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private Ext4FieldRef getProtocolFormField(String name)
     {
         return _ext4Helper.queryOne("panel[title='Protocol'] [name='" + name + "']", Ext4FieldRef.class);
+    }
+
+    // DataBind copies a field into its record only after a 100ms buffer, and a record update landing first resets the field to the record's old value
+    private void setProtocolFormValue(Ext4FieldRef field, Object value)
+    {
+        Supplier<Object> recordValue = () -> field.getFnEval("var r = this.up('form').getForm().getRecord(); return r ? r.get(this.getName()) : null;");
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            field.setValue(value);
+            if (waitFor(() -> value.equals(recordValue.get()), 2000))
+                return;
+        }
+        assertEquals("Protocol form did not keep " + field.getFnEval("return this.getName();"), value, recordValue.get());
     }
 
     private Object getInvestigatorRowId(String lastName) throws IOException, CommandException
