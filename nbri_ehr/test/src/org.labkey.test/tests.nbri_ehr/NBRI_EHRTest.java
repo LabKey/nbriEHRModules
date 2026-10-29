@@ -322,6 +322,20 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         // The study import's trigger scripts query template columns such as protocol_counts.amendmentId
         addExtensibleCols();
+
+        // the study import's protocol assignments are refused unless their protocols already exist
+        populateProtocolRecords();
+    }
+
+    @Override
+    @LogMethod
+    protected void populateHardTableRecords() throws Exception
+    {
+        log("Inserting initial records into EHR hard tables");
+        // populateInitialData has already created the protocols
+        deleteHardTableRecords();
+        populateProjectRecords();
+        populateRoomRecords();
     }
 
     private void populateFormulary() throws IOException, CommandException
