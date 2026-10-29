@@ -48,7 +48,7 @@ function createAssignment(scriptErrors, dataset, fieldName, value, row) {
     }
 }
 
-// earlier rows of this save; a validate-only request writes no protocol assignment, so the count check cannot find them saved
+// rows of this save, the one being checked included; a validate-only request writes no protocol assignment, so the count check cannot find them saved
 var protocolAssignmentsInSave = [];
 
 function sameDay(a, b) {
@@ -67,7 +67,6 @@ function verifyProtocol(helper, scriptErrors, fieldName, row, oldRow, species) {
     if (helper.isETL() || helper.isQuickValidation() || !protocol || !row.Id || !row.date)
         return;
 
-    var inSave = protocolAssignmentsInSave.slice();
     protocolAssignmentsInSave.push({Id: row.Id, date: EHR.Server.Utils.datetimeToString(row.date), protocol: protocol, species: species});
 
     // as in study.protocolAssignment, an unchanged animal, protocol and date only needs a recheck on Submit Final
@@ -86,11 +85,11 @@ function verifyProtocol(helper, scriptErrors, fieldName, row, oldRow, species) {
         return;
     }
 
-    var msgs = triggerHelper.verifyProtocolCountsForProtocol(row.Id, protocol, row.date, species, null, inSave);
+    var msgs = triggerHelper.verifyProtocolCountsForProtocol(row.Id, protocol, row.date, species, null, protocolAssignmentsInSave);
     if (msgs) {
-        // the server commits WARN rows, so only an ERROR keeps a public assignment off a full protocol
-        var movingPublicRow = row._publicData && oldRow && oldRow[fieldName] !== protocol;
-        var severity = (row._becomingPublicData || movingPublicRow) ? 'ERROR' : 'WARN';
+        // the server commits WARN rows, so only an ERROR keeps a public assignment off a full protocol; a public row
+        // that gets this far has a new animal, protocol or date
+        var severity = (row._becomingPublicData || (row._publicData && oldRow)) ? 'ERROR' : 'WARN';
         msgs = msgs.split("<>");
         for (var i = 0; i < msgs.length; i++) {
             EHR.Server.Utils.addError(scriptErrors, fieldName, msgs[i], severity);

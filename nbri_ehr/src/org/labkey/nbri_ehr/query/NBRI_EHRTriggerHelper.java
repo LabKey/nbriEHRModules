@@ -1270,30 +1270,45 @@ public class NBRI_EHRTriggerHelper
         if (id == null || protocol == null || day == null)
             return null;
 
-        // An animal counts against every amendment window that ends on or after its earliest assignment
-        final Map<String, Date> firstAssigned = new CaseInsensitiveHashMap<>();
+        // An animal counts against every amendment window that ends on or after its earliest assignment. A window
+        // only fails when this row adds the animal to it: priorAssigned holds the animal's other rows of the save
+        // plus every saved row, its own saved copy included, so a redate within a window adds nothing.
+        final Map<String, Date> otherRows = new CaseInsensitiveHashMap<>();
+        final Map<String, Date> priorAssigned = new CaseInsensitiveHashMap<>();
         final Set<String> objectidsBeingSaved = new HashSet<>();
-        firstAssigned.put(id, day);
         if (objectid != null)
             objectidsBeingSaved.add(objectid);
 
         if (recordsInTransaction != null)
         {
+            boolean selfSkipped = false;
             for (Map<String, Object> r : recordsInTransaction)
             {
+                // a row moved off this protocol in the same save must not leave its saved copy counted here
+                String rowObjectid = (String) r.get("objectid");
+                if (rowObjectid != null)
+                    objectidsBeingSaved.add(rowObjectid);
+
                 String rowId = (String) r.get("Id");
                 String rowProtocol = (String) r.get("protocol");
                 Date rowDay = toDay(r.get("date"));
                 if (rowId == null || rowDay == null || !protocol.equals(rowProtocol))
                     continue;
 
+                // the list carries the row being checked, possibly without its objectid
+                if (!selfSkipped && rowId.equalsIgnoreCase(id) && rowDay.equals(day) && (rowObjectid == null || rowObjectid.equals(objectid)))
+                {
+                    selfSkipped = true;
+                    continue;
+                }
+
                 String rowSpecies = r.get("species") != null ? (String) r.get("species") : getAnimalSpecies(rowId);
                 if (!species.equals(rowSpecies))
                     continue;
 
-                if (r.get("objectid") != null)
-                    objectidsBeingSaved.add((String) r.get("objectid"));
-                firstAssigned.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
+                otherRows.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
+                if (rowId.equalsIgnoreCase(id))
+                    priorAssigned.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
             }
         }
 
@@ -1303,14 +1318,23 @@ public class NBRI_EHRTriggerHelper
         new TableSelector(getTableInfo("study", "protocolAssignment"), PageFlowUtil.set("Id", "date", "objectid"), savedFilter, null).forEachMap(row -> {
             String rowId = (String) row.get("Id");
             Date rowDay = toDay(row.get("date"));
-            if (rowId == null || rowDay == null || objectidsBeingSaved.contains((String) row.get("objectid")))
+            if (rowId == null || rowDay == null)
                 return;
 
-            firstAssigned.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
+            if (rowId.equalsIgnoreCase(id))
+                priorAssigned.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
+            if (!objectidsBeingSaved.contains((String) row.get("objectid")))
+                otherRows.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
         });
 
+        final Date priorFirst = priorAssigned.get(id);
+        final Map<String, Date> firstAssigned = new CaseInsensitiveHashMap<>(otherRows);
+        firstAssigned.merge(id, day, (a, b) -> a.before(b) ? a : b);
+
+        // protocolCountsEffective keeps only today's amendment, so past windows have to come from the table itself
         SimpleFilter countFilter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
         countFilter.addCondition(FieldKey.fromString("species"), species);
+        countFilter.addCondition(FieldKey.fromString("amendmentId/objectid"), null, CompareType.NONBLANK);
         // an open-ended amendment has no enddate to compare
         countFilter.addClause(new SimpleFilter.OrClause(
                 new CompareType.CompareClause(FieldKey.fromString("amendmentId/enddate"), CompareType.DATE_GTE, day),
@@ -1329,8 +1353,10 @@ public class NBRI_EHRTriggerHelper
                 return;
 
             Date windowEnd = toDay(rs.getObject(FieldKey.fromString("amendmentId/enddate")));
+            // an animal already counted in this window adds nothing, even when the window is over its limit
+            boolean alreadyCounted = priorFirst != null && (windowEnd == null || !priorFirst.after(windowEnd));
             long used = firstAssigned.values().stream().filter(d -> windowEnd == null || !d.after(windowEnd)).count();
-            if (used > allowed)
+            if (used > allowed && !alreadyCounted)
             {
                 errors.add("Protocol " + protocol + ", " + species + ": " + used + " of " + allowed + " allowed under amendment " + rs.getObject(FieldKey.fromString("amendmentId/amendmentNumber")) + ".");
             }

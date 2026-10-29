@@ -86,11 +86,11 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
     var inTransaction = helper.getProperty('protocolAssignmentsInTransaction') || [];
 
-    var msgs = triggerHelper.verifyProtocolCountsForProtocol(row.Id, row.protocol, row.date, species, row.objectid || null, inTransaction);
+    var msgs = triggerHelper.verifyProtocolCountsForProtocol(row.Id, row.protocol, row.date, species, row.objectid || (oldRow && oldRow.objectid) || null, inTransaction);
     if (msgs) {
-        // the server commits WARN rows, so only an ERROR keeps a public assignment off a full protocol
-        var movingPublicRow = row._publicData && oldRow && oldRow.protocol !== row.protocol;
-        var severity = (row._becomingPublicData || movingPublicRow) ? 'ERROR' : 'WARN';
+        // the server commits WARN rows, so only an ERROR keeps a public assignment off a full protocol; a public row
+        // that gets this far has a new animal, protocol or date
+        var severity = (row._becomingPublicData || (row._publicData && oldRow)) ? 'ERROR' : 'WARN';
         msgs = msgs.split("<>");
         for (var i = 0; i < msgs.length; i++) {
             EHR.Server.Utils.addError(scriptErrors, 'protocol', msgs[i], severity);

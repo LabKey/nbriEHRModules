@@ -26,6 +26,7 @@
                             query.queryName=protocolAssignment&amp;
                             query.protocol~eq=${protocol}&amp;
                             query.Id/dataset/demographics/species~eq=${species}&amp;
+                            query.qcstate/publicdata~eq=true&amp;
                             query.sort=Id,-date&amp;
                         </url>
                     </column>

@@ -1406,6 +1406,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assignToProtocol(amended, today, EHRQCState.COMPLETED, animals[10]);
         assertFieldError(saveExpectingError(protocolAssignmentInsert(amended, today.minusMonths(5), EHRQCState.COMPLETED, animals[7])), "protocol", "ERROR", overLimit(amended, "MMU", 2, 1, 0));
 
+        log("Verifying a completed assignment cannot be redated into a full amendment");
+        Map<String, Object> backdated = new HashMap<>(protocolAssignmentRow(animals[10], amended, today));
+        backdated.put("date", today.minusMonths(5).format(_dateFormat));
+        assertFieldError(saveExpectingError(prepareUpdate("protocolAssignment", backdated)), "protocol", "ERROR", overLimit(amended, "MMU", 2, 1, 0));
+
         log("Verifying an assignment on a protocol that has since expired can still be edited, but not redated past the expiry");
         LocalDate assigned = today.minusYears(1);
         assignToProtocol(expiring, assigned, EHRQCState.COMPLETED, animals[8]);
@@ -1415,6 +1420,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), prepareUpdate("protocolAssignment", edited), getExtraContext());
         edited.put("date", today.format(_dateFormat));
         assertFieldError(validateOnly(prepareUpdate("protocolAssignment", edited)), "protocol", "ERROR", "Protocol " + expiring + " expired on ");
+
+        log("Verifying an animal already counted can still be edited once an amendment puts the protocol over its limit");
+        insertAmendment(limited, today.minusMonths(1), null);
+        insertCount(limited, (String) getAmendments(limited).get(1).get("objectid"), "MMU", 1);
+        Map<String, Object> redated = new HashMap<>(protocolAssignmentRow(animals[3], limited, today));
+        redated.put("date", today.minusDays(1).format(_dateFormat));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), prepareUpdate("protocolAssignment", redated), getExtraContext());
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(limited, today, EHRQCState.COMPLETED, animals[5])), "protocol", "ERROR", overLimit(limited, "MMU", 3, 1, 1));
     }
 
     @Test
