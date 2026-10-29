@@ -62,6 +62,7 @@ import org.labkey.nbri_ehr.notification.NBRIDeathNotification;
 import org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification;
 import org.labkey.nbri_ehr.notification.NBRIPregnancyOutcomeNotification;
 import org.labkey.nbri_ehr.notification.NBRIProcedureOverdueNotification;
+import org.labkey.nbri_ehr.notification.NBRIProtocolExpirationNotification;
 import org.labkey.nbri_ehr.query.NBRI_EHRUserSchema;
 import org.labkey.nbri_ehr.security.NBRIEHRVetTechRole;
 import org.labkey.nbri_ehr.table.NBRI_EHRCustomizer;
@@ -200,6 +201,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         NotificationService.get().registerNotification(new NBRIProcedureOverdueNotification(this));
         NotificationService.get().registerNotification(new NBRIPregnancyOutcomeNotification(this));
         NotificationService.get().registerNotification(new NBRINecropsyRequestNotification(this));
+        NotificationService.get().registerNotification(new NBRIProtocolExpirationNotification(this));
         // TODO: register NBRINecropsyPreliminaryNotification and NBRINecropsyFinalNotification once they can carry the printable necropsy report
 
         EHRService.get().registerReportLink(EHRService.REPORT_LINK_TYPE.moreReports, "Printable Necropsy Report", this, DetailsURL.fromString("/nbri_ehr-necropsyReport.view"), "Pathology");
