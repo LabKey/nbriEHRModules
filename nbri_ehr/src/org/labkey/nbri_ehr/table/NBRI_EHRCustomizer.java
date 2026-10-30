@@ -719,6 +719,10 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
     // Unlike EHRService.addIsActiveCol, a record starting in the future still counts as active.
     private void addIsActiveFromEnddate(AbstractTableInfo ti)
     {
+        // a dataset's columns can still be missing while a study import is defining it
+        if (ti.getColumn("enddate") == null)
+            return;
+
         String name = "isActive";
         if (ti.getColumn(name) == null)
         {
