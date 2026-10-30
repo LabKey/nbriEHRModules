@@ -6,6 +6,8 @@
 require("ehr/triggers").initScript(this);
 EHR.Server.Utils = require("ehr/utils").EHR.Server.Utils;
 
+var protocolChecks = require("nbri_ehr/protocolChecks");
+
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 var idsToSync = [];
 
@@ -48,6 +50,9 @@ function createAssignment(scriptErrors, dataset, fieldName, value, row) {
     }
 }
 
+// rows of this save, the one being checked included
+var protocolAssignmentsInSave = [];
+
 // resolves the dam of a conception so the birth can announce her; the conception carries the dam, the birth row does not
 function addConceptionDam(conceptId) {
     if (!conceptId)
@@ -75,6 +80,7 @@ function onInit(event, helper){
     idsToSync = [];
     conceptIdsInSave = [];
     damsToSync = [];
+    protocolAssignmentsInSave = [];
 
     helper.decodeExtraContextProperty('birthsInTransaction');
 }
@@ -130,6 +136,10 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
             EHR.Server.Utils.addError(scriptErrors, 'conceptId', 'This conception Id is already used by a pregnancy outcome record', 'WARN');
         }
     }
+
+    // the newborn's demographics record is written after its assignments, so take the species the way that record will
+    var dam = knownParent(row['Id/demographics/dam']);
+    protocolChecks.verifyEnteredProtocol(triggerHelper, helper, scriptErrors, 'birthProtocol', row, oldRow, row['Id/demographics/species'] || (dam ? helper.getJavaHelper().getSpecies(dam) : null) || null, protocolAssignmentsInSave);
 
     if (!helper.isETL() && !helper.isValidateOnly()) {
         addConceptionDam(row.conceptId);

@@ -6,8 +6,8 @@
 SELECT
   i.protocol,
   i.species,
-  i.Animals,
-  i.TotalAnimals,
+  i.animals AS Animals,
+  i.totalAnimals AS TotalAnimals,
   pc.allowed,
   CONVERT(pc.allowed - i.TotalAnimals, INTEGER) AS TotalRemaining,
   CASE
@@ -15,18 +15,11 @@ SELECT
     ELSE round(CAST(i.TotalAnimals AS FLOAT) / CAST(pc.allowed AS FLOAT) * 100, 1)
   END AS PercentUsed
 
-FROM (
-    SELECT
-    p.protocol                     as protocol,
-    pa.species,
-    group_concat(DISTINCT pa.id)   as Animals,
-    CONVERT(Count(pa.id), INTEGER) AS TotalAnimals
-    FROM ehr.protocol p
-    LEFT JOIN ehr.protocolAnimals pa ON (p.protocol = pa.protocol)
-    GROUP BY p.protocol, pa.species
-) i
+FROM ehr.protocolHistoricalAnimalsBySpecies i
 
 -- only the count in effect today; see ehr.protocolCountsEffective
 LEFT JOIN ehr.protocolCountsEffective pc ON (i.protocol = pc.protocol AND i.species = pc.species)
 
 WHERE i.species IS NOT NULL
+
+

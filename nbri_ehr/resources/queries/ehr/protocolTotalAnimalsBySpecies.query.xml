@@ -22,10 +22,12 @@
                         </fk>
                     </column>
                     <column columnName="TotalAnimals">
-                        <url>/query/executeQuery.view?schemaName=ehr&amp;
-                            query.queryName=protocolAnimals&amp;
+                        <url>/query/executeQuery.view?schemaName=study&amp;
+                            query.queryName=protocolAssignment&amp;
                             query.protocol~eq=${protocol}&amp;
-                            query.species~eq=${species}&amp;
+                            query.Id/dataset/demographics/species~eq=${species}&amp;
+                            query.qcstate/publicdata~eq=true&amp;
+                            query.sort=Id,-date&amp;
                         </url>
                     </column>
                     <column columnName="allowed">

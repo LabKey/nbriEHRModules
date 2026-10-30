@@ -31,7 +31,7 @@ function onInit(event, helper){
             inTransaction.push({
                 Id: row.Id,
                 objectid: row.objectid,
-                date: row.date,
+                date: EHR.Server.Utils.datetimeToString(row.date),
                 enddate: row.enddate,
                 protocol: row.protocol
             });
@@ -41,31 +41,20 @@ function onInit(event, helper){
     });
 }
 
+var protocolChecks = require("nbri_ehr/protocolChecks");
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 
-// Warns when an assignment would put the protocol over the animals approved for that animal's species. The shared
-// EHR check reaches the protocol through a project, which cannot see a protocol assignment here.
+// the shared EHR check reaches the protocol through a project, which cannot see a protocol assignment here
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'study', 'protocolAssignment', function (helper, scriptErrors, row, oldRow) {
     if (helper.isETL() || helper.isQuickValidation()) {
         return;
     }
 
-    // on an update, only re-check when the animal or protocol actually changed
-    if (oldRow && oldRow.Id && oldRow.Id === row.Id && oldRow.protocol === row.protocol) {
-        return;
-    }
-
-    if (!row.Id || !row.protocol || !row.date) {
+    if (protocolChecks.isUnchanged('protocol', row, oldRow) || !row.Id || !row.protocol || !row.date) {
         return;
     }
 
     var inTransaction = helper.getProperty('protocolAssignmentsInTransaction') || [];
-
-    var msgs = triggerHelper.verifyProtocolCountsForProtocol(row.Id, row.protocol, inTransaction);
-    if (msgs) {
-        msgs = msgs.split("<>");
-        for (var i = 0; i < msgs.length; i++) {
-            EHR.Server.Utils.addError(scriptErrors, 'protocol', msgs[i], 'WARN');
-        }
-    }
+    protocolChecks.verifyProtocol(triggerHelper, scriptErrors, 'protocol', row, oldRow, triggerHelper.getAnimalSpecies(row.Id),
+            row.objectid || (oldRow && oldRow.objectid) || null, inTransaction);
 });
