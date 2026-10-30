@@ -11,8 +11,6 @@
         <column name="usda_level"/>
         <column name="ibc_approval_required"/>
         <column name="ibc_approval_num"/>
-        <column name="allowedAnimals/totalAllowed"/>
-        <column name="allowedAnimals/allowedBySpecies"/>
         <column name="approve"/>
         <column name="first_approval"/>
         <column name="lastAnnualReview"/>
@@ -22,5 +20,9 @@
         <column name="exemptHousing"/>
         <column name="exemptPairing"/>
         <column name="exemptTB"/>
+        <column name="allowedAnimals/totalAllowed"/>
+        <column name="assignedAnimals/totalAssigned"/>
+        <column name="allowedAnimals/allowedBySpecies"/>
+        <column name="assignedAnimals/assignedBySpecies"/>
     </columns>
 </customView>
