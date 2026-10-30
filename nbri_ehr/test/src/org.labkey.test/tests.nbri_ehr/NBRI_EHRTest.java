@@ -2848,6 +2848,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Assert.assertTrue("Protocols should be listed soonest first: " + body, body.indexOf(expiringToday) < body.indexOf(expiringSoon));
         Assert.assertFalse("Notification listed an already expired protocol: " + body, body.contains(expired));
         Assert.assertFalse("Notification listed a protocol expiring after 30 days: " + body, body.contains(expiringLater));
+        for (String protocol : List.of(expiringToday, expiringSoon))
+        {
+            String href = Locator.linkWithText(protocol).findElement(getDriver()).getAttribute("href");
+            Assert.assertTrue("Protocol " + protocol + " should link to its details page: " + href, href.endsWith("/ehr-protocolDetails.view?protocol=" + protocol));
+        }
+        String activeProtocolsHref = Locator.linkWithText("All Active Protocols").findElement(getDriver()).getAttribute("href");
+        Assert.assertTrue("All Active Protocols should link to the Active Protocols view: " + activeProtocolsHref,
+                activeProtocolsHref.endsWith("/query-executeQuery.view?schemaName=ehr&query.queryName=protocol&query.viewName=Active%20Protocols"));
     }
 
     /** Protocol to days until expiration, soonest first, as the notification's query reports them. */

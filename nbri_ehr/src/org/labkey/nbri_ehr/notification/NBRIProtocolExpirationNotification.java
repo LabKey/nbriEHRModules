@@ -26,6 +26,7 @@ import org.labkey.api.query.QueryService;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
 import org.labkey.api.settings.AppProps;
+import org.labkey.api.util.PageFlowUtil;
 
 import java.util.Date;
 import java.util.List;
@@ -69,16 +70,15 @@ public class NBRIProtocolExpirationNotification extends AbstractEHRNotification
         {
             html.append("<h4>Protocols expiring in the next ").append(DAYS_AHEAD).append(" days</h4>");
             appendTableHtml(c, html, expiringProtocols);
-            html.append("<br/>");
-
-            String reportLink = AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + c.getPath() + "/query-executeQuery.view?schemaName=ehr&query.queryName=protocolExpirationNotification";
-            html.append("<a href='").append(reportLink).append("'>");
-            html.append("Click here to view these protocols in LabKey.</a>");
         }
         else
         {
             html.append("<h4>No protocols expiring in the next ").append(DAYS_AHEAD).append(" days</h4>");
         }
+
+        String activeProtocolsUrl = AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + c.getPath() +
+                "/query-executeQuery.view?schemaName=ehr&query.queryName=protocol&query.viewName=Active%20Protocols";
+        html.append("<br/><a href=\"").append(PageFlowUtil.filter(activeProtocolsUrl)).append("\">All Active Protocols</a>");
 
         html.append("</html>");
         return html.toString();
@@ -102,7 +102,7 @@ public class NBRIProtocolExpirationNotification extends AbstractEHRNotification
             String bgColor = i % 2 == 0 ? "#f2f2f2" : "#fff";
             html.append("<tr style=\"background-color:").append(bgColor).append("\">");
 
-            html.append(NotificationHelper.getNotificationGridCell(c, protocol.getDisplayName()));
+            html.append(NotificationHelper.getNotificationGridCell(c, getProtocolLink(c, protocol), null, false, false, true));
             html.append(NotificationHelper.getNotificationGridCell(c, protocol.getTitle()));
             html.append(NotificationHelper.getNotificationGridCell(c, protocol.getPi()));
             html.append(NotificationHelper.getNotificationGridCell(c, NotificationHelper.getFormattedDate(c, protocol.getExpirationDate())));
@@ -112,6 +112,14 @@ public class NBRIProtocolExpirationNotification extends AbstractEHRNotification
         }
 
         html.append("</table>");
+    }
+
+    private String getProtocolLink(Container c, ExpiringProtocol protocol)
+    {
+        String url = AppProps.getInstance().getBaseServerUrl() + AppProps.getInstance().getContextPath() + c.getPath() +
+                "/ehr-protocolDetails.view?protocol=" + PageFlowUtil.encode(protocol.getProtocol());
+
+        return "<a href=\"" + PageFlowUtil.filter(url) + "\">" + PageFlowUtil.filter(protocol.getDisplayName()) + "</a>";
     }
 
     private List<ExpiringProtocol> getExpiringProtocols(Container c, User u) throws IllegalStateException
