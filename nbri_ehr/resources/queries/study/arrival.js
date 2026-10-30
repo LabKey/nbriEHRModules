@@ -5,6 +5,8 @@
  */
 require("ehr/triggers").initScript(this);
 
+var protocolChecks = require("nbri_ehr/protocolChecks");
+
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 var idsToSync = [];
 
@@ -34,10 +36,14 @@ function createAssignment(scriptErrors, dataset, fieldName, value, row) {
     }
 }
 
+// rows of this save, the one being checked included
+var protocolAssignmentsInSave = [];
+
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'Arrival', function(event, helper){
 
     // the script scope can outlive a single save, so never inherit ids from a prior one
     idsToSync = [];
+    protocolAssignmentsInSave = [];
 });
 
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'study', 'Arrival', function(helper, scriptErrors, row, oldRow) {
@@ -61,6 +67,9 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
     }
 
     helper.registerArrival(row.Id, row.date);
+
+    // a rearrival leaves this blank, so fall back to the animal's demographics record
+    protocolChecks.verifyEnteredProtocol(triggerHelper, helper, scriptErrors, 'arrivalProtocol', row, oldRow, row['Id/demographics/species'] || triggerHelper.getAnimalSpecies(row.Id) || null, protocolAssignmentsInSave);
 
     // These records are created for rearrivals too: the animal's departure closed the ones it had.
     if (!helper.isETL() && !helper.isGeneratedByServer() && !helper.isValidateOnly()) {

@@ -17,10 +17,12 @@ package org.labkey.nbri_ehr.query;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.collections.CaseInsensitiveHashMap;
 import org.labkey.api.collections.CaseInsensitiveHashSet;
@@ -74,7 +76,6 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
@@ -1239,65 +1240,157 @@ public class NBRI_EHRTriggerHelper
         return _container.hasPermission(_user, EHRVeterinarianPermission.class);
     }
 
-    /**
-     * Warns when assigning an animal to a protocol would exceed the animals approved for its species. The shared
-     * EHR check reaches the protocol through a project, which cannot see a protocol assignment here, so this keys on
-     * the protocol directly. Returns the messages joined with "&lt;&gt;", or null when nothing is wrong.
-     */
-    public String verifyProtocolCountsForProtocol(final String id, final String protocol, final List<Map<String, Object>> recordsInTransaction)
+    /** Returns an error when the protocol does not exist or has expired by the assignment date, or null when it is usable. */
+    public String verifyProtocolActive(final String protocol, final Date date)
     {
-        if (id == null || protocol == null)
+        Date day = toDay(date);
+        if (protocol == null || day == null)
             return null;
 
-        AnimalRecord ar = EHRDemographicsService.get().getAnimal(_container, id);
-        if (ar == null || ar.getSpecies() == null)
-            return "Unknown species: " + id;
+        TableSelector ts = new TableSelector(getTableInfo("ehr", "protocol"), PageFlowUtil.set("enddate"), new SimpleFilter(FieldKey.fromString("protocol"), protocol), null);
+        if (!ts.exists())
+            return "Unknown protocol: " + protocol;
 
-        final String species = ar.getSpecies();
-        final Set<String> animals = new CaseInsensitiveHashSet();
-        animals.add(id);
+        Date enddate = toDay(ts.getObject(Date.class));
+        if (enddate != null && enddate.before(day))
+            return "Protocol " + protocol + " expired on " + _dateFormat.format(enddate);
+
+        return null;
+    }
+
+    /**
+     * Reports an assignment whose species the amendment in effect on its date does not list, or that would exceed the
+     * animals approved for its species under any amendment in effect on or after that date. The shared EHR check reaches the protocol through a
+     * project, which cannot see a protocol assignment here, so this keys on the protocol directly. Returns the
+     * messages joined with "&lt;&gt;", or null when nothing is wrong. The species is passed in, and may be carried
+     * by an in-transaction row, because an animal's demographics record may not be written yet.
+     */
+    public String verifyProtocolCountsForProtocol(final String id, final String protocol, final Date date, @NotNull final String species, @Nullable final String objectid, final List<Map<String, Object>> recordsInTransaction)
+    {
+        Date day = toDay(date);
+        if (id == null || protocol == null || day == null)
+            return null;
+
+        // An animal counts against every amendment window that ends on or after its earliest assignment. A window
+        // only fails when this row adds the animal to it: priorAssigned holds the animal's other rows of the save
+        // plus every saved row, its own saved copy included, so a redate within a window adds nothing.
+        final Map<String, Date> otherRows = new CaseInsensitiveHashMap<>();
+        final Map<String, Date> priorAssigned = new CaseInsensitiveHashMap<>();
+        final Set<String> objectidsBeingSaved = new HashSet<>();
+        if (objectid != null)
+            objectidsBeingSaved.add(objectid);
 
         if (recordsInTransaction != null)
         {
+            boolean selfSkipped = false;
             for (Map<String, Object> r : recordsInTransaction)
             {
+                // a row moved off this protocol in the same save must not leave its saved copy counted here
+                String rowObjectid = (String) r.get("objectid");
+                if (rowObjectid != null)
+                    objectidsBeingSaved.add(rowObjectid);
+
                 String rowId = (String) r.get("Id");
                 String rowProtocol = (String) r.get("protocol");
-                if (rowId == null || !protocol.equals(rowProtocol))
+                Date rowDay = toDay(r.get("date"));
+                if (rowId == null || rowDay == null || !protocol.equals(rowProtocol))
                     continue;
 
-                AnimalRecord rowRecord = EHRDemographicsService.get().getAnimal(_container, rowId);
-                if (rowRecord == null || !species.equals(rowRecord.getSpecies()))
+                // the list carries the row being checked, possibly without its objectid
+                if (!selfSkipped && rowId.equalsIgnoreCase(id) && rowDay.equals(day) && (rowObjectid == null || rowObjectid.equals(objectid)))
+                {
+                    selfSkipped = true;
+                    continue;
+                }
+
+                String rowSpecies = r.get("species") != null ? (String) r.get("species") : getAnimalSpecies(rowId);
+                if (!species.equals(rowSpecies))
                     continue;
 
-                animals.add(rowId);
+                otherRows.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
+                if (rowId.equalsIgnoreCase(id))
+                    priorAssigned.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
             }
         }
 
-        TableInfo ti = getTableInfo("ehr", "protocolTotalAnimalsBySpecies");
-        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
-        filter.addCondition(FieldKey.fromString("species"), species);
-        TableSelector ts = new TableSelector(ti, filter, null);
-
-        final List<String> errors = new ArrayList<>();
-        ts.forEach(rs -> {
-            int allowed = rs.getInt("allowed");
-            // a protocol with no approved count row is not the same as a protocol approved for zero animals
-            if (rs.wasNull())
+        SimpleFilter savedFilter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
+        savedFilter.addCondition(FieldKey.fromString("Id/dataset/demographics/species"), species);
+        savedFilter.addCondition(FieldKey.fromString("qcstate/publicdata"), true);
+        new TableSelector(getTableInfo("study", "protocolAssignment"), PageFlowUtil.set("Id", "date", "objectid"), savedFilter, null).forEachMap(row -> {
+            String rowId = (String) row.get("Id");
+            Date rowDay = toDay(row.get("date"));
+            if (rowId == null || rowDay == null)
                 return;
 
-            Set<String> used = new CaseInsensitiveHashSet(animals);
-            String animalString = rs.getString("Animals");
-            if (animalString != null)
-                used.addAll(Arrays.asList(StringUtils.split(animalString, ",")));
+            if (rowId.equalsIgnoreCase(id))
+                priorAssigned.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
+            if (!objectidsBeingSaved.contains((String) row.get("objectid")))
+                otherRows.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
+        });
 
-            if (used.size() > allowed)
+        final Date priorFirst = priorAssigned.get(id);
+        final Map<String, Date> firstAssigned = new CaseInsensitiveHashMap<>(otherRows);
+        firstAssigned.merge(id, day, (a, b) -> a.before(b) ? a : b);
+
+        // protocolCountsEffective keeps only today's amendment, so past windows have to come from the table itself
+        SimpleFilter countFilter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
+        countFilter.addCondition(FieldKey.fromString("species"), species);
+        countFilter.addCondition(FieldKey.fromString("amendmentId/objectid"), null, CompareType.NONBLANK);
+        // an open-ended amendment has no enddate to compare
+        countFilter.addClause(new SimpleFilter.OrClause(
+                new CompareType.CompareClause(FieldKey.fromString("amendmentId/enddate"), CompareType.DATE_GTE, day),
+                new CompareType.CompareClause(FieldKey.fromString("amendmentId/enddate"), CompareType.ISBLANK, null)));
+
+        TableInfo counts = getTableInfo("ehr", "protocol_counts");
+        Set<FieldKey> keys = PageFlowUtil.set(FieldKey.fromString("allowed"), FieldKey.fromString("amendmentId/amendmentNumber"), FieldKey.fromString("amendmentId/date"), FieldKey.fromString("amendmentId/enddate"));
+        final Map<FieldKey, ColumnInfo> cols = QueryService.get().getColumns(counts, keys);
+
+        final List<String> overLimit = new ArrayList<>();
+        final MutableBoolean approved = new MutableBoolean(false);
+        new TableSelector(counts, cols.values(), countFilter, new Sort("amendmentId/amendmentNumber")).forEach(object -> {
+            Results rs = new ResultsImpl(object, cols);
+            Object allowedValue = rs.getObject(FieldKey.fromString("allowed"));
+            // federal approval: no count entered approves no animals
+            int allowed = allowedValue == null ? 0 : ConvertHelper.convert(allowedValue, Integer.class);
+
+            Date windowStart = toDay(rs.getObject(FieldKey.fromString("amendmentId/date")));
+            if (allowedValue != null && windowStart != null && !windowStart.after(day))
+                approved.setTrue();
+
+            Date windowEnd = toDay(rs.getObject(FieldKey.fromString("amendmentId/enddate")));
+            // an animal already counted in this window adds nothing, even when the window is over its limit
+            boolean alreadyCounted = priorFirst != null && (windowEnd == null || !priorFirst.after(windowEnd));
+            long used = firstAssigned.values().stream().filter(d -> windowEnd == null || !d.after(windowEnd)).count();
+            if (used > allowed && !alreadyCounted)
             {
-                errors.add("Protocol " + protocol + ", " + species + ": " + used.size() + " of " + allowed + " allowed.");
+                overLimit.add(used + " of " + allowed + " allowed under amendment " + rs.getObject(FieldKey.fromString("amendmentId/amendmentNumber")) + ".");
             }
         });
 
-        return errors.isEmpty() ? null : StringUtils.join(errors, "<>");
+        if (overLimit.isEmpty() && approved.isTrue())
+            return null;
+
+        String speciesName = getSpeciesCommonName(species);
+        List<String> errors = new ArrayList<>();
+        // only the species listed on the amendment in effect on the assignment date may be assigned
+        if (approved.isFalse())
+            errors.add("Protocol " + protocol + " is not approved for " + speciesName + " on " + _dateFormat.format(day) + ".");
+        overLimit.forEach(msg -> errors.add("Protocol " + protocol + ", " + speciesName + ": " + msg));
+
+        return StringUtils.join(errors, "<>");
+    }
+
+    /** Falls back to the code for a species with no common name entered. */
+    public String getSpeciesCommonName(String code)
+    {
+        String name = new TableSelector(getTableInfo("ehr_lookups", "species_codes"), PageFlowUtil.set("common_name"), new SimpleFilter(FieldKey.fromString("code"), code), null).getObject(String.class);
+        return StringUtils.isBlank(name) ? code : name;
+    }
+
+    public @Nullable String getAnimalSpecies(String id)
+    {
+        AnimalRecord ar = EHRDemographicsService.get().getAnimal(_container, id);
+        return ar == null ? null : ar.getSpecies();
     }
 
     private record Amendment(int rowId, Integer number, Date date, Date enddate) {}

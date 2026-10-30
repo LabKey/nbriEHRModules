@@ -23,7 +23,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
     var key = row.amendmentId + '|' + row.species;
 
     if (seen[key] || triggerHelper.hasProtocolCount(row.amendmentId, row.species, orNull(row.rowid))) {
-        EHR.Server.Utils.addError(scriptErrors, 'species', 'Species ' + row.species + ' is entered more than once on this amendment.', 'ERROR');
+        EHR.Server.Utils.addError(scriptErrors, 'species', 'Species ' + triggerHelper.getSpeciesCommonName(row.species) + ' is entered more than once on this amendment.', 'ERROR');
     }
 
     seen[key] = true;
