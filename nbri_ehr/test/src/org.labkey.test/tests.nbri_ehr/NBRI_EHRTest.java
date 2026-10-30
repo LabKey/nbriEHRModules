@@ -1481,6 +1481,27 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         redated.put("date", today.minusDays(1).format(_dateFormat));
         getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), prepareUpdate("protocolAssignment", redated), getExtraContext());
         assertFieldError(saveExpectingError(protocolAssignmentInsert(limited, today, EHRQCState.COMPLETED, animals[5])), "protocol", "ERROR", overLimit(limited, "Rhesus Macaque", 3, 1, 1));
+
+        log("Verifying an animal that leaves a full protocol and comes back is counted once");
+        endAssignment(animals[3], limited, today.minusDays(1), today);
+        endAssignment(animals[4], limited, today, today);
+        assignToProtocol(open, today, EHRQCState.COMPLETED, animals[4]);
+        endAssignment(animals[4], open, today, today);
+        assignToProtocol(limited, today, EHRQCState.COMPLETED, animals[3], animals[4]);
+        assertEquals("Each returning animal should have two assignments to " + limited, 4, countRows("protocolAssignment", new Filter("Id", animals[3] + ";" + animals[4], Filter.Operator.IN), new Filter("protocol", limited)));
+        SelectRowsCommand totals = new SelectRowsCommand("ehr", "protocolTotalAnimalsBySpecies");
+        totals.addFilter(new Filter("protocol", limited));
+        totals.addFilter(new Filter("species", "MMU"));
+        List<Map<String, Object>> totalRows = totals.execute(getApiHelper().getConnection(), getContainerPath()).getRows();
+        assertEquals("Returning animals should not be counted twice", 2, ((Number) totalRows.get(0).get("TotalAnimals")).intValue());
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(limited, today, EHRQCState.COMPLETED, animals[5])), "protocol", "ERROR", overLimit(limited, "Rhesus Macaque", 3, 1, 1));
+    }
+
+    private void endAssignment(String animalId, String protocol, LocalDate date, LocalDate enddate) throws IOException, CommandException
+    {
+        Map<String, Object> ended = new HashMap<>(protocolAssignmentRow(animalId, protocol, date));
+        ended.put("enddate", enddate.format(_dateFormat));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), prepareUpdate("protocolAssignment", ended), getExtraContext());
     }
 
     @Test
