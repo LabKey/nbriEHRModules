@@ -2744,11 +2744,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         goToSchemaBrowser();
         log("Creating animals");
         getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "birth", "lsid",
-                new String[]{"Id", "Date", "gender", "QCStateLabel", "performedby"},
+                new String[]{"Id", "Date", "Id/demographics/species", "gender", "QCStateLabel", "performedby"},
                 new Object[][]{
-                        {aliveAnimalId, LocalDateTime.now().minusDays(30), getFemale(), "Completed", 1004},
-                        {deadAnimalId, LocalDateTime.now().minusDays(30), getMale(), "Completed", 1004},
-                        {departedAnimalId, LocalDateTime.now().minusDays(30), getMale(), "Completed", 1004},
+                        {aliveAnimalId, LocalDateTime.now().minusDays(30), "MMU", getFemale(), "Completed", 1004},
+                        {deadAnimalId, LocalDateTime.now().minusDays(30), "MMU", getMale(), "Completed", 1004},
+                        {departedAnimalId, LocalDateTime.now().minusDays(30), "MMU", getMale(), "Completed", 1004},
                 }
         ), getExtraContext());
 
@@ -3503,7 +3503,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Object[][] data = new Object[animalIds.length][];
         for (int i = 0; i < animalIds.length; i++)
         {
-            data[i] = new Object[]{animalIds[i], "Rhesus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004};
+            data[i] = new Object[]{animalIds[i], "MMU", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004};
         }
 
         SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
