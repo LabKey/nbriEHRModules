@@ -38,6 +38,7 @@ import org.labkey.remoteapi.query.InsertRowsCommand;
 import org.labkey.remoteapi.query.RowsResponse;
 import org.labkey.remoteapi.query.SelectRowsCommand;
 import org.labkey.remoteapi.query.SelectRowsResponse;
+import org.labkey.remoteapi.query.Sort;
 import org.labkey.remoteapi.query.UpdateRowsCommand;
 import org.labkey.remoteapi.security.CreateUserResponse;
 import org.labkey.test.Locator;
@@ -82,6 +83,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -108,6 +110,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String NBRI_PATHOLOGIST = "pathologist@nbritest.com";
     private static final String DEATH_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRIDeathNotification";
     private static final String NECROPSY_REQUEST_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification";
+    private static final String PROTOCOL_EXPIRATION_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRIProtocolExpirationNotification";
+    private static final String PROTOCOL_EXPIRATION_SUBJECT = "Protocols expiring in the next 30 days";
     private static final String ACCESSION_NUMBER = "N26-001";
     // Assign the vet-tech role by its class-based name rather than its "EHR Veterinarian Technician" display
     // name: NIRC's role shares that display name, so a display-name lookup can resolve to the wrong module's
@@ -2805,6 +2809,80 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         if (roleClass != null)
             _permissionsHelper.setUserPermissions(userEmail, roleClass);
         _permissionsHelper.addUserToProjGroup(userEmail, getProjectName(), groupName);
+    }
+
+    @Test
+    public void testProtocolExpirationNotification() throws IOException, CommandException
+    {
+        String noneExpiring = "No protocols expiring in the next 30 days";
+        String expiringToday = "TESTEXPTODAY";
+        String expiringSoon = "TESTEXPSOON";
+        String expired = "TESTEXPIRED";
+        String expiringLater = "TESTEXPLATER";
+        LocalDate today = LocalDate.now();
+
+        enableNotification(PROTOCOL_EXPIRATION_NOTIFICATION);
+
+        log("Verifying the notification reports when no protocols are expiring");
+        assertEquals("Protocols were already expiring before this test set any up", List.of(), getExpiringProtocols().keySet().stream().toList());
+        String body = sendProtocolExpirationNotification();
+        Assert.assertTrue("Expected the no-protocols message: " + body, body.contains(noneExpiring));
+
+        log("Verifying the notification lists the protocols expiring in the next 30 days");
+        insertProtocol(expiringToday, today.minusYears(3), today);
+        insertProtocol(expiringSoon, today.minusYears(3).plusDays(10), today.plusDays(10));
+        insertProtocol(expired, today.minusYears(3).minusDays(1), today.minusDays(1));
+        insertProtocol(expiringLater, today.minusYears(3).plusDays(45), today.plusDays(45));
+
+        Map<String, Integer> expiring = getExpiringProtocols();
+        assertEquals("Wrong protocols expiring in the next 30 days", List.of(expiringToday, expiringSoon), expiring.keySet().stream().toList());
+        assertEquals("Wrong days until expiration for " + expiringToday, Integer.valueOf(0), expiring.get(expiringToday));
+        assertEquals("Wrong days until expiration for " + expiringSoon, Integer.valueOf(10), expiring.get(expiringSoon));
+
+        body = sendProtocolExpirationNotification();
+        Assert.assertFalse("Notification reported no protocols despite expiring ones: " + body, body.contains(noneExpiring));
+        for (String header : List.of("Protocol", "Title", "PI", "Expiration Date", "Days Until Expiration", "Active Animals"))
+            Assert.assertTrue("Notification table is missing the " + header + " column: " + body, body.contains(header));
+        Assert.assertTrue("Notification is missing " + expiringToday + ": " + body, body.contains(expiringToday));
+        Assert.assertTrue("Notification is missing " + expiringSoon + ": " + body, body.contains(expiringSoon));
+        Assert.assertTrue("Protocols should be listed soonest first: " + body, body.indexOf(expiringToday) < body.indexOf(expiringSoon));
+        Assert.assertFalse("Notification listed an already expired protocol: " + body, body.contains(expired));
+        Assert.assertFalse("Notification listed a protocol expiring after 30 days: " + body, body.contains(expiringLater));
+        for (String protocol : List.of(expiringToday, expiringSoon))
+        {
+            String href = Locator.linkWithText(protocol).findElement(getDriver()).getAttribute("href");
+            Assert.assertTrue("Protocol " + protocol + " should link to its details page: " + href, href.endsWith("/ehr-protocolDetails.view?protocol=" + protocol));
+        }
+        String activeProtocolsHref = Locator.linkWithText("All Active Protocols").findElement(getDriver()).getAttribute("href");
+        Assert.assertTrue("All Active Protocols should link to the Active Protocols view: " + activeProtocolsHref,
+                activeProtocolsHref.endsWith("/query-executeQuery.view?schemaName=ehr&query.queryName=protocol&query.viewName=Active%20Protocols"));
+    }
+
+    /** Protocol to days until expiration, soonest first, as the notification's query reports them. */
+    private Map<String, Integer> getExpiringProtocols() throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("ehr", "protocolExpirationNotification");
+        select.setColumns(List.of("protocol", "daysUntilExpiration"));
+        select.setSorts(List.of(new Sort("expirationDate"), new Sort("protocol")));
+        Map<String, Integer> ret = new LinkedHashMap<>();
+        for (Map<String, Object> row : select.execute(getApiHelper().getConnection(), getContainerPath()).getRows())
+            ret.put((String) row.get("protocol"), ((Number) row.get("daysUntilExpiration")).intValue());
+
+        return ret;
+    }
+
+    /** Sends the notification now and returns the body Dumbster recorded for it. */
+    private String sendProtocolExpirationNotification()
+    {
+        // re-enabling the recorder clears the messages already captured, so only this send is found
+        enableEmailRecorder();
+        NotificationAdminPage.beginAt(this, getContainerPath()).clickManuallyTriggerEmail(PROTOCOL_EXPIRATION_NOTIFICATION);
+
+        goToModule("Dumbster");
+        waitForTextWithRefresh(WAIT_FOR_PAGE + WAIT_FOR_JAVASCRIPT, PROTOCOL_EXPIRATION_SUBJECT);
+        EmailRecordTable notifications = new EmailRecordTable(this);
+        notifications.clickMessage(notifications.getMessageWithSubjectContaining(PROTOCOL_EXPIRATION_SUBJECT));
+        return notifications.getMessageWithSubjectContaining(PROTOCOL_EXPIRATION_SUBJECT).getBody();
     }
 
     @Test
