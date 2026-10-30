@@ -687,7 +687,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         }
         if (matches(ti, "ehr", "project"))
         {
-            addIsActiveForProject(ti, EHRService.EndingOption.activeAfterMidnightTonight);
+            addIsActiveFromEnddate(ti);
         }
         if (matches(ti, "ehr", "protocolExemptions"))
         {
@@ -700,7 +700,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         }
         if (matches(ti, "study", "protocolAssignment"))
         {
-            EHRService.get().addIsActiveCol(ti, false, EHRService.EndingOption.activeAfterMidnightTonight, EHRService.EndingOption.activeAfterMidnightTonight);
+            addIsActiveFromEnddate(ti);
         }
         if (matches(ti, "study", "treatment_order"))
         {
@@ -716,7 +716,8 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         }
     }
 
-    private void addIsActiveForProject(AbstractTableInfo ti, EHRService.EndingOption... endOptions)
+    // Unlike EHRService.addIsActiveCol, a record starting in the future still counts as active.
+    private void addIsActiveFromEnddate(AbstractTableInfo ti)
     {
         String name = "isActive";
         if (ti.getColumn(name) == null)
@@ -724,10 +725,6 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             SQLFragment sql = new SQLFragment("(CASE " +
                     // when enddate is null, it is active
                     " WHEN (" + ExprColumn.STR_TABLE_ALIAS + ".enddate IS NULL) THEN " + ti.getSqlDialect().getBooleanTRUE());
-            for (EHRService.EndingOption endOption : endOptions)
-            {
-                sql.append(endOption.getSql());
-            }
             sql.append(
                     " WHEN (CAST(" + ExprColumn.STR_TABLE_ALIAS + ".enddate AS DATE) > {fn curdate()}) THEN " + ti.getSqlDialect().getBooleanTRUE() +
                             " ELSE " + ti.getSqlDialect().getBooleanFALSE() +
