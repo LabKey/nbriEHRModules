@@ -810,7 +810,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Verifying a protocol with no room left for the species is flagged on the form");
         arrivals.setGridCell(1, "arrivalProtocol", protocolChoice(fullProtocol, DUMMY_INVES_LAST_NAME));
-        waitForFormError(overLimit(fullProtocol, "MNE", 1, 0, 0));
+        waitForFormError(overLimit(fullProtocol, "Pig-Tailed Macaque", 1, 0, 0));
         arrivals.setGridCell(1, "arrivalProtocol", protocolChoice(DUMMY_PROTOCOL, DUMMY_INVES_LAST_NAME));
 
         log("Verifying the opening project, protocol and group are required");
@@ -1191,9 +1191,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         log("Verifying a species can be entered only once per amendment");
         String amendmentId = (String) amendments.get(1).get("objectid");
-        assertRejected("Species MMU is entered more than once", () -> insertCounts(protocol, amendmentId, "MMU", "MMU"));
+        assertRejected("Species Rhesus Macaque is entered more than once", () -> insertCounts(protocol, amendmentId, "MMU", "MMU"));
         insertCounts(protocol, amendmentId, "MMU");
-        assertRejected("Species MMU is entered more than once", () -> insertCounts(protocol, amendmentId, "MMU"));
+        assertRejected("Species Rhesus Macaque is entered more than once", () -> insertCounts(protocol, amendmentId, "MMU"));
         insertCounts(protocol, (String) amendments.get(0).get("objectid"), "MMU");
 
         log("Verifying only the latest amendment can be deleted, and deleting it reopens the one before");
@@ -1409,15 +1409,15 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         createLimitedProtocol(late, today.minusMonths(6), today.plusYears(1), "MMU", 10);
 
         log("Verifying a species the protocol does not list is refused on Submit Final");
-        assertFieldError(validateOnly(protocolAssignmentInsert(open, today, EHRQCState.IN_PROGRESS, otherSpecies)), "protocol", "WARN", notApproved(open, "MNE"));
-        assertFieldError(saveExpectingError(protocolAssignmentInsert(open, today, EHRQCState.COMPLETED, otherSpecies)), "protocol", "ERROR", notApproved(open, "MNE"));
+        assertFieldError(validateOnly(protocolAssignmentInsert(open, today, EHRQCState.IN_PROGRESS, otherSpecies)), "protocol", "WARN", notApproved(open, "Pig-Tailed Macaque"));
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(open, today, EHRQCState.COMPLETED, otherSpecies)), "protocol", "ERROR", notApproved(open, "Pig-Tailed Macaque"));
 
         log("Verifying a protocol with no counts, or no amendment, approves no animals");
-        assertFieldError(saveExpectingError(protocolAssignmentInsert(uncounted, today, EHRQCState.COMPLETED, animals[0])), "protocol", "ERROR", notApproved(uncounted, "MMU"));
-        assertFieldError(saveExpectingError(protocolAssignmentInsert(unamended, today, EHRQCState.COMPLETED, animals[0])), "protocol", "ERROR", notApproved(unamended, "MMU"));
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(uncounted, today, EHRQCState.COMPLETED, animals[0])), "protocol", "ERROR", notApproved(uncounted, "Rhesus Macaque"));
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(unamended, today, EHRQCState.COMPLETED, animals[0])), "protocol", "ERROR", notApproved(unamended, "Rhesus Macaque"));
 
         log("Verifying an assignment dated before the protocol's first amendment is refused");
-        assertFieldError(saveExpectingError(protocolAssignmentInsert(late, today.minusYears(1), EHRQCState.COMPLETED, animals[0])), "protocol", "ERROR", notApproved(late, "MMU"));
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(late, today.minusYears(1), EHRQCState.COMPLETED, animals[0])), "protocol", "ERROR", notApproved(late, "Rhesus Macaque"));
 
         log("Verifying an expired protocol is refused, draft or final");
         assertFieldError(validateOnly(protocolAssignmentInsert(expired, today, EHRQCState.IN_PROGRESS, animals[0])), "protocol", "ERROR", "Protocol " + expired + " expired on ");
@@ -1428,7 +1428,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assignToProtocol(limited, today, EHRQCState.COMPLETED, animals[3], animals[4]);
 
         log("Verifying a full protocol warns on another draft and refuses another final assignment");
-        String full = overLimit(limited, "MMU", 3, 2, 0);
+        String full = overLimit(limited, "Rhesus Macaque", 3, 2, 0);
         assertFieldError(validateOnly(protocolAssignmentInsert(limited, today, EHRQCState.IN_PROGRESS, animals[5])), "protocol", "WARN", full);
         assertFieldError(saveExpectingError(protocolAssignmentInsert(limited, today, EHRQCState.COMPLETED, animals[5])), "protocol", "ERROR", full);
 
@@ -1445,7 +1445,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assertEquals("A refused move should leave the assignment where it was", 1, countRows("protocolAssignment", new Filter("Id", animals[6]), new Filter("protocol", open)));
 
         log("Verifying rows saved together count against each other, and refusing one refuses them all");
-        assertFieldError(saveExpectingError(protocolAssignmentInsert(batch, today, EHRQCState.COMPLETED, animals[7], animals[8])), "protocol", "ERROR", overLimit(batch, "MMU", 2, 1, 0));
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(batch, today, EHRQCState.COMPLETED, animals[7], animals[8])), "protocol", "ERROR", overLimit(batch, "Rhesus Macaque", 2, 1, 0));
         assertEquals("No assignment in a refused save should have been kept", 0, countRows("protocolAssignment", new Filter("protocol", batch)));
 
         log("Verifying a backdated assignment counts against the amendment in effect on its date");
@@ -1457,12 +1457,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         insertCount(amended, (String) amendments.get(1).get("objectid"), "MMU", 5);
         assignToProtocol(amended, today.minusMonths(6), EHRQCState.COMPLETED, animals[9]);
         assignToProtocol(amended, today, EHRQCState.COMPLETED, animals[10]);
-        assertFieldError(saveExpectingError(protocolAssignmentInsert(amended, today.minusMonths(5), EHRQCState.COMPLETED, animals[7])), "protocol", "ERROR", overLimit(amended, "MMU", 2, 1, 0));
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(amended, today.minusMonths(5), EHRQCState.COMPLETED, animals[7])), "protocol", "ERROR", overLimit(amended, "Rhesus Macaque", 2, 1, 0));
 
         log("Verifying a completed assignment cannot be redated into a full amendment");
         Map<String, Object> backdated = new HashMap<>(protocolAssignmentRow(animals[10], amended, today));
         backdated.put("date", today.minusMonths(5).format(_dateFormat));
-        assertFieldError(saveExpectingError(prepareUpdate("protocolAssignment", backdated)), "protocol", "ERROR", overLimit(amended, "MMU", 2, 1, 0));
+        assertFieldError(saveExpectingError(prepareUpdate("protocolAssignment", backdated)), "protocol", "ERROR", overLimit(amended, "Rhesus Macaque", 2, 1, 0));
 
         log("Verifying an assignment on a protocol that has since expired can still be edited, but not redated past the expiry");
         LocalDate assigned = today.minusYears(1);
@@ -1480,7 +1480,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Map<String, Object> redated = new HashMap<>(protocolAssignmentRow(animals[3], limited, today));
         redated.put("date", today.minusDays(1).format(_dateFormat));
         getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), prepareUpdate("protocolAssignment", redated), getExtraContext());
-        assertFieldError(saveExpectingError(protocolAssignmentInsert(limited, today, EHRQCState.COMPLETED, animals[5])), "protocol", "ERROR", overLimit(limited, "MMU", 3, 1, 1));
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(limited, today, EHRQCState.COMPLETED, animals[5])), "protocol", "ERROR", overLimit(limited, "Rhesus Macaque", 3, 1, 1));
     }
 
     @Test
@@ -1505,14 +1505,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assertFieldError(validateOnly(arrivalInsert(expired, EHRQCState.IN_PROGRESS, false, "MNE", arriving[0])), "arrivalProtocol", "ERROR", "Protocol " + expired + " expired on ");
 
         log("Verifying a new animal is counted under the species entered on the arrival");
-        String full = overLimit(limited, "MNE", 2, 1, 0);
+        String full = overLimit(limited, "Pig-Tailed Macaque", 2, 1, 0);
         assertFieldError(validateOnly(arrivalInsert(limited, EHRQCState.IN_PROGRESS, false, "MNE", arriving[0])), "arrivalProtocol", "WARN", full);
         assertFieldError(saveExpectingError(arrivalInsert(limited, EHRQCState.COMPLETED, false, "MNE", arriving[0])), "arrivalProtocol", "ERROR", full);
         for (String query : List.of("arrival", "demographics", "protocolAssignment"))
             assertEquals("A refused arrival should leave no " + query + " row", 0, countRows(query, new Filter("Id", arriving[0])));
 
         log("Verifying animals arriving together count against each other");
-        assertFieldError(validateOnly(arrivalInsert(batch, EHRQCState.IN_PROGRESS, false, "MNE", arriving)), "arrivalProtocol", "WARN", overLimit(batch, "MNE", 2, 1, 0));
+        assertFieldError(validateOnly(arrivalInsert(batch, EHRQCState.IN_PROGRESS, false, "MNE", arriving)), "arrivalProtocol", "WARN", overLimit(batch, "Pig-Tailed Macaque", 2, 1, 0));
 
         log("Verifying a rearrival with no species entered is counted under the species on record");
         assertFieldError(validateOnly(arrivalInsert(limited, EHRQCState.IN_PROGRESS, true, null, returning)), "arrivalProtocol", "WARN", full);
@@ -1539,7 +1539,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assertFieldError(validateOnly(birthInsert(expired, EHRQCState.IN_PROGRESS, newborn, damId)), "birthProtocol", "ERROR", "Protocol " + expired + " expired on ");
 
         log("Verifying a newborn with no species entered is counted under its dam's species");
-        String full = overLimit(limited, "CAP", 2, 1, 0);
+        String full = overLimit(limited, "Brown-Tufted Capuchin", 2, 1, 0);
         assertFieldError(validateOnly(birthInsert(limited, EHRQCState.IN_PROGRESS, newborn, damId)), "birthProtocol", "WARN", full);
         assertFieldError(saveExpectingError(birthInsert(limited, EHRQCState.COMPLETED, newborn, damId)), "birthProtocol", "ERROR", full);
         assertEquals("A refused birth should leave no birth row", 0, countRows("birth", new Filter("Id", newborn)));

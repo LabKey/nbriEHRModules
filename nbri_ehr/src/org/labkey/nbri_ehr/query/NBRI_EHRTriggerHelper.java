@@ -1345,7 +1345,7 @@ public class NBRI_EHRTriggerHelper
         Set<FieldKey> keys = PageFlowUtil.set(FieldKey.fromString("allowed"), FieldKey.fromString("amendmentId/amendmentNumber"), FieldKey.fromString("amendmentId/date"), FieldKey.fromString("amendmentId/enddate"));
         final Map<FieldKey, ColumnInfo> cols = QueryService.get().getColumns(counts, keys);
 
-        final List<String> errors = new ArrayList<>();
+        final List<String> overLimit = new ArrayList<>();
         final MutableBoolean approved = new MutableBoolean(false);
         new TableSelector(counts, cols.values(), countFilter, new Sort("amendmentId/amendmentNumber")).forEach(object -> {
             Results rs = new ResultsImpl(object, cols);
@@ -1363,15 +1363,28 @@ public class NBRI_EHRTriggerHelper
             long used = firstAssigned.values().stream().filter(d -> windowEnd == null || !d.after(windowEnd)).count();
             if (used > allowed && !alreadyCounted)
             {
-                errors.add("Protocol " + protocol + ", " + species + ": " + used + " of " + allowed + " allowed under amendment " + rs.getObject(FieldKey.fromString("amendmentId/amendmentNumber")) + ".");
+                overLimit.add(used + " of " + allowed + " allowed under amendment " + rs.getObject(FieldKey.fromString("amendmentId/amendmentNumber")) + ".");
             }
         });
 
+        if (overLimit.isEmpty() && approved.isTrue())
+            return null;
+
+        String speciesName = getSpeciesCommonName(species);
+        List<String> errors = new ArrayList<>();
         // only the species listed on the amendment in effect on the assignment date may be assigned
         if (approved.isFalse())
-            errors.addFirst("Protocol " + protocol + " is not approved for " + species + " on " + _dateFormat.format(day) + ".");
+            errors.add("Protocol " + protocol + " is not approved for " + speciesName + " on " + _dateFormat.format(day) + ".");
+        overLimit.forEach(msg -> errors.add("Protocol " + protocol + ", " + speciesName + ": " + msg));
 
-        return errors.isEmpty() ? null : StringUtils.join(errors, "<>");
+        return StringUtils.join(errors, "<>");
+    }
+
+    /** Falls back to the code for a species with no common name entered. */
+    public String getSpeciesCommonName(String code)
+    {
+        String name = new TableSelector(getTableInfo("ehr_lookups", "species_codes"), PageFlowUtil.set("common_name"), new SimpleFilter(FieldKey.fromString("code"), code), null).getObject(String.class);
+        return StringUtils.isBlank(name) ? code : name;
     }
 
     public @Nullable String getAnimalSpecies(String id)
