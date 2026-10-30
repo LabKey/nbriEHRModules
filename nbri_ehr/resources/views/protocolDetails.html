@@ -14,10 +14,9 @@ Ext4.onReady(function (){
         'protocolDetails',
         'protocolAmendments',
         'protocolCounts',
-        'protocolAssignments',
         'protocolTotalAnimalsBySpecies',
-        'protocolProjects',
-        'protocolProcedures'
+        'protocolAssignments',
+        'protocolAssignmentHistory'
     ];
 
     var domSpec = [];
@@ -68,10 +67,17 @@ Ext4.onReady(function (){
     }, 'protocolAmendments');
 
     queryWebPart({
-        title: 'Animals Allowed Per Species',
+        title: 'Historical Animals Allowed by Amendment',
         schemaName: 'ehr',
-        queryName: 'protocol_counts'
+        queryName: 'protocol_counts',
+        viewName: 'Amendment History'
     }, 'protocolCounts');
+
+    queryWebPart({
+        title: 'Approved Versus Assigned By Species',
+        schemaName: 'ehr',
+        queryName: 'protocolTotalAnimalsBySpecies'
+    }, 'protocolTotalAnimalsBySpecies');
 
     queryWebPart({
         title: 'Active Protocol Assignments',
@@ -83,22 +89,11 @@ Ext4.onReady(function (){
     }, 'protocolAssignments');
 
     queryWebPart({
-        title: 'Approved Versus Assigned By Species',
-        schemaName: 'ehr',
-        queryName: 'protocolTotalAnimalsBySpecies'
-    }, 'protocolTotalAnimalsBySpecies');
-
-    queryWebPart({
-        title: 'Projects Under This Protocol',
-        schemaName: 'ehr',
-        queryName: 'project'
-    }, 'protocolProjects');
-
-    queryWebPart({
-        title: 'Procedures Allowed Under This Protocol',
-        schemaName: 'ehr',
-        queryName: 'ProtocolProcedures'
-    }, 'protocolProcedures');
+        title: 'All Animals Ever Assigned',
+        schemaName: 'study',
+        queryName: 'protocolAssignment',
+        sort: '-date'
+    }, 'protocolAssignmentHistory');
 });
 
 </script>

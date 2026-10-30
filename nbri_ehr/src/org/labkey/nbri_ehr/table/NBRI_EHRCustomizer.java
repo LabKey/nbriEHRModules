@@ -1155,6 +1155,19 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
                     .display("totalAllowed")));
             ti.addColumn(col);
         }
+        if (us != null && ti.getColumn("assignedAnimals") == null && ti.getColumn("protocol") != null)
+        {
+            WrappedColumn col = new WrappedColumn(ti.getColumn("protocol"), "assignedAnimals");
+            col.setLabel("Animals Assigned");
+            col.setDescription("Distinct animals ever assigned to the protocol; expand for the per-species counts");
+            col.setReadOnly(true);
+            col.setUserEditable(false);
+            col.setFk(new QueryForeignKey(QueryForeignKey.from(us, ti.getContainerFilter())
+                    .table("protocolAssignedAnimals")
+                    .key("protocol")
+                    .display("totalAssigned")));
+            ti.addColumn(col);
+        }
     }
 
     private void customizeProtocolExemptions(AbstractTableInfo ti)
