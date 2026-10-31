@@ -1145,7 +1145,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         if (us != null && ti.getColumn("allowedAnimals") == null && ti.getColumn("protocol") != null)
         {
             WrappedColumn col = new WrappedColumn(ti.getColumn("protocol"), "allowedAnimals");
-            col.setLabel("Animals Allowed");
+            col.setLabel("Current Animals Allowed");
             col.setDescription("Animals allowed by the amendment currently in effect; expand for the per-species counts");
             col.setReadOnly(true);
             col.setUserEditable(false);
@@ -1158,7 +1158,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         if (us != null && ti.getColumn("assignedAnimals") == null && ti.getColumn("protocol") != null)
         {
             WrappedColumn col = new WrappedColumn(ti.getColumn("protocol"), "assignedAnimals");
-            col.setLabel("Animals Assigned");
+            col.setLabel("Historical Animals Assigned");
             col.setDescription("Distinct animals ever assigned to the protocol; expand for the per-species counts");
             col.setReadOnly(true);
             col.setUserEditable(false);

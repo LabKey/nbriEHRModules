@@ -10,6 +10,7 @@
                     <column columnName="totalAllowed">
                         <columnTitle>Total Animals Allowed</columnTitle>
                         <description>Sum across species of the counts set by the amendment currently in effect</description>
+                        <url>/query/executeQuery.view?schemaName=ehr&amp;query.queryName=protocolCountsEffective&amp;query.protocol~eq=${protocol}</url>
                     </column>
                     <column columnName="allowedBySpecies">
                         <columnTitle>Animals Allowed By Species</columnTitle>
