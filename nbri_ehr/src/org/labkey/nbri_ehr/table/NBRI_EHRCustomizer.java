@@ -687,7 +687,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         }
         if (matches(ti, "ehr", "project"))
         {
-            addIsActiveForProject(ti, EHRService.EndingOption.activeAfterMidnightTonight);
+            addIsActiveFromEnddate(ti);
         }
         if (matches(ti, "ehr", "protocolExemptions"))
         {
@@ -700,7 +700,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         }
         if (matches(ti, "study", "protocolAssignment"))
         {
-            EHRService.get().addIsActiveCol(ti, false, EHRService.EndingOption.activeAfterMidnightTonight, EHRService.EndingOption.activeAfterMidnightTonight);
+            addIsActiveFromEnddate(ti);
         }
         if (matches(ti, "study", "treatment_order"))
         {
@@ -716,18 +716,19 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         }
     }
 
-    private void addIsActiveForProject(AbstractTableInfo ti, EHRService.EndingOption... endOptions)
+    // Unlike EHRService.addIsActiveCol, a record starting in the future still counts as active.
+    private void addIsActiveFromEnddate(AbstractTableInfo ti)
     {
+        // a dataset's columns can still be missing while a study import is defining it
+        if (ti.getColumn("enddate") == null)
+            return;
+
         String name = "isActive";
         if (ti.getColumn(name) == null)
         {
             SQLFragment sql = new SQLFragment("(CASE " +
                     // when enddate is null, it is active
                     " WHEN (" + ExprColumn.STR_TABLE_ALIAS + ".enddate IS NULL) THEN " + ti.getSqlDialect().getBooleanTRUE());
-            for (EHRService.EndingOption endOption : endOptions)
-            {
-                sql.append(endOption.getSql());
-            }
             sql.append(
                     " WHEN (CAST(" + ExprColumn.STR_TABLE_ALIAS + ".enddate AS DATE) > {fn curdate()}) THEN " + ti.getSqlDialect().getBooleanTRUE() +
                             " ELSE " + ti.getSqlDialect().getBooleanFALSE() +
@@ -1138,6 +1139,35 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         var descriptionCol = ti.getMutableColumn("description");
         if (null != descriptionCol)
             descriptionCol.setDisplayColumnFactory(new HtmlDisplayColumnFactory());
+
+        // replaces maxAnimals, which is a single number with no species
+        UserSchema us = ti.getUserSchema();
+        if (us != null && ti.getColumn("allowedAnimals") == null && ti.getColumn("protocol") != null)
+        {
+            WrappedColumn col = new WrappedColumn(ti.getColumn("protocol"), "allowedAnimals");
+            col.setLabel("Animals Allowed");
+            col.setDescription("Animals allowed by the amendment currently in effect; expand for the per-species counts");
+            col.setReadOnly(true);
+            col.setUserEditable(false);
+            col.setFk(new QueryForeignKey(QueryForeignKey.from(us, ti.getContainerFilter())
+                    .table("protocolAllowedAnimals")
+                    .key("protocol")
+                    .display("totalAllowed")));
+            ti.addColumn(col);
+        }
+        if (us != null && ti.getColumn("assignedAnimals") == null && ti.getColumn("protocol") != null)
+        {
+            WrappedColumn col = new WrappedColumn(ti.getColumn("protocol"), "assignedAnimals");
+            col.setLabel("Animals Assigned");
+            col.setDescription("Distinct animals ever assigned to the protocol; expand for the per-species counts");
+            col.setReadOnly(true);
+            col.setUserEditable(false);
+            col.setFk(new QueryForeignKey(QueryForeignKey.from(us, ti.getContainerFilter())
+                    .table("protocolAssignedAnimals")
+                    .key("protocol")
+                    .display("totalAssigned")));
+            ti.addColumn(col);
+        }
     }
 
     private void customizeProtocolExemptions(AbstractTableInfo ti)

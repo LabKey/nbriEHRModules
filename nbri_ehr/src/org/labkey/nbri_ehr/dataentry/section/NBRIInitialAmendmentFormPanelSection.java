@@ -1,0 +1,32 @@
+/*
+ * Copyright (c) 2026 LabKey Corporation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.labkey.nbri_ehr.dataentry.section;
+
+import org.labkey.api.ehr.dataentry.ParentFormPanelSection;
+
+/** A new protocol's amendment 0, kept hidden: NewProtocolClientStore fills every field from the protocol panel. */
+public class NBRIInitialAmendmentFormPanelSection extends ParentFormPanelSection
+{
+    public static final String QUERY_NAME = "protocolAmendment";
+
+    public NBRIInitialAmendmentFormPanelSection()
+    {
+        super("nbri_ehr", QUERY_NAME, "Amendment 0");
+
+        setSupportFormSort(false);
+        setHidden(true);
+    }
+}

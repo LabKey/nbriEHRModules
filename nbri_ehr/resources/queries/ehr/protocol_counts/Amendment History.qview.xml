@@ -1,0 +1,11 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView">
+    <columns>
+        <column name="amendmentId"/>
+        <column name="species"/>
+        <column name="allowed"/>
+    </columns>
+    <sorts>
+        <sort column="amendmentId/date" descending="true"/>
+        <sort column="species"/>
+    </sorts>
+</customView>

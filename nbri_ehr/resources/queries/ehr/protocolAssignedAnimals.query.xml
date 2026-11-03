@@ -1,0 +1,22 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="protocolAssignedAnimals" tableDbType="NOT_IN_DB">
+                <tableTitle>Animals Assigned By Protocol</tableTitle>
+                <columns>
+                    <column columnName="protocol">
+                        <isKeyField>true</isKeyField>
+                    </column>
+                    <column columnName="totalAssigned">
+                        <columnTitle>Total Animals Assigned</columnTitle>
+                        <description>Distinct animals ever assigned to the protocol; ended and repeated assignments count once</description>
+                    </column>
+                    <column columnName="assignedBySpecies">
+                        <columnTitle>Animals Assigned By Species</columnTitle>
+                        <description>Each species and its count of distinct animals ever assigned</description>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

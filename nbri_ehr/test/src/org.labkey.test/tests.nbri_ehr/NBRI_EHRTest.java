@@ -21,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.json.JSONObject;
 import org.junit.experimental.categories.Category;
 import org.labkey.api.reader.Readers;
 import org.labkey.api.util.FileUtil;
@@ -28,12 +29,14 @@ import org.labkey.remoteapi.CommandException;
 import org.labkey.remoteapi.SimplePostCommand;
 import org.labkey.remoteapi.core.SaveModulePropertiesCommand;
 import org.labkey.remoteapi.query.ContainerFilter;
+import org.labkey.remoteapi.query.DeleteRowsCommand;
 import org.labkey.remoteapi.query.Filter;
 import org.labkey.remoteapi.query.ImportDataCommand;
 import org.labkey.remoteapi.query.InsertRowsCommand;
 import org.labkey.remoteapi.query.RowsResponse;
 import org.labkey.remoteapi.query.SelectRowsCommand;
 import org.labkey.remoteapi.query.SelectRowsResponse;
+import org.labkey.remoteapi.query.Sort;
 import org.labkey.remoteapi.query.UpdateRowsCommand;
 import org.labkey.remoteapi.security.CreateUserResponse;
 import org.labkey.test.Locator;
@@ -66,6 +69,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -75,10 +79,12 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -100,6 +106,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     private static final String NBRI_PATHOLOGIST = "pathologist@nbritest.com";
     private static final String DEATH_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRIDeathNotification";
     private static final String NECROPSY_REQUEST_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification";
+    private static final String PROTOCOL_EXPIRATION_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRIProtocolExpirationNotification";
+    private static final String PROTOCOL_EXPIRATION_SUBJECT = "Protocols expiring in the next 30 days";
     private static final String ACCESSION_NUMBER = "N26-001";
     // Assign the vet-tech role by its class-based name rather than its "EHR Veterinarian Technician" display
     // name: NIRC's role shares that display name, so a display-name lookup can resolve to the wrong module's
@@ -242,6 +250,25 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         insertCmd.addRow(rowMap);
 
         insertCmd.execute(createDefaultConnection(), getContainerPath());
+
+        approveForAllSpecies(PROTOCOL_ID);
+        approveForAllSpecies(DUMMY_PROTOCOL);
+    }
+
+    // an assignment is refused unless its protocol is approved for the species, and the sample data's assignments go back years
+    private void approveForAllSpecies(String protocol) throws IOException, CommandException
+    {
+        insertAmendment(protocol, LocalDate.now().minusYears(30), null);
+        String amendmentId = (String) getAmendments(protocol).get(0).get("objectid");
+
+        SelectRowsCommand select = new SelectRowsCommand("ehr_lookups", "species_codes");
+        select.setColumns(List.of("code"));
+        List<Map<String, Object>> species = select.execute(createDefaultConnection(), getContainerPath()).getRows();
+        Assert.assertFalse("No species codes to approve " + protocol + " for", species.isEmpty());
+
+        InsertRowsCommand insert = new InsertRowsCommand("ehr", "protocol_counts");
+        species.forEach(s -> insert.addRow(Map.of("protocol", protocol, "amendmentId", amendmentId, "species", s.get("code"), "allowed", 1000)));
+        insert.execute(createDefaultConnection(), getContainerPath());
     }
 
     public void importFolderByPath(File path, String containerPath, int finishedJobsExpected)
@@ -312,6 +339,23 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         waitFor(() -> Input(Locator.textarea("populateLookupResults"), getDriver()).waitFor().getValue().contains("Loading reports is complete."),
                 "Reports didn't finish loading", 60000);
         populateFormulary();
+
+        // The study import's trigger scripts query template columns such as protocol_counts.amendmentId
+        addExtensibleCols();
+
+        // the study import's protocol assignments are refused unless their protocols already exist
+        populateProtocolRecords();
+    }
+
+    @Override
+    @LogMethod
+    protected void populateHardTableRecords() throws Exception
+    {
+        log("Inserting initial records into EHR hard tables");
+        // populateInitialData has already created the protocols
+        deleteHardTableRecords();
+        populateProjectRecords();
+        populateRoomRecords();
     }
 
     private void populateFormulary() throws IOException, CommandException
@@ -396,7 +440,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         goToEHRFolder();
         createTestSubjects();
         addNBRIEhrLinks();
-        addExtensibleCols();
         enableSiteNotification();
         populateLocations();
         addUsersAndPermissions();//create users and assign roles, created for the death and necropsy forms, but users can be repurposed for other forms.
@@ -724,6 +767,13 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         String animalGroup = "Assigned Breeding Protocol";
         LocalDateTime now = LocalDateTime.now();
 
+        // the protocol dropdown shows only protocols with an investigator, and the arriving animal is a Pig-Tailed Macaque
+        String fullProtocol = "ARRFORM-FULL";
+        createLimitedProtocol(fullProtocol, now.toLocalDate().minusYears(1), now.toLocalDate().plusYears(1), "MNE", 0);
+        UpdateRowsCommand setInvestigator = new UpdateRowsCommand("ehr", "protocol");
+        setInvestigator.addRow(Map.of("protocol", fullProtocol, "InvestigatorId", getInvestigatorRowId(DUMMY_INVES_LAST_NAME)));
+        setInvestigator.execute(getApiHelper().getConnection(), getContainerPath());
+
         gotoEnterData();
         waitAndClickAndWait(Locator.linkWithText("Arrivals"));
         lockForm();
@@ -756,8 +806,12 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         // the animal's opening project, protocol and group are entered on the arrival row itself; the trigger script
         // opens the matching assignment record for each one
         arrivals.setGridCell(1, "project", "640991");
-        arrivals.setGridCell(1, "arrivalProtocol", protocolChoice(DUMMY_PROTOCOL, DUMMY_INVES_LAST_NAME));
         arrivals.setGridCell(1, "groupId", animalGroup);
+
+        log("Verifying a protocol with no room left for the species is flagged on the form");
+        arrivals.setGridCell(1, "arrivalProtocol", protocolChoice(fullProtocol, DUMMY_INVES_LAST_NAME));
+        waitForFormError(overLimit(fullProtocol, "Pig-Tailed Macaque", 1, 0, 0));
+        arrivals.setGridCell(1, "arrivalProtocol", protocolChoice(DUMMY_PROTOCOL, DUMMY_INVES_LAST_NAME));
 
         log("Verifying the opening project, protocol and group are required");
         arrivals.setGridCellJS(1, "project", null);
@@ -1017,6 +1071,619 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     }
 
     @Test
+    public void testNewProtocolForm() throws Exception
+    {
+        String protocol = "NEWPROT-01";
+        LocalDate approve = LocalDate.now().minusDays(30);
+        LocalDate expectedEnd = approve.plusYears(3);
+
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("New Protocol"));
+        lockForm();
+
+        log("Entering the protocol");
+        _helper.getExt4FieldForFormSection("Protocol", "IACUC Protocol").setValue(protocol);
+        _helper.getExt4FieldForFormSection("Protocol", "Title").setValue("New protocol form fixture");
+        _helper.getExt4FieldForFormSection("Protocol", "PI").setValue(getInvestigatorRowId(INVES_LAST_NAME));
+        getProtocolFormField("project_type").setValue("E");
+        _helper.getExt4FieldForFormSection("Protocol", "Approval Date").setValue(approve.format(_dateFormat));
+
+        log("Verifying the end date defaults to three years after approval");
+        waitFor(() -> expectedEnd.format(_dateFormat).equals(toDay(_helper.getExt4FieldForFormSection("Protocol", "End Date").getDateValue())),
+                "End date did not default from the approval date", WAIT_FOR_JAVASCRIPT);
+
+        log("Verifying the IBC approval number appears only once IBC approval is required");
+        Ext4FieldRef ibcNumber = getProtocolFormField("ibc_approval_num");
+        Assert.assertFalse("IBC approval number should start hidden", ibcNumber.isVisible());
+        getProtocolFormField("ibc_approval_required").setChecked(true);
+        waitFor(ibcNumber::isVisible, "IBC approval number did not appear", WAIT_FOR_JAVASCRIPT);
+        getProtocolFormField("ibc_approval_required").setChecked(false);
+        waitForFormValidationToSettle();
+
+        log("Entering the description and TB exemption");
+        // a hidden field still accepts a value, so check visibility before setting it
+        Ext4FieldRef description = getProtocolFormField("description");
+        Assert.assertTrue("Description should be visible", description.isVisible());
+        setProtocolFormValue(description, "New protocol form description");
+        Ext4FieldRef exemptTB = getProtocolFormField("exemptTB");
+        Assert.assertTrue("Exempt TB should be visible", exemptTB.isVisible());
+        setProtocolFormValue(exemptTB, true);
+
+        Ext4GridRef counts = _helper.getExt4GridForFormSection("Animals Allowed Per Species");
+        _helper.addRecordToGrid(counts);
+        counts.setGridCell(1, "species", "Rhesus Macaque");
+        counts.setGridCell(1, "allowed", "12");
+
+        submitForm("Submit Final", "Finalize");
+
+        log("Verifying the protocol was saved with its approval defaults");
+        SelectRowsCommand select = new SelectRowsCommand("ehr", "protocol");
+        select.setColumns(List.of("protocol", "approve", "first_approval", "enddate", "description", "exemptTB"));
+        select.addFilter(new Filter("protocol", protocol));
+        List<Map<String, Object>> protocols = select.execute(getApiHelper().getConnection(), getContainerPath()).getRows();
+        assertEquals("Expected one protocol row", 1, protocols.size());
+        assertEquals("Wrong approval date", approve.format(_dateFormat), toDay(protocols.get(0).get("approve")));
+        assertEquals("First approval should follow the approval date", approve.format(_dateFormat), toDay(protocols.get(0).get("first_approval")));
+        assertEquals("Wrong end date", expectedEnd.format(_dateFormat), toDay(protocols.get(0).get("enddate")));
+        assertEquals("Wrong description", "New protocol form description", protocols.get(0).get("description"));
+        assertEquals("Exempt TB was not saved", true, protocols.get(0).get("exemptTB"));
+
+        log("Verifying amendment 0 and its counts were saved with the protocol");
+        Map<Integer, Map<String, Object>> amendments = getAmendments(protocol);
+        assertEquals("Expected only amendment 0", Set.of(0), amendments.keySet());
+        assertAmendmentWindow(amendments, 0, approve, expectedEnd);
+        assertCounts(amendments.get(0), Map.of("MMU", 12));
+    }
+
+    @Test
+    public void testProtocolAmendmentRules() throws Exception
+    {
+        String protocol = "AMENDRULES-01";
+        LocalDate approve = LocalDate.now().minusYears(1);
+        LocalDate end = approve.plusYears(3);
+        LocalDate first = approve.plusMonths(6);
+        insertProtocol(protocol, approve, end);
+
+        log("Verifying the first amendment is numbered 0 and runs to the protocol's end date");
+        insertAmendment(protocol, approve, null);
+        assertAmendmentWindow(getAmendments(protocol), 0, approve, end);
+
+        log("Verifying a new amendment takes the next number and closes the previous one the day before it takes effect");
+        insertAmendment(protocol, first, null);
+        Map<Integer, Map<String, Object>> amendments = getAmendments(protocol);
+        assertAmendmentWindow(amendments, 0, approve, first.minusDays(1));
+        assertAmendmentWindow(amendments, 1, first, end);
+
+        log("Verifying the amendment date rules");
+        assertRejected("Effective date must be after amendment 1", () -> insertAmendment(protocol, first, null));
+        assertRejected("Effective date is after the protocol's end date", () -> insertAmendment(protocol, end.plusDays(1), end.plusDays(30)));
+        assertRejected("End date cannot be before the effective date", () -> updateAmendmentEnddate(amendments.get(1), first.minusDays(1)));
+        assertRejected("Overlaps amendment 1", () -> updateAmendmentEnddate(amendments.get(0), first.plusDays(10)));
+
+        log("Verifying the latest amendment follows the protocol's end date");
+        LocalDate extended = end.plusYears(1);
+        updateProtocolEnddate(protocol, extended);
+        assertAmendmentWindow(getAmendments(protocol), 1, first, extended);
+        assertRejected("End date is before amendment 1", () -> updateProtocolEnddate(protocol, first.minusDays(1)));
+
+        log("Verifying moving an amendment's effective date moves the end of the one before it");
+        LocalDate later = first.plusDays(5);
+        updateAmendmentDate(amendments.get(1), later);
+        Map<Integer, Map<String, Object>> moved = getAmendments(protocol);
+        assertAmendmentWindow(moved, 0, approve, later.minusDays(1));
+        assertAmendmentWindow(moved, 1, later, extended);
+        LocalDate earlier = first.minusDays(5);
+        updateAmendmentDate(amendments.get(1), earlier);
+        moved = getAmendments(protocol);
+        assertAmendmentWindow(moved, 0, approve, earlier.minusDays(1));
+        assertAmendmentWindow(moved, 1, earlier, extended);
+        assertRejected("Effective date must be after amendment 0", () -> updateAmendmentDate(amendments.get(1), approve));
+        updateAmendmentDate(amendments.get(1), first);
+        assertAmendmentWindow(getAmendments(protocol), 0, approve, first.minusDays(1));
+
+        log("Verifying a protocol with amendments cannot be deleted or duplicated");
+        assertRejected("has amendments and cannot be deleted", () -> {
+            DeleteRowsCommand delete = new DeleteRowsCommand("ehr", "protocol");
+            delete.addRow(Map.of("protocol", protocol));
+            delete.execute(getApiHelper().getConnection(), getContainerPath());
+        });
+        assertRejected("There is already a record where protocol equals", () -> insertProtocol(protocol, approve, end));
+
+        log("Verifying a species can be entered only once per amendment");
+        String amendmentId = (String) amendments.get(1).get("objectid");
+        assertRejected("Species Rhesus Macaque is entered more than once", () -> insertCounts(protocol, amendmentId, "MMU", "MMU"));
+        insertCounts(protocol, amendmentId, "MMU");
+        assertRejected("Species Rhesus Macaque is entered more than once", () -> insertCounts(protocol, amendmentId, "MMU"));
+        insertCounts(protocol, (String) amendments.get(0).get("objectid"), "MMU");
+
+        log("Verifying only the latest amendment can be deleted, and deleting it reopens the one before");
+        assertRejected("Only the latest amendment, 1, can be deleted", () -> deleteAmendment(amendments.get(0)));
+        deleteAmendment(amendments.get(1));
+        Map<Integer, Map<String, Object>> remaining = getAmendments(protocol);
+        assertEquals("Expected only amendment 0 after the delete", Set.of(0), remaining.keySet());
+        assertAmendmentWindow(remaining, 0, approve, extended);
+        assertCounts(amendments.get(1), Map.of());
+    }
+
+    private void updateAmendmentDate(Map<String, Object> amendment, LocalDate date) throws IOException, CommandException
+    {
+        UpdateRowsCommand update = new UpdateRowsCommand("nbri_ehr", "ProtocolAmendment");
+        update.addRow(Map.of("rowid", amendment.get("rowid"), "date", date.format(_dateFormat)));
+        update.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    private void deleteAmendment(Map<String, Object> amendment) throws IOException, CommandException
+    {
+        DeleteRowsCommand delete = new DeleteRowsCommand("nbri_ehr", "ProtocolAmendment");
+        delete.addRow(Map.of("rowid", amendment.get("rowid")));
+        delete.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    private void insertCounts(String protocol, String amendmentId, String... species) throws IOException, CommandException
+    {
+        InsertRowsCommand insert = new InsertRowsCommand("ehr", "protocol_counts");
+        for (String s : species)
+            insert.addRow(Map.of("protocol", protocol, "amendmentId", amendmentId, "species", s, "allowed", 5));
+        insert.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    @Test
+    public void testProtocolAmendmentFormSeedsCounts() throws Exception
+    {
+        String protocol = "AMENDSEED-01";
+        LocalDate approve = LocalDate.now().minusYears(1);
+        LocalDate end = approve.plusYears(3);
+        LocalDate effective = LocalDate.now().minusDays(1);
+        insertProtocol(protocol, approve, end);
+        insertAmendment(protocol, approve, null);
+
+        InsertRowsCommand insertCounts = new InsertRowsCommand("ehr", "protocol_counts");
+        String originalId = (String) getAmendments(protocol).get(0).get("objectid");
+        insertCounts.addRow(Map.of("protocol", protocol, "amendmentId", originalId, "species", "CAP", "allowed", 3));
+        insertCounts.addRow(Map.of("protocol", protocol, "amendmentId", originalId, "species", "MMU", "allowed", 8));
+        insertCounts.execute(getApiHelper().getConnection(), getContainerPath());
+
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Protocol Amendment"));
+        lockForm();
+
+        log("Verifying choosing a protocol seeds the grid with the counts in effect");
+        _helper.getExt4FieldForFormSection("Protocol Amendment", "IACUC Protocol").setValue(protocol);
+        Ext4GridRef counts = _helper.getExt4GridForFormSection("Animals Allowed Per Species");
+        counts.waitForRowCount(2);
+        assertEquals("Wrong species seeded first", "CAP", counts.getFieldValue(1, "species"));
+        assertEquals("Wrong count seeded for CAP", 3, ((Number) counts.getFieldValue(1, "allowed")).intValue());
+        assertEquals("Wrong species seeded second", "MMU", counts.getFieldValue(2, "species"));
+        assertEquals("Wrong count seeded for MMU", 8, ((Number) counts.getFieldValue(2, "allowed")).intValue());
+
+        counts.setGridCell(2, "allowed", "10");
+        _helper.getExt4FieldForFormSection("Protocol Amendment", "Effective Date").setValue(effective.format(_dateFormat));
+        submitForm("Submit Final", "Finalize");
+
+        log("Verifying the amendment was saved with its counts and superseded amendment 0");
+        Map<Integer, Map<String, Object>> amendments = getAmendments(protocol);
+        assertAmendmentWindow(amendments, 0, approve, effective.minusDays(1));
+        assertAmendmentWindow(amendments, 1, effective, end);
+        assertCounts(amendments.get(1), Map.of("CAP", 3, "MMU", 10));
+    }
+
+    private interface ApiCall
+    {
+        void run() throws IOException, CommandException;
+    }
+
+    private void assertRejected(String expectedMessage, ApiCall call)
+    {
+        try
+        {
+            call.run();
+            Assert.fail("Save should have been rejected with: " + expectedMessage);
+        }
+        catch (IOException | CommandException e)
+        {
+            Assert.assertTrue("Unexpected failure, expected \"" + expectedMessage + "\": " + e.getMessage(),
+                    e.getMessage() != null && e.getMessage().contains(expectedMessage));
+        }
+    }
+
+    private Ext4FieldRef getProtocolFormField(String name)
+    {
+        return _ext4Helper.queryOne("panel[title='Protocol'] [name='" + name + "']", Ext4FieldRef.class);
+    }
+
+    // DataBind copies a field into its record only after a 100ms buffer, and a record update landing first resets the field to the record's old value
+    private void setProtocolFormValue(Ext4FieldRef field, Object value)
+    {
+        Supplier<Object> recordValue = () -> field.getFnEval("var r = this.up('form').getForm().getRecord(); return r ? r.get(this.getName()) : null;");
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            field.setValue(value);
+            if (waitFor(() -> value.equals(recordValue.get()), 2000))
+                return;
+        }
+        assertEquals("Protocol form did not keep " + field.getFnEval("return this.getName();"), value, recordValue.get());
+    }
+
+    private Object getInvestigatorRowId(String lastName) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("ehr", "investigators");
+        select.setColumns(List.of("rowid"));
+        select.addFilter(new Filter("lastName", lastName));
+        return select.execute(getApiHelper().getConnection(), getContainerPath()).getRows().get(0).get("rowid");
+    }
+
+    private void insertProtocol(String protocol, LocalDate approve, LocalDate enddate) throws IOException, CommandException
+    {
+        InsertRowsCommand insert = new InsertRowsCommand("ehr", "protocol");
+        insert.addRow(Map.of("protocol", protocol, "title", protocol, "approve", approve.format(_dateFormat), "enddate", enddate.format(_dateFormat)));
+        insert.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    private void updateProtocolEnddate(String protocol, LocalDate enddate) throws IOException, CommandException
+    {
+        UpdateRowsCommand update = new UpdateRowsCommand("ehr", "protocol");
+        update.addRow(Map.of("protocol", protocol, "enddate", enddate.format(_dateFormat)));
+        update.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    /** A null end date leaves it to the server. */
+    private void insertAmendment(String protocol, LocalDate date, @Nullable LocalDate enddate) throws IOException, CommandException
+    {
+        Map<String, Object> row = new HashMap<>(Map.of("protocol", protocol, "date", date.format(_dateFormat)));
+        if (enddate != null)
+            row.put("enddate", enddate.format(_dateFormat));
+
+        InsertRowsCommand insert = new InsertRowsCommand("nbri_ehr", "ProtocolAmendment");
+        insert.addRow(row);
+        insert.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    private void updateAmendmentEnddate(Map<String, Object> amendment, LocalDate enddate) throws IOException, CommandException
+    {
+        UpdateRowsCommand update = new UpdateRowsCommand("nbri_ehr", "ProtocolAmendment");
+        update.addRow(Map.of("rowid", amendment.get("rowid"), "enddate", enddate.format(_dateFormat)));
+        update.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    /** A protocol's amendments, keyed by amendment number. */
+    private Map<Integer, Map<String, Object>> getAmendments(String protocol) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("nbri_ehr", "ProtocolAmendment");
+        select.setColumns(List.of("rowid", "objectid", "amendmentNumber", "date", "enddate"));
+        select.addFilter(new Filter("protocol", protocol));
+
+        Map<Integer, Map<String, Object>> amendments = new HashMap<>();
+        for (Map<String, Object> row : select.execute(getApiHelper().getConnection(), getContainerPath()).getRows())
+            amendments.put(((Number) row.get("amendmentNumber")).intValue(), row);
+
+        return amendments;
+    }
+
+    private void assertAmendmentWindow(Map<Integer, Map<String, Object>> amendments, int number, LocalDate date, LocalDate enddate)
+    {
+        Map<String, Object> amendment = amendments.get(number);
+        assertNotNull("No amendment " + number, amendment);
+        assertEquals("Wrong effective date on amendment " + number, date.format(_dateFormat), toDay(amendment.get("date")));
+        assertEquals("Wrong end date on amendment " + number, enddate.format(_dateFormat), toDay(amendment.get("enddate")));
+    }
+
+    private void assertCounts(Map<String, Object> amendment, Map<String, Integer> expected) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("ehr", "protocol_counts");
+        select.setColumns(List.of("species", "allowed"));
+        select.addFilter(new Filter("amendmentId", amendment.get("objectid")));
+
+        Map<String, Integer> counts = new HashMap<>();
+        for (Map<String, Object> row : select.execute(getApiHelper().getConnection(), getContainerPath()).getRows())
+            counts.put((String) row.get("species"), ((Number) row.get("allowed")).intValue());
+
+        assertEquals("Wrong counts on amendment " + amendment.get("amendmentNumber"), expected, counts);
+    }
+
+    @Test
+    public void testProtocolAssignmentValidation() throws Exception
+    {
+        String limited = "PALIMIT-01";
+        String batch = "PABATCH-01";
+        String amended = "PAAMEND-01";
+        String expired = "PAEXPIRED-01";
+        String expiring = "PAEXPIRING-01";
+        String open = "PAOPEN-01";
+        String uncounted = "PAUNCOUNTED-01";
+        String unamended = "PAUNAMENDED-01";
+        String late = "PALATE-01";
+        String[] animals = {"PAV0001", "PAV0002", "PAV0003", "PAV0004", "PAV0005", "PAV0006", "PAV0007", "PAV0008", "PAV0009", "PAV0010", "PAV0011"};
+        String otherSpecies = "PAV0012";
+        LocalDate today = LocalDate.now();
+        createAnimals("MMU", animals);
+        createAnimals("MNE", otherSpecies);
+
+        createLimitedProtocol(limited, today.minusYears(1), today.plusYears(1), "MMU", 2);
+        createLimitedProtocol(batch, today.minusYears(1), today.plusYears(1), "MMU", 1);
+        insertProtocol(expired, today.minusYears(2), today.minusDays(30));
+        createLimitedProtocol(expiring, today.minusYears(2), today.plusYears(1), "MMU", 10);
+        createLimitedProtocol(open, today.minusYears(1), today.plusYears(1), "MMU", 10);
+        insertProtocol(uncounted, today.minusYears(1), today.plusYears(1));
+        insertAmendment(uncounted, today.minusYears(1), null);
+        insertProtocol(unamended, today.minusYears(1), today.plusYears(1));
+        createLimitedProtocol(late, today.minusMonths(6), today.plusYears(1), "MMU", 10);
+
+        log("Verifying a species the protocol does not list is refused on Submit Final");
+        assertFieldError(validateOnly(protocolAssignmentInsert(open, today, EHRQCState.IN_PROGRESS, otherSpecies)), "protocol", "WARN", notApproved(open, "Pig-Tailed Macaque"));
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(open, today, EHRQCState.COMPLETED, otherSpecies)), "protocol", "ERROR", notApproved(open, "Pig-Tailed Macaque"));
+
+        log("Verifying a protocol with no counts, or no amendment, approves no animals");
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(uncounted, today, EHRQCState.COMPLETED, animals[0])), "protocol", "ERROR", notApproved(uncounted, "Rhesus Macaque"));
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(unamended, today, EHRQCState.COMPLETED, animals[0])), "protocol", "ERROR", notApproved(unamended, "Rhesus Macaque"));
+
+        log("Verifying an assignment dated before the protocol's first amendment is refused");
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(late, today.minusYears(1), EHRQCState.COMPLETED, animals[0])), "protocol", "ERROR", notApproved(late, "Rhesus Macaque"));
+
+        log("Verifying an expired protocol is refused, draft or final");
+        assertFieldError(validateOnly(protocolAssignmentInsert(expired, today, EHRQCState.IN_PROGRESS, animals[0])), "protocol", "ERROR", "Protocol " + expired + " expired on ");
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(expired, today, EHRQCState.COMPLETED, animals[0])), "protocol", "ERROR", "Protocol " + expired + " expired on ");
+
+        log("Verifying saved drafts do not count against the limit");
+        assignToProtocol(limited, today, EHRQCState.IN_PROGRESS, animals[0], animals[1], animals[2]);
+        assignToProtocol(limited, today, EHRQCState.COMPLETED, animals[3], animals[4]);
+
+        log("Verifying a full protocol warns on another draft and refuses another final assignment");
+        String full = overLimit(limited, "Rhesus Macaque", 3, 2, 0);
+        assertFieldError(validateOnly(protocolAssignmentInsert(limited, today, EHRQCState.IN_PROGRESS, animals[5])), "protocol", "WARN", full);
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(limited, today, EHRQCState.COMPLETED, animals[5])), "protocol", "ERROR", full);
+
+        log("Verifying finalizing a draft past the limit is refused");
+        Map<String, Object> finalized = new HashMap<>(protocolAssignmentRow(animals[0], limited, today));
+        finalized.put("QCStateLabel", EHRQCState.COMPLETED.label);
+        assertFieldError(saveExpectingError(prepareUpdate("protocolAssignment", finalized)), "protocol", "ERROR", full);
+
+        log("Verifying a completed assignment cannot be moved onto a full protocol");
+        assignToProtocol(open, today, EHRQCState.COMPLETED, animals[6]);
+        Map<String, Object> moved = new HashMap<>(protocolAssignmentRow(animals[6], open, today));
+        moved.put("protocol", limited);
+        assertFieldError(saveExpectingError(prepareUpdate("protocolAssignment", moved)), "protocol", "ERROR", full);
+        assertEquals("A refused move should leave the assignment where it was", 1, countRows("protocolAssignment", new Filter("Id", animals[6]), new Filter("protocol", open)));
+
+        log("Verifying rows saved together count against each other, and refusing one refuses them all");
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(batch, today, EHRQCState.COMPLETED, animals[7], animals[8])), "protocol", "ERROR", overLimit(batch, "Rhesus Macaque", 2, 1, 0));
+        assertEquals("No assignment in a refused save should have been kept", 0, countRows("protocolAssignment", new Filter("protocol", batch)));
+
+        log("Verifying a backdated assignment counts against the amendment in effect on its date");
+        insertProtocol(amended, today.minusYears(1), today.plusYears(1));
+        insertAmendment(amended, today.minusYears(1), null);
+        insertAmendment(amended, today.minusMonths(3), null);
+        Map<Integer, Map<String, Object>> amendments = getAmendments(amended);
+        insertCount(amended, (String) amendments.get(0).get("objectid"), "MMU", 1);
+        insertCount(amended, (String) amendments.get(1).get("objectid"), "MMU", 5);
+        assignToProtocol(amended, today.minusMonths(6), EHRQCState.COMPLETED, animals[9]);
+        assignToProtocol(amended, today, EHRQCState.COMPLETED, animals[10]);
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(amended, today.minusMonths(5), EHRQCState.COMPLETED, animals[7])), "protocol", "ERROR", overLimit(amended, "Rhesus Macaque", 2, 1, 0));
+
+        log("Verifying a completed assignment cannot be redated into a full amendment");
+        Map<String, Object> backdated = new HashMap<>(protocolAssignmentRow(animals[10], amended, today));
+        backdated.put("date", today.minusMonths(5).format(_dateFormat));
+        assertFieldError(saveExpectingError(prepareUpdate("protocolAssignment", backdated)), "protocol", "ERROR", overLimit(amended, "Rhesus Macaque", 2, 1, 0));
+
+        log("Verifying an assignment on a protocol that has since expired can still be edited, but not redated past the expiry");
+        LocalDate assigned = today.minusYears(1);
+        assignToProtocol(expiring, assigned, EHRQCState.COMPLETED, animals[8]);
+        updateProtocolEnddate(expiring, today.minusDays(30));
+        Map<String, Object> edited = new HashMap<>(protocolAssignmentRow(animals[8], expiring, assigned));
+        edited.put("remark", "Edited after the protocol expired");
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), prepareUpdate("protocolAssignment", edited), getExtraContext());
+        edited.put("date", today.format(_dateFormat));
+        assertFieldError(validateOnly(prepareUpdate("protocolAssignment", edited)), "protocol", "ERROR", "Protocol " + expiring + " expired on ");
+
+        log("Verifying an animal already counted can still be edited once an amendment puts the protocol over its limit");
+        insertAmendment(limited, today.minusMonths(1), null);
+        insertCount(limited, (String) getAmendments(limited).get(1).get("objectid"), "MMU", 1);
+        Map<String, Object> redated = new HashMap<>(protocolAssignmentRow(animals[3], limited, today));
+        redated.put("date", today.minusDays(1).format(_dateFormat));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), prepareUpdate("protocolAssignment", redated), getExtraContext());
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(limited, today, EHRQCState.COMPLETED, animals[5])), "protocol", "ERROR", overLimit(limited, "Rhesus Macaque", 3, 1, 1));
+
+        log("Verifying an animal that leaves a full protocol and comes back is counted once");
+        endAssignment(animals[3], limited, today.minusDays(1), today);
+        endAssignment(animals[4], limited, today, today);
+        assignToProtocol(open, today, EHRQCState.COMPLETED, animals[4]);
+        endAssignment(animals[4], open, today, today);
+        assignToProtocol(limited, today, EHRQCState.COMPLETED, animals[3], animals[4]);
+        assertEquals("Each returning animal should have two assignments to " + limited, 4, countRows("protocolAssignment", new Filter("Id", animals[3] + ";" + animals[4], Filter.Operator.IN), new Filter("protocol", limited)));
+        SelectRowsCommand totals = new SelectRowsCommand("ehr", "protocolTotalAnimalsBySpecies");
+        totals.addFilter(new Filter("protocol", limited));
+        totals.addFilter(new Filter("species", "MMU"));
+        List<Map<String, Object>> totalRows = totals.execute(getApiHelper().getConnection(), getContainerPath()).getRows();
+        assertEquals("Returning animals should not be counted twice", 2, ((Number) totalRows.get(0).get("TotalAnimals")).intValue());
+        assertFieldError(saveExpectingError(protocolAssignmentInsert(limited, today, EHRQCState.COMPLETED, animals[5])), "protocol", "ERROR", overLimit(limited, "Rhesus Macaque", 3, 1, 1));
+    }
+
+    private void endAssignment(String animalId, String protocol, LocalDate date, LocalDate enddate) throws IOException, CommandException
+    {
+        Map<String, Object> ended = new HashMap<>(protocolAssignmentRow(animalId, protocol, date));
+        ended.put("enddate", enddate.format(_dateFormat));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), prepareUpdate("protocolAssignment", ended), getExtraContext());
+    }
+
+    @Test
+    public void testArrivalProtocolValidation() throws Exception
+    {
+        String limited = "ARRLIMIT-01";
+        String batch = "ARRBATCH-01";
+        String expired = "ARREXPIRED-01";
+        String resident = "ARRRES0001";
+        String returning = "ARRRET0001";
+        String[] arriving = {"ARRV0001", "ARRV0002"};
+        LocalDate today = LocalDate.now();
+        getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", StringUtils.join(arriving, ";"), Filter.Operator.IN));
+        createAnimals("MNE", resident, returning);
+
+        createLimitedProtocol(limited, today.minusYears(1), today.plusYears(1), "MNE", 1);
+        createLimitedProtocol(batch, today.minusYears(1), today.plusYears(1), "MNE", 1);
+        insertProtocol(expired, today.minusYears(2), today.minusDays(30));
+        assignToProtocol(limited, today, EHRQCState.COMPLETED, resident);
+
+        log("Verifying an expired arrival protocol is refused");
+        assertFieldError(validateOnly(arrivalInsert(expired, EHRQCState.IN_PROGRESS, false, "MNE", arriving[0])), "arrivalProtocol", "ERROR", "Protocol " + expired + " expired on ");
+
+        log("Verifying a new animal is counted under the species entered on the arrival");
+        String full = overLimit(limited, "Pig-Tailed Macaque", 2, 1, 0);
+        assertFieldError(validateOnly(arrivalInsert(limited, EHRQCState.IN_PROGRESS, false, "MNE", arriving[0])), "arrivalProtocol", "WARN", full);
+        assertFieldError(saveExpectingError(arrivalInsert(limited, EHRQCState.COMPLETED, false, "MNE", arriving[0])), "arrivalProtocol", "ERROR", full);
+        for (String query : List.of("arrival", "demographics", "protocolAssignment"))
+            assertEquals("A refused arrival should leave no " + query + " row", 0, countRows(query, new Filter("Id", arriving[0])));
+
+        log("Verifying animals arriving together count against each other");
+        assertFieldError(validateOnly(arrivalInsert(batch, EHRQCState.IN_PROGRESS, false, "MNE", arriving)), "arrivalProtocol", "WARN", overLimit(batch, "Pig-Tailed Macaque", 2, 1, 0));
+
+        log("Verifying a rearrival with no species entered is counted under the species on record");
+        assertFieldError(validateOnly(arrivalInsert(limited, EHRQCState.IN_PROGRESS, true, null, returning)), "arrivalProtocol", "WARN", full);
+    }
+
+    @Test
+    public void testBirthProtocolValidation() throws Exception
+    {
+        String limited = "BIRTHLIMIT-01";
+        String expired = "BIRTHEXPIRED-01";
+        String damId = "BPDAM0001";
+        String sireId = "BPSIRE0001";
+        String newborn = "BPV0001";
+        LocalDate today = LocalDate.now();
+        getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", newborn));
+        createBreedingPair(damId, sireId, "CAP");
+
+        // only the dam's species has a count row, so the newborn is checked against it only if it inherits that species
+        createLimitedProtocol(limited, today.minusYears(1), today.plusYears(1), "CAP", 1);
+        insertProtocol(expired, today.minusYears(2), today.minusDays(30));
+        assignToProtocol(limited, today, EHRQCState.COMPLETED, damId);
+
+        log("Verifying an expired birth protocol is refused");
+        assertFieldError(validateOnly(birthInsert(expired, EHRQCState.IN_PROGRESS, newborn, damId)), "birthProtocol", "ERROR", "Protocol " + expired + " expired on ");
+
+        log("Verifying a newborn with no species entered is counted under its dam's species");
+        String full = overLimit(limited, "Brown-Tufted Capuchin", 2, 1, 0);
+        assertFieldError(validateOnly(birthInsert(limited, EHRQCState.IN_PROGRESS, newborn, damId)), "birthProtocol", "WARN", full);
+        assertFieldError(saveExpectingError(birthInsert(limited, EHRQCState.COMPLETED, newborn, damId)), "birthProtocol", "ERROR", full);
+        assertEquals("A refused birth should leave no birth row", 0, countRows("birth", new Filter("Id", newborn)));
+    }
+
+    /** A protocol with a single amendment from its approval date, approved for the given number of one species. */
+    private void createLimitedProtocol(String protocol, LocalDate approve, LocalDate enddate, String species, int allowed) throws IOException, CommandException
+    {
+        insertProtocol(protocol, approve, enddate);
+        insertAmendment(protocol, approve, null);
+        insertCount(protocol, (String) getAmendments(protocol).get(0).get("objectid"), species, allowed);
+    }
+
+    private void insertCount(String protocol, String amendmentId, String species, int allowed) throws IOException, CommandException
+    {
+        InsertRowsCommand insert = new InsertRowsCommand("ehr", "protocol_counts");
+        insert.addRow(Map.of("protocol", protocol, "amendmentId", amendmentId, "species", species, "allowed", allowed));
+        insert.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    // the message goes on to name the assignment date, in the server's date format
+    private static String notApproved(String protocol, String species)
+    {
+        return "Protocol " + protocol + " is not approved for " + species + " on ";
+    }
+
+    private static String overLimit(String protocol, String species, int used, int allowed, int amendment)
+    {
+        return "Protocol " + protocol + ", " + species + ": " + used + " of " + allowed + " allowed under amendment " + amendment + ".";
+    }
+
+    /** Creates living animals of one species, replacing any left behind by an earlier run. */
+    private void createAnimals(String species, String... animalIds) throws Exception
+    {
+        String[] fields = new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "objectid", "performedby"};
+        Object[][] data = Arrays.stream(animalIds)
+                .map(id -> new Object[]{id, species, (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004})
+                .toArray(Object[][]::new);
+        SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
+        getApiHelper().deleteAllRecords("study", "demographics", new Filter("Id", StringUtils.join(animalIds, ";"), Filter.Operator.IN));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), insertCommand, getExtraContext());
+    }
+
+    private void assignToProtocol(String protocol, LocalDate date, EHRQCState qcState, String... animalIds)
+    {
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), protocolAssignmentInsert(protocol, date, qcState, animalIds), getExtraContext());
+    }
+
+    private SimplePostCommand protocolAssignmentInsert(String protocol, LocalDate date, EHRQCState qcState, String... animalIds)
+    {
+        Object[][] data = Arrays.stream(animalIds)
+                .map(id -> new Object[]{id, date.format(_dateFormat), protocol, qcState.label, 1004})
+                .toArray(Object[][]::new);
+        return getApiHelper().prepareInsertCommand("study", "protocolAssignment", "lsid", new String[]{"Id", "date", "protocol", "QCStateLabel", "performedby"}, data);
+    }
+
+    // A committing arrival or birth opens its assignments, which need a task id; species is left out when null
+    private SimplePostCommand arrivalInsert(String protocol, EHRQCState qcState, boolean rearrival, @Nullable String species, String... animalIds)
+    {
+        Object[][] data = Arrays.stream(animalIds)
+                .map(id -> new Object[]{id, LocalDate.now().format(_dateFormat), species, getFemale(), protocol, rearrival, qcState.label, 1004, UUID.randomUUID().toString()})
+                .toArray(Object[][]::new);
+        return getApiHelper().prepareInsertCommand("study", "arrival", "lsid", new String[]{"Id", "date", "Id/demographics/species", "Id/demographics/gender", "arrivalProtocol", "rearrival", "QCStateLabel", "performedby", "taskid"}, data);
+    }
+
+    private SimplePostCommand birthInsert(String protocol, EHRQCState qcState, String animalId, String damId)
+    {
+        Object[][] data = {{animalId, LocalDate.now().format(_dateFormat), damId, getFemale(), protocol, qcState.label, 1004, UUID.randomUUID().toString()}};
+        return getApiHelper().prepareInsertCommand("study", "birth", "lsid", new String[]{"Id", "date", "Id/demographics/dam", "Id/demographics/gender", "birthProtocol", "QCStateLabel", "performedby", "taskid"}, data);
+    }
+
+    /** The values an update of the animal's assignment to this protocol starts from, keyed by lsid. */
+    private Map<String, Object> protocolAssignmentRow(String animalId, String protocol, LocalDate date) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("study", "protocolAssignment");
+        select.setColumns(List.of("lsid"));
+        select.addFilter(new Filter("Id", animalId));
+        select.addFilter(new Filter("protocol", protocol));
+        List<Map<String, Object>> rows = select.execute(getApiHelper().getConnection(), getContainerPath()).getRows();
+        assertEquals("Expected one assignment of " + animalId + " to " + protocol, 1, rows.size());
+
+        return Map.of("lsid", rows.get(0).get("lsid"), "Id", animalId, "date", date.format(_dateFormat), "protocol", protocol, "performedby", 1004);
+    }
+
+    private SimplePostCommand prepareUpdate(String queryName, Map<String, Object> values)
+    {
+        String[] fields = values.keySet().toArray(new String[0]);
+        Object[] row = Arrays.stream(fields).map(values::get).toArray();
+        return getApiHelper().prepareUpdateCommand("study", queryName, "lsid", fields, new Object[][]{row}, null);
+    }
+
+    private int countRows(String queryName, Filter... filters) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("study", queryName);
+        select.setColumns(List.of("lsid"));
+        for (Filter filter : filters)
+            select.addFilter(filter);
+        return select.execute(getApiHelper().getConnection(), getContainerPath()).getRowCount().intValue();
+    }
+
+    /** Errors from a validate-only save, which reports every severity and commits nothing, as the form's own checks do. */
+    private Map<String, List<String>> validateOnly(SimplePostCommand command)
+    {
+        JSONObject extraContext = getExtraContext();
+        extraContext.put("validateOnly", true);
+        return getApiHelper().extractErrors(getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), command, extraContext).getProperties());
+    }
+
+    /** Errors from a committing save, where only an ERROR survives to refuse it. */
+    private Map<String, List<String>> saveExpectingError(SimplePostCommand command)
+    {
+        return getApiHelper().extractErrors(getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), command, getExtraContext()).getProperties());
+    }
+
+    /** Asserts the field carries exactly one error, of this severity, starting with this message. */
+    private void assertFieldError(Map<String, List<String>> errors, String field, String severity, String messageStart)
+    {
+        List<String> fieldErrors = errors.getOrDefault(field, List.of());
+        Assert.assertTrue("Expected one " + severity + " on " + field + " starting \"" + messageStart + "\", got: " + errors,
+                fieldErrors.size() == 1 && fieldErrors.get(0).startsWith(severity + ": " + messageStart));
+    }
+
+    @Test
     public void testBirthForm() throws Exception
     {
         String bornAnimal = "80801";
@@ -1026,7 +1693,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         String damSpeciesCode = "CAP";
         String damSpecies = "Brown-Tufted Capuchin";
         String conceptId = "TESTCONCEPT1";
-        String breedingType = "Time-Mated";
+        String pregnancyType = "Research Breeding";
         int damGeneration = 2;
         // demographics.socialCode holds an ehr_lookups.social_code code; the grids display its title
         String socialCode = "Mother-rearing (for indoors)";
@@ -1074,7 +1741,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         births.setGridCell(1, "Id", bornAnimal);
         births.setGridCell(1, "cage", CAGE_IN_R2);
         births.setGridCell(1, "Id/demographics/gender", "Female");
-        births.setGridCell(1, "breedingType", breedingType);
+        births.setGridCell(1, "pregnancyType", pregnancyType);
         births.setGridCell(1, "Id/demographics/socialCode", socialCode);
 
         log("Verifying Social Code is required");
@@ -1114,7 +1781,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         Assert.assertEquals("Invalid Birth record", Arrays.asList(bornAnimal), table.getRowDataAsText(0, "Id"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList(CAGE_IN_R2), table.getRowDataAsText(0, "cage"));
         Assert.assertEquals("Invalid Birth record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
-        Assert.assertEquals("Invalid Birth record", Arrays.asList(breedingType), table.getRowDataAsText(0, "breedingType"));
+        Assert.assertEquals("Invalid Birth record", Arrays.asList(pregnancyType), table.getRowDataAsText(0, "pregnancyType"));
 
         log("Verifying the dam and sire of the conception reached demographics");
         goToSchemaBrowser();
@@ -1278,14 +1945,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         Ext4GridRef births = _helper.getExt4GridForFormSection("Births");
         startWithConception(births, firstConcept, 1);
         fillBirthRow(births, 1, bornAnimal, now.minusDays(1), socialCode, animalGroup, CAGE_IN_R1);
-        births.setGridCell(1, "breedingType", "Time-Mated");
+        births.setGridCell(1, "pregnancyType", "Research Breeding");
 
         // the codes behind these lookups are not spelled out in the test, so remember what the row carries and
         // compare afterwards rather than asserting against a literal
         Object dateBefore = births.getFieldValue(1, "date");
         Object genderBefore = births.getFieldValue(1, "Id/demographics/gender");
         Object socialCodeBefore = births.getFieldValue(1, "Id/demographics/socialCode");
-        Object breedingTypeBefore = births.getFieldValue(1, "breedingType");
+        Object pregnancyTypeBefore = births.getFieldValue(1, "pregnancyType");
         Object groupBefore = births.getFieldValue(1, "groupId");
 
         log("Opening the picker from the Conception Id cell of the existing row");
@@ -1316,7 +1983,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         assertEquals("Birth date should have been left alone", dateBefore, births.getFieldValue(1, "date"));
         assertEquals("Gender should have been left alone", genderBefore, births.getFieldValue(1, "Id/demographics/gender"));
         assertEquals("Social Code should have been left alone", socialCodeBefore, births.getFieldValue(1, "Id/demographics/socialCode"));
-        assertEquals("Breeding Type should have been left alone", breedingTypeBefore, births.getFieldValue(1, "breedingType"));
+        assertEquals("Pregnancy Type should have been left alone", pregnancyTypeBefore, births.getFieldValue(1, "pregnancyType"));
         assertEquals("Group should have been left alone", groupBefore, births.getFieldValue(1, "groupId"));
         assertEquals("Project should have been left alone", "795644", String.valueOf(births.getFieldValue(1, "project")));
         assertEquals("Protocol should have been left alone", "protocol101", births.getFieldValue(1, "birthProtocol"));
@@ -1347,6 +2014,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         // a non-live outcome, so ConceptionsByDam reports it rather than falling through to 'Live Birth'
         String result = "Fetal Death";
         String deliveryMode = "Vaginal";
+        String pregnancyType = "Research Intervention";
         LocalDateTime now = LocalDateTime.now();
 
         log("Creating conception record");
@@ -1365,6 +2033,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         outcomes.setGridCell(1, "result", result);
         outcomes.setGridCell(1, "conceptId", conceptId);
         outcomes.setGridCell(1, "type", deliveryMode);
+        outcomes.setGridCell(1, "pregnancyType", pregnancyType);
         submitForm("Submit Final", "Finalize");
 
         goToSchemaBrowser();
@@ -1374,6 +2043,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(result), table.getRowDataAsText(0, "result"));
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(conceptId), table.getRowDataAsText(0, "conceptId"));
         Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(deliveryMode), table.getRowDataAsText(0, "type"));
+        Assert.assertEquals("Invalid Pregnancy Outcome record", Arrays.asList(pregnancyType), table.getRowDataAsText(0, "pregnancyType"));
 
         log("Verifying conception outcome in ConceptionsByDam");
         goToSchemaBrowser();
@@ -2095,11 +2765,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         goToSchemaBrowser();
         log("Creating animals");
         getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "birth", "lsid",
-                new String[]{"Id", "Date", "gender", "QCStateLabel", "performedby"},
+                new String[]{"Id", "Date", "Id/demographics/species", "gender", "QCStateLabel", "performedby"},
                 new Object[][]{
-                        {aliveAnimalId, LocalDateTime.now().minusDays(30), getFemale(), "Completed", 1004},
-                        {deadAnimalId, LocalDateTime.now().minusDays(30), getMale(), "Completed", 1004},
-                        {departedAnimalId, LocalDateTime.now().minusDays(30), getMale(), "Completed", 1004},
+                        {aliveAnimalId, LocalDateTime.now().minusDays(30), "MMU", getFemale(), "Completed", 1004},
+                        {deadAnimalId, LocalDateTime.now().minusDays(30), "MMU", getMale(), "Completed", 1004},
+                        {departedAnimalId, LocalDateTime.now().minusDays(30), "MMU", getMale(), "Completed", 1004},
                 }
         ), getExtraContext());
 
@@ -2135,6 +2805,80 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         if (roleClass != null)
             _permissionsHelper.setUserPermissions(userEmail, roleClass);
         _permissionsHelper.addUserToProjGroup(userEmail, getProjectName(), groupName);
+    }
+
+    @Test
+    public void testProtocolExpirationNotification() throws IOException, CommandException
+    {
+        String noneExpiring = "No protocols expiring in the next 30 days";
+        String expiringToday = "TESTEXPTODAY";
+        String expiringSoon = "TESTEXPSOON";
+        String expired = "TESTEXPIRED";
+        String expiringLater = "TESTEXPLATER";
+        LocalDate today = LocalDate.now();
+
+        enableNotification(PROTOCOL_EXPIRATION_NOTIFICATION);
+
+        log("Verifying the notification reports when no protocols are expiring");
+        assertEquals("Protocols were already expiring before this test set any up", List.of(), getExpiringProtocols().keySet().stream().toList());
+        String body = sendProtocolExpirationNotification();
+        Assert.assertTrue("Expected the no-protocols message: " + body, body.contains(noneExpiring));
+
+        log("Verifying the notification lists the protocols expiring in the next 30 days");
+        insertProtocol(expiringToday, today.minusYears(3), today);
+        insertProtocol(expiringSoon, today.minusYears(3).plusDays(10), today.plusDays(10));
+        insertProtocol(expired, today.minusYears(3).minusDays(1), today.minusDays(1));
+        insertProtocol(expiringLater, today.minusYears(3).plusDays(45), today.plusDays(45));
+
+        Map<String, Integer> expiring = getExpiringProtocols();
+        assertEquals("Wrong protocols expiring in the next 30 days", List.of(expiringToday, expiringSoon), expiring.keySet().stream().toList());
+        assertEquals("Wrong days until expiration for " + expiringToday, Integer.valueOf(0), expiring.get(expiringToday));
+        assertEquals("Wrong days until expiration for " + expiringSoon, Integer.valueOf(10), expiring.get(expiringSoon));
+
+        body = sendProtocolExpirationNotification();
+        Assert.assertFalse("Notification reported no protocols despite expiring ones: " + body, body.contains(noneExpiring));
+        for (String header : List.of("Protocol", "Title", "PI", "Expiration Date", "Days Until Expiration", "Active Animals"))
+            Assert.assertTrue("Notification table is missing the " + header + " column: " + body, body.contains(header));
+        Assert.assertTrue("Notification is missing " + expiringToday + ": " + body, body.contains(expiringToday));
+        Assert.assertTrue("Notification is missing " + expiringSoon + ": " + body, body.contains(expiringSoon));
+        Assert.assertTrue("Protocols should be listed soonest first: " + body, body.indexOf(expiringToday) < body.indexOf(expiringSoon));
+        Assert.assertFalse("Notification listed an already expired protocol: " + body, body.contains(expired));
+        Assert.assertFalse("Notification listed a protocol expiring after 30 days: " + body, body.contains(expiringLater));
+        for (String protocol : List.of(expiringToday, expiringSoon))
+        {
+            String href = Locator.linkWithText(protocol).findElement(getDriver()).getAttribute("href");
+            Assert.assertTrue("Protocol " + protocol + " should link to its details page: " + href, href.endsWith("/ehr-protocolDetails.view?protocol=" + protocol));
+        }
+        String activeProtocolsHref = Locator.linkWithText("All Active Protocols").findElement(getDriver()).getAttribute("href");
+        Assert.assertTrue("All Active Protocols should link to the Active Protocols view: " + activeProtocolsHref,
+                activeProtocolsHref.endsWith("/query-executeQuery.view?schemaName=ehr&query.queryName=protocol&query.viewName=Active%20Protocols"));
+    }
+
+    /** Protocol to days until expiration, soonest first, as the notification's query reports them. */
+    private Map<String, Integer> getExpiringProtocols() throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("ehr", "protocolExpirationNotification");
+        select.setColumns(List.of("protocol", "daysUntilExpiration"));
+        select.setSorts(List.of(new Sort("expirationDate"), new Sort("protocol")));
+        Map<String, Integer> ret = new LinkedHashMap<>();
+        for (Map<String, Object> row : select.execute(getApiHelper().getConnection(), getContainerPath()).getRows())
+            ret.put((String) row.get("protocol"), ((Number) row.get("daysUntilExpiration")).intValue());
+
+        return ret;
+    }
+
+    /** Sends the notification now and returns the body Dumbster recorded for it. */
+    private String sendProtocolExpirationNotification()
+    {
+        // re-enabling the recorder clears the messages already captured, so only this send is found
+        enableEmailRecorder();
+        NotificationAdminPage.beginAt(this, getContainerPath()).clickManuallyTriggerEmail(PROTOCOL_EXPIRATION_NOTIFICATION);
+
+        goToModule("Dumbster");
+        waitForTextWithRefresh(WAIT_FOR_PAGE + WAIT_FOR_JAVASCRIPT, PROTOCOL_EXPIRATION_SUBJECT);
+        EmailRecordTable notifications = new EmailRecordTable(this);
+        notifications.clickMessage(notifications.getMessageWithSubjectContaining(PROTOCOL_EXPIRATION_SUBJECT));
+        return notifications.getMessageWithSubjectContaining(PROTOCOL_EXPIRATION_SUBJECT).getBody();
     }
 
     @Test
@@ -2854,7 +3598,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         Object[][] data = new Object[animalIds.length][];
         for (int i = 0; i < animalIds.length; i++)
         {
-            data[i] = new Object[]{animalIds[i], "Rhesus", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004};
+            data[i] = new Object[]{animalIds[i], "MMU", (new Date()).toString(), getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004};
         }
 
         SimplePostCommand insertCommand = getApiHelper().prepareInsertCommand("study", "demographics", "lsid", fields, data);
@@ -3184,7 +3928,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         List<String> expectedOrder = List.of("Id", "date", "conceptId", "Id/demographics/species", "Id/demographics/gender",
                 "Id/demographics/dam", "Id/demographics/sire", "cage", "Id/demographics/socialCode",
                 "Id/demographics/generation", "project",
-                "birthProtocol", "groupId", "type", "breedingType", "remark", "performedby");
+                "birthProtocol", "groupId", "type", "pregnancyType", "remark", "performedby");
 
         int previousIdx = 0;
         String previousCol = null;

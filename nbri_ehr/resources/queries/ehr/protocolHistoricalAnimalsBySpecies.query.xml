@@ -1,0 +1,42 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="protocolHistoricalAnimalsBySpecies" tableDbType="NOT_IN_DB">
+                <tableTitle>Historical Animals Assigned To Each Protocol, By Species</tableTitle>
+                <columns>
+                    <column columnName="protocol">
+                        <isKeyField>true</isKeyField>
+                        <fk>
+                            <fkDbSchema>ehr</fkDbSchema>
+                            <fkTable>protocol</fkTable>
+                            <fkColumnName>protocol</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="species">
+                        <isKeyField>true</isKeyField>
+                        <columnTitle>Species</columnTitle>
+                        <fk>
+                            <fkDbSchema>ehr_lookups</fkDbSchema>
+                            <fkTable>species_codes</fkTable>
+                            <fkColumnName>code</fkColumnName>
+                            <fkDisplayColumnName>common_name</fkDisplayColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="totalAnimals">
+                        <columnTitle>Total Animals</columnTitle>
+                        <description>Distinct animals ever assigned to this protocol, including those since removed</description>
+                        <url>/query/executeQuery.view?schemaName=study&amp;
+                            query.queryName=protocolAssignment&amp;
+                            query.protocol~eq=${protocol}&amp;
+                            query.Id/dataset/demographics/species~eq=${species}&amp;
+                            query.sort=Id,-date&amp;
+                        </url>
+                    </column>
+                    <column columnName="animals">
+                        <columnTitle>Animals</columnTitle>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>
