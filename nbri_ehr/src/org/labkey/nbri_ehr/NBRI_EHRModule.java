@@ -62,6 +62,7 @@ import org.labkey.nbri_ehr.notification.NBRIDeathNotification;
 import org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification;
 import org.labkey.nbri_ehr.notification.NBRIPregnancyOutcomeNotification;
 import org.labkey.nbri_ehr.notification.NBRIProcedureOverdueNotification;
+import org.labkey.nbri_ehr.notification.NBRIProtocolExpirationNotification;
 import org.labkey.nbri_ehr.query.NBRI_EHRUserSchema;
 import org.labkey.nbri_ehr.security.NBRIEHRVetTechRole;
 import org.labkey.nbri_ehr.table.NBRI_EHRCustomizer;
@@ -83,7 +84,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 26.004;
+        return 26.006;
     }
 
     @Override
@@ -184,6 +185,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         ehrService.registerActionOverride("animalHistory", this, "views/animalHistory.html");
         ehrService.registerActionOverride("participantView", this, "views/participantView.html");
         ehrService.registerActionOverride("enterData", this, "views/enterData.html");
+        ehrService.registerActionOverride("protocolDetails", this, "views/protocolDetails.html");
         ehrService.registerActionOverride("dataEntryFormDetails", this, "views/dataEntryFormDetails.html");
 
         RoleManager.registerRole(new NBRIEHRVetTechRole());
@@ -199,6 +201,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         NotificationService.get().registerNotification(new NBRIProcedureOverdueNotification(this));
         NotificationService.get().registerNotification(new NBRIPregnancyOutcomeNotification(this));
         NotificationService.get().registerNotification(new NBRINecropsyRequestNotification(this));
+        NotificationService.get().registerNotification(new NBRIProtocolExpirationNotification(this));
         // TODO: register NBRINecropsyPreliminaryNotification and NBRINecropsyFinalNotification once they can carry the printable necropsy report
 
         EHRService.get().registerReportLink(EHRService.REPORT_LINK_TYPE.moreReports, "Printable Necropsy Report", this, DetailsURL.fromString("/nbri_ehr-necropsyReport.view"), "Pathology");
@@ -230,6 +233,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIMedicationTreatmentFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProjectFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProtocolFormType.class, this));
+        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRINewProtocolFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIInvestigatorsFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIPregnancyFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIWeightFormType.class, this));
@@ -248,6 +252,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRISerologyImportFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIRearrivalFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIConceptionFormType.class, this));
+        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProtocolAmendmentFormType.class, this));
     }
 
     @Override

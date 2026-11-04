@@ -15,13 +15,17 @@
  */
 package org.labkey.nbri_ehr.query;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.Mutable;
+import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.collections.CaseInsensitiveHashMap;
+import org.labkey.api.collections.CaseInsensitiveHashSet;
 import org.labkey.api.data.ColumnInfo;
 import org.labkey.api.data.CompareType;
 import org.labkey.api.data.Container;
@@ -36,6 +40,7 @@ import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.ehr.EHRDemographicsService;
 import org.labkey.api.ehr.EHRService;
+import org.labkey.api.ehr.demographics.AnimalRecord;
 import org.labkey.api.ehr.notification.AbstractEHRNotification;
 import org.labkey.api.ehr.security.EHRVeterinarianPermission;
 import org.labkey.api.ldk.notification.NotificationService;
@@ -73,6 +78,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1232,6 +1238,369 @@ public class NBRI_EHRTriggerHelper
     public boolean canCloseCase()
     {
         return _container.hasPermission(_user, EHRVeterinarianPermission.class);
+    }
+
+    /** Returns an error when the protocol does not exist or has expired by the assignment date, or null when it is usable. */
+    public String verifyProtocolActive(final String protocol, final Date date)
+    {
+        Date day = toDay(date);
+        if (protocol == null || day == null)
+            return null;
+
+        TableSelector ts = new TableSelector(getTableInfo("ehr", "protocol"), PageFlowUtil.set("enddate"), new SimpleFilter(FieldKey.fromString("protocol"), protocol), null);
+        if (!ts.exists())
+            return "Unknown protocol: " + protocol;
+
+        Date enddate = toDay(ts.getObject(Date.class));
+        if (enddate != null && enddate.before(day))
+            return "Protocol " + protocol + " expired on " + _dateFormat.format(enddate);
+
+        return null;
+    }
+
+    /**
+     * Reports an assignment whose species the amendment in effect on its date does not list, or that would exceed the
+     * animals approved for its species under any amendment in effect on or after that date. The shared EHR check reaches the protocol through a
+     * project, which cannot see a protocol assignment here, so this keys on the protocol directly. Returns the
+     * messages joined with "&lt;&gt;", or null when nothing is wrong. The species is passed in, and may be carried
+     * by an in-transaction row, because an animal's demographics record may not be written yet.
+     */
+    public String verifyProtocolCountsForProtocol(final String id, final String protocol, final Date date, @NotNull final String species, @Nullable final String objectid, final List<Map<String, Object>> recordsInTransaction)
+    {
+        Date day = toDay(date);
+        if (id == null || protocol == null || day == null)
+            return null;
+
+        // An animal counts against every amendment window that ends on or after its earliest assignment. A window
+        // only fails when this row adds the animal to it: priorAssigned holds the animal's other rows of the save
+        // plus every saved row, its own saved copy included, so a redate within a window adds nothing.
+        final Map<String, Date> otherRows = new CaseInsensitiveHashMap<>();
+        final Map<String, Date> priorAssigned = new CaseInsensitiveHashMap<>();
+        final Set<String> objectidsBeingSaved = new HashSet<>();
+        if (objectid != null)
+            objectidsBeingSaved.add(objectid);
+
+        if (recordsInTransaction != null)
+        {
+            boolean selfSkipped = false;
+            for (Map<String, Object> r : recordsInTransaction)
+            {
+                // a row moved off this protocol in the same save must not leave its saved copy counted here
+                String rowObjectid = (String) r.get("objectid");
+                if (rowObjectid != null)
+                    objectidsBeingSaved.add(rowObjectid);
+
+                String rowId = (String) r.get("Id");
+                String rowProtocol = (String) r.get("protocol");
+                Date rowDay = toDay(r.get("date"));
+                if (rowId == null || rowDay == null || !protocol.equals(rowProtocol))
+                    continue;
+
+                // the list carries the row being checked, possibly without its objectid
+                if (!selfSkipped && rowId.equalsIgnoreCase(id) && rowDay.equals(day) && (rowObjectid == null || rowObjectid.equals(objectid)))
+                {
+                    selfSkipped = true;
+                    continue;
+                }
+
+                String rowSpecies = r.get("species") != null ? (String) r.get("species") : getAnimalSpecies(rowId);
+                if (!species.equals(rowSpecies))
+                    continue;
+
+                otherRows.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
+                if (rowId.equalsIgnoreCase(id))
+                    priorAssigned.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
+            }
+        }
+
+        SimpleFilter savedFilter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
+        savedFilter.addCondition(FieldKey.fromString("Id/dataset/demographics/species"), species);
+        savedFilter.addCondition(FieldKey.fromString("qcstate/publicdata"), true);
+        new TableSelector(getTableInfo("study", "protocolAssignment"), PageFlowUtil.set("Id", "date", "objectid"), savedFilter, null).forEachMap(row -> {
+            String rowId = (String) row.get("Id");
+            Date rowDay = toDay(row.get("date"));
+            if (rowId == null || rowDay == null)
+                return;
+
+            if (rowId.equalsIgnoreCase(id))
+                priorAssigned.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
+            if (!objectidsBeingSaved.contains((String) row.get("objectid")))
+                otherRows.merge(rowId, rowDay, (a, b) -> a.before(b) ? a : b);
+        });
+
+        final Date priorFirst = priorAssigned.get(id);
+        final Map<String, Date> firstAssigned = new CaseInsensitiveHashMap<>(otherRows);
+        firstAssigned.merge(id, day, (a, b) -> a.before(b) ? a : b);
+
+        // protocolCountsEffective keeps only today's amendment, so past windows have to come from the table itself
+        SimpleFilter countFilter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
+        countFilter.addCondition(FieldKey.fromString("species"), species);
+        countFilter.addCondition(FieldKey.fromString("amendmentId/objectid"), null, CompareType.NONBLANK);
+        // an open-ended amendment has no enddate to compare
+        countFilter.addClause(new SimpleFilter.OrClause(
+                new CompareType.CompareClause(FieldKey.fromString("amendmentId/enddate"), CompareType.DATE_GTE, day),
+                new CompareType.CompareClause(FieldKey.fromString("amendmentId/enddate"), CompareType.ISBLANK, null)));
+
+        TableInfo counts = getTableInfo("ehr", "protocol_counts");
+        Set<FieldKey> keys = PageFlowUtil.set(FieldKey.fromString("allowed"), FieldKey.fromString("amendmentId/amendmentNumber"), FieldKey.fromString("amendmentId/date"), FieldKey.fromString("amendmentId/enddate"));
+        final Map<FieldKey, ColumnInfo> cols = QueryService.get().getColumns(counts, keys);
+
+        final List<String> overLimit = new ArrayList<>();
+        final MutableBoolean approved = new MutableBoolean(false);
+        new TableSelector(counts, cols.values(), countFilter, new Sort("amendmentId/amendmentNumber")).forEach(object -> {
+            Results rs = new ResultsImpl(object, cols);
+            Object allowedValue = rs.getObject(FieldKey.fromString("allowed"));
+            // federal approval: no count entered approves no animals
+            int allowed = allowedValue == null ? 0 : ConvertHelper.convert(allowedValue, Integer.class);
+
+            Date windowStart = toDay(rs.getObject(FieldKey.fromString("amendmentId/date")));
+            if (allowedValue != null && windowStart != null && !windowStart.after(day))
+                approved.setTrue();
+
+            Date windowEnd = toDay(rs.getObject(FieldKey.fromString("amendmentId/enddate")));
+            // an animal already counted in this window adds nothing, even when the window is over its limit
+            boolean alreadyCounted = priorFirst != null && (windowEnd == null || !priorFirst.after(windowEnd));
+            long used = firstAssigned.values().stream().filter(d -> windowEnd == null || !d.after(windowEnd)).count();
+            if (used > allowed && !alreadyCounted)
+            {
+                overLimit.add(used + " of " + allowed + " allowed under amendment " + rs.getObject(FieldKey.fromString("amendmentId/amendmentNumber")) + ".");
+            }
+        });
+
+        if (overLimit.isEmpty() && approved.isTrue())
+            return null;
+
+        String speciesName = getSpeciesCommonName(species);
+        List<String> errors = new ArrayList<>();
+        // only the species listed on the amendment in effect on the assignment date may be assigned
+        if (approved.isFalse())
+            errors.add("Protocol " + protocol + " is not approved for " + speciesName + " on " + _dateFormat.format(day) + ".");
+        overLimit.forEach(msg -> errors.add("Protocol " + protocol + ", " + speciesName + ": " + msg));
+
+        return StringUtils.join(errors, "<>");
+    }
+
+    /** Falls back to the code for a species with no common name entered. */
+    public String getSpeciesCommonName(String code)
+    {
+        String name = new TableSelector(getTableInfo("ehr_lookups", "species_codes"), PageFlowUtil.set("common_name"), new SimpleFilter(FieldKey.fromString("code"), code), null).getObject(String.class);
+        return StringUtils.isBlank(name) ? code : name;
+    }
+
+    public @Nullable String getAnimalSpecies(String id)
+    {
+        AnimalRecord ar = EHRDemographicsService.get().getAnimal(_container, id);
+        return ar == null ? null : ar.getSpecies();
+    }
+
+    private record Amendment(int rowId, Integer number, Date date, Date enddate) {}
+
+    private List<Amendment> getAmendments(String protocol)
+    {
+        TableInfo ti = getTableInfo("nbri_ehr", "protocolAmendment");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
+
+        List<Amendment> amendments = new ArrayList<>();
+        new TableSelector(ti, PageFlowUtil.set("rowid", "amendmentNumber", "date", "enddate"), filter, new Sort("amendmentNumber")).forEachMap(row ->
+                amendments.add(new Amendment((Integer) row.get("rowid"), (Integer) row.get("amendmentNumber"), toDay(row.get("date")), toDay(row.get("enddate")))));
+
+        return amendments;
+    }
+
+    /** The highest-numbered amendment below amendmentNumber, or the latest one when amendmentNumber is null. */
+    private @Nullable Amendment getPredecessor(List<Amendment> amendments, @Nullable Integer amendmentNumber)
+    {
+        return amendments.stream()
+                .filter(a -> a.number() != null && (amendmentNumber == null || a.number() < amendmentNumber))
+                .max(Comparator.comparingInt(Amendment::number))
+                .orElse(null);
+    }
+
+    private @Nullable Date toDay(Object value)
+    {
+        Date date = ConvertHelper.convert(value, Date.class);
+        return date == null ? null : DateUtils.truncate(date, Calendar.DATE);
+    }
+
+    // a null bound leaves that side of the window open
+    private boolean overlaps(@Nullable Date start1, @Nullable Date end1, @Nullable Date start2, @Nullable Date end2)
+    {
+        return (end1 == null || start2 == null || !end1.before(start2)) && (end2 == null || start1 == null || !end2.before(start1));
+    }
+
+    public int getNextAmendmentNumber(String protocol)
+    {
+        Amendment latest = getPredecessor(getAmendments(protocol), null);
+        return latest == null ? 0 : latest.number() + 1;
+    }
+
+    public @Nullable Date getProtocolEnddate(String protocol)
+    {
+        TableInfo ti = getTableInfo("ehr", "protocol");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("protocol"), protocol);
+
+        return new TableSelector(ti, Collections.singleton("enddate"), filter, null).getArrayList(Date.class).stream().filter(Objects::nonNull).findFirst().orElse(null);
+    }
+
+    public boolean hasAmendments(String protocol)
+    {
+        return !getAmendments(protocol).isEmpty();
+    }
+
+    /** True when another saved count row on this amendment already has this species. */
+    public boolean hasProtocolCount(String amendmentId, String species, Object rowIdValue)
+    {
+        Integer rowId = ConvertHelper.convert(rowIdValue, Integer.class);
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("amendmentId"), amendmentId);
+        filter.addCondition(FieldKey.fromString("species"), species);
+        if (rowId != null)
+            filter.addCondition(FieldKey.fromString("rowid"), rowId, CompareType.NEQ);
+
+        return new TableSelector(getTableInfo("ehr", "protocol_counts"), filter, null).exists();
+    }
+
+    public boolean isBeforeDay(Object value, Object other)
+    {
+        Date date = toDay(value);
+        Date otherDate = toDay(other);
+        return date != null && otherDate != null && date.before(otherDate);
+    }
+
+    public boolean isSameDay(Object value, Object other)
+    {
+        return Objects.equals(toDay(value), toDay(other));
+    }
+
+    /** Field name to message for each rule an amendment save would break. */
+    // Rhino hands over numbers from a row as strings or doubles, which never match an Integer parameter, so these take Object
+    public Map<String, String> validateAmendment(String protocol, Object rowIdValue, Object amendmentNumberValue, Object dateValue, Object enddateValue, boolean movesPredecessor)
+    {
+        Map<String, String> errors = new LinkedHashMap<>();
+        Integer rowId = ConvertHelper.convert(rowIdValue, Integer.class);
+        Integer amendmentNumber = ConvertHelper.convert(amendmentNumberValue, Integer.class);
+        Date date = toDay(dateValue);
+        Date enddate = toDay(enddateValue);
+        if (protocol == null || date == null)
+            return errors;
+
+        if (enddate != null && enddate.before(date))
+            errors.put("enddate", "End date cannot be before the effective date.");
+
+        Date protocolEnd = getProtocolEnddate(protocol);
+        if (protocolEnd != null && date.after(protocolEnd))
+            errors.put("date", "Effective date is after the protocol's end date of " + _dateFormat.format(protocolEnd) + ".");
+
+        List<Amendment> others = getAmendments(protocol).stream().filter(a -> rowId == null || a.rowId() != rowId).toList();
+
+        // closePriorAmendment ends the predecessor the day before this amendment takes effect, so it cannot overlap
+        Amendment predecessor = movesPredecessor ? getPredecessor(others, amendmentNumber) : null;
+        if (predecessor != null && predecessor.date() != null && !date.after(predecessor.date()))
+            errors.putIfAbsent("date", "Effective date must be after amendment " + predecessor.number() + "'s effective date of " + _dateFormat.format(predecessor.date()) + ".");
+
+        others.stream()
+                .filter(a -> a != predecessor && overlaps(a.date(), a.enddate(), date, enddate))
+                .findFirst()
+                .ifPresent(a -> errors.putIfAbsent("date", "Overlaps amendment " + a.number() + ", in effect " + (a.date() == null ? "" : _dateFormat.format(a.date())) + " to " + (a.enddate() == null ? "open" : _dateFormat.format(a.enddate())) + "."));
+
+        return errors;
+    }
+
+    /** oldDateValue is the amendment's effective date before an update, or null on insert. */
+    public void closePriorAmendment(String protocol, Object amendmentNumberValue, Object dateValue, Object oldDateValue) throws Exception
+    {
+        Integer amendmentNumber = ConvertHelper.convert(amendmentNumberValue, Integer.class);
+        Date date = toDay(dateValue);
+        Date oldDate = toDay(oldDateValue);
+        if (protocol == null || amendmentNumber == null || date == null)
+            return;
+
+        Amendment predecessor = getPredecessor(getAmendments(protocol), amendmentNumber);
+        if (predecessor == null)
+            return;
+
+        // a predecessor that ended the day before the old date follows the move; one already ended earlier is left alone
+        boolean wasAdjacent = oldDate != null && Objects.equals(predecessor.enddate(), DateUtils.addDays(oldDate, -1));
+        if (!wasAdjacent && predecessor.enddate() != null && predecessor.enddate().before(date))
+            return;
+
+        updateAmendmentEnddate(predecessor.rowId(), DateUtils.addDays(date, -1));
+    }
+
+    /** Null when the protocol's latest amendment can still run to this end date. */
+    public @Nullable String validateProtocolEnddate(String protocol, Object enddateValue)
+    {
+        Date enddate = toDay(enddateValue);
+        if (protocol == null || enddate == null)
+            return null;
+
+        Amendment latest = getPredecessor(getAmendments(protocol), null);
+        if (latest == null || latest.date() == null || !enddate.before(latest.date()))
+            return null;
+
+        return "End date is before amendment " + latest.number() + "'s effective date of " + _dateFormat.format(latest.date()) + ".";
+    }
+
+    public void syncLatestAmendmentEnddate(String protocol, Object enddateValue) throws Exception
+    {
+        Date enddate = toDay(enddateValue);
+        Amendment latest = protocol == null ? null : getPredecessor(getAmendments(protocol), null);
+        if (latest == null || Objects.equals(latest.enddate(), enddate))
+            return;
+
+        updateAmendmentEnddate(latest.rowId(), enddate);
+    }
+
+    /** Null when this is the protocol's latest amendment; removing an earlier one would leave a gap between windows. */
+    public @Nullable String validateAmendmentDelete(String protocol, Object amendmentNumberValue)
+    {
+        Integer amendmentNumber = ConvertHelper.convert(amendmentNumberValue, Integer.class);
+        if (protocol == null || amendmentNumber == null)
+            return null;
+
+        Amendment latest = getPredecessor(getAmendments(protocol), null);
+        if (latest == null || latest.number() <= amendmentNumber)
+            return null;
+
+        return "Only the latest amendment, " + latest.number() + ", can be deleted.";
+    }
+
+    /** Deletes the amendment's counts and runs the amendment now latest to the protocol's end date again. */
+    public void afterAmendmentDelete(String protocol, String objectid) throws Exception
+    {
+        if (objectid != null)
+        {
+            TableInfo ti = getTableInfo("ehr", "protocol_counts");
+            QueryUpdateService qus = ti.getUpdateService();
+            if (qus == null)
+                throw new IllegalStateException("ehr.protocol_counts is not updatable");
+
+            List<Map<String, Object>> keys = List.of(new TableSelector(ti, PageFlowUtil.set("rowid"), new SimpleFilter(FieldKey.fromString("amendmentId"), objectid), null).getMapArray());
+            if (!keys.isEmpty())
+                qus.deleteRows(_user, _container, keys, null, getExtraContext());
+        }
+
+        if (protocol != null)
+            syncLatestAmendmentEnddate(protocol, getProtocolEnddate(protocol));
+    }
+
+    private void updateAmendmentEnddate(int rowId, @Nullable Date enddate) throws Exception
+    {
+        TableInfo ti = getTableInfo("nbri_ehr", "protocolAmendment");
+        QueryUpdateService qus = ti.getUpdateService();
+        if (qus == null)
+            throw new IllegalStateException("nbri_ehr.ProtocolAmendment is not updatable");
+
+        Map<String, Object> row = new CaseInsensitiveHashMap<>();
+        row.put("rowid", rowId);
+        row.put("enddate", enddate);
+
+        Map<String, Object> key = new CaseInsensitiveHashMap<>();
+        key.put("rowid", rowId);
+
+        BatchValidationException errors = new BatchValidationException();
+        qus.updateRows(_user, _container, List.of(row), List.of(key), errors, null, getExtraContext());
+        if (errors.hasErrors())
+            throw errors;
     }
 
     public void closeDailyClinicalObs(String caseid, String enddate)

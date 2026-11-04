@@ -107,6 +107,7 @@ ehr_lookups	pairing_separation_reason	Colony Management	Pairing Status Change Re
 ehr_lookups	per_diem	Housing	Per Diem	Per diem housing categories for cages.
 ehr_lookups	preferences	Behavior	Preferences	Behavior observation fixed values.
 ehr_lookups	pregnancy_result	Colony Management	Pregancy Result	
+ehr_lookups	pregnancy_type	Colony Management	Pregnancy Type	Used in births and pregnancy outcomes.
 ehr_lookups	procedure_category	Clinical	Procedure Category	Used in procedures to group procedures.
 ehr_lookups	procedures	Clinical	Procedures	List of animal procedures.F
 ehr_lookups	problem_list_category	Clinical	Problem List Category	Used in problem list dataset. Set when opening a case.

@@ -1,0 +1,22 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="protocolAllowedAnimals" tableDbType="NOT_IN_DB">
+                <tableTitle>Animals Allowed By Protocol</tableTitle>
+                <columns>
+                    <column columnName="protocol">
+                        <isKeyField>true</isKeyField>
+                    </column>
+                    <column columnName="totalAllowed">
+                        <columnTitle>Total Animals Allowed</columnTitle>
+                        <description>Sum across species of the counts set by the amendment currently in effect</description>
+                    </column>
+                    <column columnName="allowedBySpecies">
+                        <columnTitle>Animals Allowed By Species</columnTitle>
+                        <description>Each species and its count, from the amendment currently in effect</description>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>
