@@ -12,6 +12,72 @@ Ext4.define('NBRI_EHR.panel.DailyHealthDataEntryPanel', {
         this.callParent();
     },
 
+    // Every row of a log entry must share its animal, date and technician, and each new row would otherwise default its own time.
+    ENTRY_FIELDS: ['Id', 'date', 'performedby'],
+
+    onStoreCollectionInitialLoad: function(){
+        this.callParent(arguments);
+
+        var store = this.storeCollection.clientStores.findBy(function(s){
+            return /-dailyHealthLog$/.test(s.storeId);
+        });
+        if (store){
+            store.on('add', this.onDailyHealthAdd, this);
+            store.on('update', this.onDailyHealthUpdate, this);
+        }
+    },
+
+    onDailyHealthAdd: function(store, records){
+        var source = null;
+        store.each(function(rec){
+            if (records.indexOf(rec) === -1){
+                source = rec;
+                return false;
+            }
+        });
+        if (source){
+            Ext4.Array.forEach(records, function(rec){
+                this.copyEntryFields(source, rec, this.ENTRY_FIELDS);
+            }, this);
+        }
+    },
+
+    onDailyHealthUpdate: function(store, rec, operation, modifiedFieldNames){
+        if (operation !== Ext4.data.Model.EDIT || this.syncingEntryFields)
+            return;
+
+        var changed = Ext4.Array.intersect(modifiedFieldNames || [], this.ENTRY_FIELDS);
+        if (!changed.length)
+            return;
+
+        this.syncingEntryFields = true;
+        try {
+            store.each(function(other){
+                if (other !== rec)
+                    this.copyEntryFields(rec, other, changed);
+            }, this);
+        }
+        finally {
+            this.syncingEntryFields = false;
+        }
+    },
+
+    copyEntryFields: function(source, target, fields){
+        var values = {};
+        Ext4.Array.forEach(fields, function(field){
+            var value = source.get(field);
+            if (Ext4.isEmpty(value))
+                return;
+
+            var current = target.get(field);
+            var same = Ext4.isDate(value) && Ext4.isDate(current) ? value.getTime() === current.getTime() : value === current;
+            if (!same)
+                values[field] = value;
+        });
+        if (!Ext4.Object.isEmpty(values))
+            target.set(values);
+    },
+
     // RFC 9562: 48-bit Unix millisecond timestamp, version 7, variant 10, the rest random
     generateUUIDv7: function(){
         var bytes = new Uint8Array(16);
