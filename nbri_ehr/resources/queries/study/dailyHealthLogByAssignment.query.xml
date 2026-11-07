@@ -1,0 +1,36 @@
+<query xmlns="http://labkey.org/data/xml/query">
+    <metadata>
+        <tables xmlns="http://labkey.org/data/xml">
+            <table tableName="dailyHealthLogByAssignment" tableDbType="NOT_IN_DB">
+                <tableTitle>Daily Health Log By Project And Protocol</tableTitle>
+                <columns>
+                    <column columnName="lsid">
+                        <isKeyField>true</isKeyField>
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="date">
+                        <columnTitle>Observation Date</columnTitle>
+                    </column>
+                    <column columnName="logEntryId">
+                        <columnTitle>Log Entry Id</columnTitle>
+                        <isHidden>true</isHidden>
+                    </column>
+                    <column columnName="sortOrder">
+                        <columnTitle>Sort Order</columnTitle>
+                    </column>
+                    <column columnName="code">
+                        <columnTitle>Code</columnTitle>
+                        <fk>
+                            <fkDbSchema>nbri_ehr</fkDbSchema>
+                            <fkTable>dailyHealthCode</fkTable>
+                            <fkColumnName>code</fkColumnName>
+                        </fk>
+                    </column>
+                    <column columnName="performedby">
+                        <columnTitle>Technician</columnTitle>
+                    </column>
+                </columns>
+            </table>
+        </tables>
+    </metadata>
+</query>

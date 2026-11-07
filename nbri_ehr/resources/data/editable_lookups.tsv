@@ -161,3 +161,6 @@ ehr_lookups	wound_status_behavior	Behavior	Wound Status	"Behavioral observation 
 ehr_lookups	wound_status_clinical	Clinical	Wound Status	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Clinical Wound Status'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	yes_no_order	Clinical	Yes/No Values in Order	"Includes sort order. Datasets: Clinical/Behavior Observations (Observation/Score for categories 'Environmental Change', 'New Injury Observed', 'Other Stereotopy', 'Self Biting Observed', 'Special Enrichment', 'Verified Id?'). Forms: Behavioral Cases, Behavioral Rounds, Bulk Behavior Entry, Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	yes_no_only	Clinical	Yes/No Forced Selection	Must choose yes or no.
+nbri_ehr	dailyHealthCode	Clinical	Daily Health Codes	Barcode codes recorded in the daily health log, and the clinical observation each one creates.
+nbri_ehr	dailyHealthUrgentGroup	Clinical	Daily Health Urgent Groups	Named groups of daily health codes that need urgent attention.
+nbri_ehr	dailyHealthUrgentGroupCode	Clinical	Daily Health Urgent Group Codes	The codes in each daily health urgent group, in order.

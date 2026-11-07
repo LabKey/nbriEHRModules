@@ -48,5 +48,6 @@
         <dataset name="necropsyFinal" id="1055" category="Pathology" type="Standard"/>
         <dataset name="preliminaryDiagnoses" id="1056" category="Pathology" type="Standard"/>
         <dataset name="finalDiagnoses" id="1057" category="Pathology" type="Standard"/>
+        <dataset name="dailyHealthLog" id="1058" category="Clinical" type="Standard"/>
     </datasets>
 </datasets>
