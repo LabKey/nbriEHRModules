@@ -51,12 +51,16 @@ import org.labkey.api.query.InvalidKeyException;
 import org.labkey.api.query.QueryService;
 import org.labkey.api.query.QueryUpdateService;
 import org.labkey.api.query.QueryUpdateServiceException;
+import org.labkey.api.query.RuntimeValidationException;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
+import org.labkey.api.exp.api.StorageProvisioner;
+import org.labkey.api.study.Dataset;
+import org.labkey.api.study.Study;
 import org.labkey.api.study.StudyService;
 import org.labkey.api.util.GUID;
 import org.labkey.api.util.JobRunner;
@@ -83,6 +87,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -2221,5 +2226,264 @@ public class NBRI_EHRTriggerHelper
             }
         }
         return title;
+    }
+
+    public @Nullable String validateDailyHealthCode(String code)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("code"), code);
+        Boolean enabled = new TableSelector(getTableInfo("nbri_ehr", "dailyHealthCode"), Collections.singleton("enabled"), filter, null).getObject(Boolean.class);
+        if (enabled == null)
+            return "Unknown daily health code: " + code;
+        if (!enabled)
+            return "Daily health code " + code + " is retired";
+        return null;
+    }
+
+    public boolean isAnimalAlive(String id)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
+        filter.addCondition(FieldKey.fromString("calculated_status"), "Alive");
+        return new TableSelector(getTableInfo("study", "demographics"), Collections.singleton("Id"), filter, null).exists();
+    }
+
+    // Scanners send building, room name and an optional cage; NBRI keys a room as building-name and a cage as room-cage.
+    public @Nullable String validateDailyHealthLocation(String id, Object dateValue, @Nullable Object area, @Nullable Object enclosure, @Nullable Object cage)
+    {
+        Date date = ConvertHelper.convert(dateValue, Date.class);
+        String building = StringUtils.trimToNull(ConvertHelper.convert(area, String.class));
+        String roomName = StringUtils.trimToNull(ConvertHelper.convert(enclosure, String.class));
+        String cageName = StringUtils.trimToNull(ConvertHelper.convert(cage, String.class));
+        if (id == null || date == null)
+            return null;
+        if (building == null || roomName == null)
+            return "A location needs both an area and an enclosure";
+
+        String room = building + "-" + roomName;
+        String location = cageName == null ? room : room + "-" + cageName;
+
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
+        filter.addCondition(FieldKey.fromString(cageName == null ? "room" : "cage"), location);
+        filter.addCondition(FieldKey.fromString("date"), date, CompareType.LTE);
+        filter.addClause(new SimpleFilter.OrClause(new CompareType.EqualsCompareClause(FieldKey.fromString("enddate"), CompareType.GT, date), new CompareType.CompareClause(FieldKey.fromString("enddate"), CompareType.ISBLANK, null)));
+        filter.addCondition(FieldKey.fromString("qcstate/publicdata"), true);
+        if (new TableSelector(getTableInfo("study", "housing"), Collections.singleton("Id"), filter, null).exists())
+            return null;
+
+        return id + " was not housed in " + location + " on " + _dateFormat.format(date);
+    }
+
+    /**
+     * Defers the entry checks to just before the transaction commits. A form save sends its updates and deletes as
+     * separate commands, so only then are rows edited together (e.g. one removed, another renumbered) final.
+     * The task must not open a transaction while the outer commit is in progress: no writes, and no query over the
+     * dataset (that lazily reloads its storage table in a transaction), so it reads the storage table resolved here.
+     */
+    public void queueDailyHealthEntryChecks(List<String> logEntryIds)
+    {
+        Study study = StudyService.get().getStudy(_container);
+        Dataset dataset = study == null ? null : study.getDatasetByName("dailyHealthLog");
+        if (dataset == null)
+            return;
+
+        TableInfo table = StorageProvisioner.createTableInfo(dataset.getDomain());
+        DailyHealthCommitTask task = new DailyHealthCommitTask(_container.getId(), table);
+        task.add(logEntryIds);
+        DailyHealthCommitTask queued = table.getSchema().getScope().addCommitTask(task, DbScope.CommitTaskOption.PRECOMMIT);
+        if (queued != task)
+            queued.add(logEntryIds);
+    }
+
+    /** One per container per transaction; equality on the container lets later saves in the transaction join the queued task. */
+    private static class DailyHealthCommitTask implements Runnable
+    {
+        private final String _containerId;
+        private final TableInfo _table;
+        private final Set<String> _logEntryIds = new LinkedHashSet<>();
+
+        DailyHealthCommitTask(String containerId, TableInfo table)
+        {
+            _containerId = containerId;
+            _table = table;
+        }
+
+        void add(List<String> logEntryIds)
+        {
+            _logEntryIds.addAll(logEntryIds);
+        }
+
+        @Override
+        public void run()
+        {
+            List<String> errors = validateDailyHealthEntries(_table, new ArrayList<>(_logEntryIds));
+            if (!errors.isEmpty())
+                throw new RuntimeValidationException(String.join("; ", errors));
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            return o instanceof DailyHealthCommitTask other && _containerId.equals(other._containerId);
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(DailyHealthCommitTask.class, _containerId);
+        }
+    }
+
+    /** Runs after the whole save has landed, so rows edited together (e.g. swapped sort orders) are judged on their final values. */
+    private static List<String> validateDailyHealthEntries(TableInfo storageTable, List<String> logEntryIds)
+    {
+        List<String> errors = new ArrayList<>();
+        Map<String, List<Map<String, Object>>> entries = new TableSelector(storageTable,
+                PageFlowUtil.set("logEntryId", "participantid", "date", "performedby", "sortOrder"),
+                new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryIds, CompareType.IN), null)
+                .getMapCollection().stream()
+                .map(row -> (Map<String, Object>) new CaseInsensitiveHashMap<>(row))
+                .collect(Collectors.groupingBy(row -> ConvertHelper.convert(row.get("logEntryId"), String.class), LinkedHashMap::new, Collectors.toList()));
+
+        entries.forEach((logEntryId, rows) -> {
+            Set<Integer> sortOrders = new HashSet<>();
+            rows.stream()
+                    .map(row -> ConvertHelper.convert(row.get("sortOrder"), Integer.class))
+                    .filter(sortOrder -> !sortOrders.add(sortOrder))
+                    .distinct()
+                    .forEach(sortOrder -> errors.add("Log entry " + logEntryId + " has more than one row with sort order " + sortOrder));
+
+            boolean consistent = rows.stream().map(row -> row.get("participantid")).distinct().count() == 1
+                    && rows.stream().map(row -> ConvertHelper.convert(row.get("date"), Date.class)).distinct().count() == 1
+                    && rows.stream().map(row -> row.get("performedby")).distinct().count() == 1;
+            if (!consistent)
+                errors.add("Every row of log entry " + logEntryId + " must have the same animal, observation date and technician");
+        });
+        return errors;
+    }
+
+    // When several codes in one entry map to the same category, a code with this score wins over the others.
+    private static final Map<String, String> DAILY_HEALTH_PREFERRED_SCORES = Map.of("Menses", "Heavy mense");
+
+    /**
+     * Makes each entry's clinical observations match its codes: one per mapped category, linked by parentid to the row
+     * that produced it. Observations whose row was deleted are removed and re-created from a surviving row if still called for.
+     * Runs after every command of a save; the last command to touch an entry sees its final rows.
+     */
+    public void syncDailyHealthObservations(List<String> logEntryIds, List<String> deletedObjectIds) throws SQLException, BatchValidationException, QueryUpdateServiceException, DuplicateKeyException, InvalidKeyException
+    {
+        Map<String, List<Map<String, Object>>> entries = getDailyHealthRows(logEntryIds);
+        Set<String> parentIds = new HashSet<>(deletedObjectIds);
+        entries.values().forEach(rows -> rows.forEach(row -> parentIds.add(ConvertHelper.convert(row.get("objectid"), String.class))));
+        if (parentIds.isEmpty())
+            return;
+
+        Map<String, String[]> mappings = new HashMap<>();
+        SimpleFilter mappedFilter = new SimpleFilter(FieldKey.fromString("observationCategory"), null, CompareType.NONBLANK);
+        new TableSelector(getTableInfo("nbri_ehr", "dailyHealthCode"), PageFlowUtil.set("code", "observationCategory", "observationScore"), mappedFilter, null).forEachMap(code ->
+                mappings.put((String) code.get("code"), new String[]{(String) code.get("observationCategory"), (String) code.get("observationScore")}));
+
+        TableInfo obsTi = getTableInfo("study", "clinical_observations");
+        Map<String, List<Map<String, Object>>> obsByParent = new TableSelector(obsTi,
+                PageFlowUtil.set("objectid", "parentid", "Id", "date", "category", "observation", "performedby", "QCState", "taskid"),
+                new SimpleFilter(FieldKey.fromString("parentid"), parentIds, CompareType.IN), null)
+                .getMapCollection().stream()
+                .collect(Collectors.groupingBy(obs -> ConvertHelper.convert(obs.get("parentid"), String.class)));
+
+        List<Map<String, Object>> toDelete = new ArrayList<>();
+        List<Map<String, Object>> toUpdate = new ArrayList<>();
+        List<Map<String, Object>> toInsert = new ArrayList<>();
+
+        deletedObjectIds.forEach(objectId -> obsByParent.getOrDefault(objectId, List.of()).forEach(obs -> toDelete.add(obsKey(obs))));
+
+        for (List<Map<String, Object>> rows : entries.values())
+        {
+            // category -> the row whose code supplies it
+            Map<String, Map<String, Object>> wanted = new LinkedHashMap<>();
+            for (Map<String, Object> row : rows)
+            {
+                String[] mapping = mappings.get(ConvertHelper.convert(row.get("code"), String.class));
+                if (mapping == null)
+                    continue;
+                Map<String, Object> current = wanted.get(mapping[0]);
+                String preferred = DAILY_HEALTH_PREFERRED_SCORES.get(mapping[0]);
+                if (current == null || (preferred != null && preferred.equals(mapping[1]) && !preferred.equals(mappings.get((String) current.get("code"))[1])))
+                    wanted.put(mapping[0], row);
+            }
+
+            Map<String, Map<String, Object>> existingByCategory = new HashMap<>();
+            for (Map<String, Object> row : rows)
+            {
+                for (Map<String, Object> obs : obsByParent.getOrDefault(ConvertHelper.convert(row.get("objectid"), String.class), List.of()))
+                {
+                    String category = ConvertHelper.convert(obs.get("category"), String.class);
+                    if (wanted.containsKey(category) && !existingByCategory.containsKey(category))
+                        existingByCategory.put(category, obs);
+                    else
+                        toDelete.add(obsKey(obs));
+                }
+            }
+
+            wanted.forEach((category, row) -> {
+                String score = mappings.get((String) row.get("code"))[1];
+                Map<String, Object> obsRow = new CaseInsensitiveHashMap<>();
+                obsRow.put("Id", row.get("Id"));
+                obsRow.put("date", row.get("date"));
+                obsRow.put("category", category);
+                obsRow.put("observation", score);
+                obsRow.put("performedby", row.get("performedby"));
+                obsRow.put("QCState", row.get("QCState"));
+                obsRow.put("taskid", row.get("taskid"));
+                obsRow.put("parentid", row.get("objectid"));
+
+                Map<String, Object> existing = existingByCategory.get(category);
+                if (existing == null)
+                {
+                    obsRow.put("type", "Behavior".equals(getObservationTypeCategory(category)) ? "Behavior" : "Clinical");
+                    toInsert.add(obsRow);
+                }
+                else if (!obsMatches(existing, obsRow))
+                {
+                    obsRow.put("objectid", existing.get("objectid"));
+                    toUpdate.add(obsRow);
+                }
+            });
+        }
+
+        QueryUpdateService qus = Objects.requireNonNull(obsTi.getUpdateService());
+        BatchValidationException errors = new BatchValidationException();
+        if (!toDelete.isEmpty())
+            qus.deleteRows(_user, _container, toDelete, null, getExtraContext());
+        if (!toUpdate.isEmpty())
+            qus.updateRows(_user, _container, toUpdate, null, errors, null, getExtraContext());
+        if (!errors.hasErrors() && !toInsert.isEmpty())
+            qus.insertRows(_user, _container, toInsert, errors, null, getExtraContext());
+        if (errors.hasErrors())
+            throw errors;
+    }
+
+    private static Map<String, Object> obsKey(Map<String, Object> obs)
+    {
+        Map<String, Object> key = new CaseInsensitiveHashMap<>();
+        key.put("objectid", obs.get("objectid"));
+        return key;
+    }
+
+    private static boolean obsMatches(Map<String, Object> existing, Map<String, Object> wanted)
+    {
+        return List.of("Id", "category", "observation", "performedby", "QCState", "taskid", "parentid").stream()
+                .allMatch(col -> Objects.equals(ConvertHelper.convert(existing.get(col), String.class), ConvertHelper.convert(wanted.get(col), String.class)))
+                && Objects.equals(ConvertHelper.convert(existing.get("date"), Date.class), ConvertHelper.convert(wanted.get("date"), Date.class));
+    }
+
+    /** The saved rows of each log entry, in sort order. */
+    private Map<String, List<Map<String, Object>>> getDailyHealthRows(List<String> logEntryIds)
+    {
+        if (logEntryIds.isEmpty())
+            return Map.of();
+
+        return new TableSelector(getTableInfo("study", "dailyHealthLog"),
+                PageFlowUtil.set("objectid", "logEntryId", "Id", "date", "performedby", "sortOrder", "code", "QCState", "taskid"),
+                new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryIds, CompareType.IN), new Sort("sortOrder"))
+                .getMapCollection().stream()
+                .collect(Collectors.groupingBy(row -> ConvertHelper.convert(row.get("logEntryId"), String.class), LinkedHashMap::new, Collectors.toList()));
     }
 }

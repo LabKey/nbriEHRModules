@@ -161,3 +161,6 @@ ehr_lookups	wound_status_behavior	Behavior	Wound Status	Behavioral observation f
 ehr_lookups	wound_status_clinical	Clinical	Wound Status	Clinical observation fixed values.
 ehr_lookups	yes_no_order	Clinical	Yes/No Values in Order	Used for yes/no values in various datasets. Includes sort order.
 ehr_lookups	yes_no_only	Clinical	Yes/No Forced Selection	Must choose yes or no.
+nbri_ehr	dailyHealthCode	Clinical	Daily Health Codes	Barcode codes recorded in the daily health log, and the clinical observation each one creates.
+nbri_ehr	dailyHealthUrgentGroup	Clinical	Daily Health Urgent Groups	Named groups of daily health codes that need urgent attention.
+nbri_ehr	dailyHealthUrgentGroupCode	Clinical	Daily Health Urgent Group Codes	The codes in each daily health urgent group, in order.
