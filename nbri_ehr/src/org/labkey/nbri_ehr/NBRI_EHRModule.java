@@ -187,6 +187,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         ehrService.registerActionOverride("enterData", this, "views/enterData.html");
         ehrService.registerActionOverride("protocolDetails", this, "views/protocolDetails.html");
         ehrService.registerActionOverride("dataEntryFormDetails", this, "views/dataEntryFormDetails.html");
+        ehrService.registerActionOverride("ehrAdmin", this, "views/ehrAdmin.html");
 
         RoleManager.registerRole(new NBRIEHRVetTechRole());
 

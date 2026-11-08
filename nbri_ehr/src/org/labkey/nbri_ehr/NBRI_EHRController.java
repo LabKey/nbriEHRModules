@@ -23,6 +23,7 @@ import org.jetbrains.annotations.Nullable;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.labkey.api.action.ApiSimpleResponse;
+import org.labkey.api.action.ConfirmAction;
 import org.labkey.api.action.MutatingApiAction;
 import org.labkey.api.action.SimpleApiJsonForm;
 import org.labkey.api.action.SpringActionController;
@@ -32,21 +33,31 @@ import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
 import org.labkey.api.ehr.EHRService;
+import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.query.BatchValidationException;
 import org.labkey.api.query.FieldKey;
+import org.labkey.api.query.QueryAction;
 import org.labkey.api.query.QueryService;
 import org.labkey.api.query.RuntimeValidationException;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.query.ValidationException;
+import org.labkey.api.reader.DataLoader;
+import org.labkey.api.reader.TabLoader;
+import org.labkey.api.resource.Resource;
 import org.labkey.api.security.RequiresPermission;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.ValidEmail;
+import org.labkey.api.security.permissions.AdminPermission;
 import org.labkey.api.security.permissions.InsertPermission;
+import org.labkey.api.util.HtmlString;
+import org.labkey.api.util.URLHelper;
 import org.labkey.api.util.logging.LogHelper;
+import org.labkey.api.view.HtmlView;
 import org.labkey.nbri_ehr.dataentry.form.NBRIDailyHealthFormType;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
+import org.springframework.web.servlet.ModelAndView;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -59,6 +70,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 
 public class NBRI_EHRController extends SpringActionController
@@ -288,6 +300,68 @@ public class NBRI_EHRController extends SpringActionController
             result.put("status", status);
             result.put("errors", errors);
             return result;
+        }
+    }
+
+    /** Adds the standard daily health codes a folder is missing, leaving codes already there, including edited or retired ones, untouched. */
+    @RequiresPermission(AdminPermission.class)
+    public static class PopulateDailyHealthCodesAction extends ConfirmAction<Object>
+    {
+        @Override
+        public ModelAndView getConfirmView(Object form, BindException errors)
+        {
+            return new HtmlView(HtmlString.of("Add the standard daily health codes that this folder doesn't have yet? Existing codes are left as they are."));
+        }
+
+        @Override
+        public void validateCommand(Object form, Errors errors)
+        {
+        }
+
+        @Override
+        public boolean handlePost(Object form, BindException errors) throws Exception
+        {
+            TableInfo table = getCodeTable();
+            Set<String> existing = new TableSelector(table.getColumn("code")).getArrayList(String.class).stream()
+                    .map(String::toUpperCase)
+                    .collect(Collectors.toSet());
+
+            Resource tsv = ModuleLoader.getInstance().getModule(NBRI_EHRModule.class).getModuleResource("data/dailyHealthCode.tsv");
+            List<Map<String, Object>> rows = new ArrayList<>();
+            try (DataLoader loader = DataLoader.get().createLoader(tsv, true, null, TabLoader.TSV_FILE_TYPE))
+            {
+                for (Map<String, Object> source : loader.load())
+                {
+                    Map<String, Object> row = new CaseInsensitiveHashMap<>();
+                    source.forEach((name, value) -> row.put(name, value == null ? null : value.toString()));
+                    if (!existing.contains(String.valueOf(row.get("code")).toUpperCase()))
+                        rows.add(row);
+                }
+            }
+
+            if (!rows.isEmpty())
+            {
+                BatchValidationException saveErrors = new BatchValidationException();
+                Objects.requireNonNull(table.getUpdateService()).insertRows(getUser(), getContainer(), rows, saveErrors, null, null);
+                if (saveErrors.hasErrors())
+                    throw saveErrors;
+            }
+            return true;
+        }
+
+        @Override
+        public @NotNull URLHelper getSuccessURL(Object form)
+        {
+            return QueryService.get().urlFor(getUser(), getContainer(), QueryAction.executeQuery, NBRI_EHRSchema.NAME, "dailyHealthCode");
+        }
+
+        private @NotNull TableInfo getCodeTable()
+        {
+            UserSchema schema = QueryService.get().getUserSchema(getUser(), getContainer(), NBRI_EHRSchema.NAME);
+            TableInfo table = schema == null ? null : schema.getTable("dailyHealthCode");
+            if (table == null)
+                throw new IllegalStateException("Unable to find " + NBRI_EHRSchema.NAME + ".dailyHealthCode in " + getContainer().getPath());
+            return table;
         }
     }
 }

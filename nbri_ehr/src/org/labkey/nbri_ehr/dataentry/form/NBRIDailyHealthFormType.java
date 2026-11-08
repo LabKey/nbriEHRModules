@@ -10,6 +10,7 @@ import org.labkey.api.ehr.dataentry.FormSection;
 import org.labkey.api.module.Module;
 import org.labkey.api.view.template.ClientDependency;
 import org.labkey.nbri_ehr.dataentry.section.NBRIAnimalDetailsFormSection;
+import org.labkey.nbri_ehr.dataentry.section.NBRIDailyHealthEntryFormSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRIDailyHealthFormSection;
 import org.labkey.nbri_ehr.dataentry.section.NBRITaskFormSection;
 
@@ -26,6 +27,7 @@ public class NBRIDailyHealthFormType extends NBRIBaseTaskFormType
         super(ctx, owner, NAME, LABEL, "Clinical", List.of(
                 new NBRITaskFormSection(),
                 new NBRIAnimalDetailsFormSection(),
+                new NBRIDailyHealthEntryFormSection(),
                 new NBRIDailyHealthFormSection(LABEL)
         ));
 

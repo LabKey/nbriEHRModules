@@ -464,28 +464,23 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         populateDailyHealthCodes();
     }
 
-    // The upgrade script seeds codes only into folders that existed when it ran, so a folder created afterward starts empty.
     @LogMethod
     private void populateDailyHealthCodes() throws IOException, CommandException
     {
+        runPopulateDailyHealthCodes();
+        // a code the trigger test can retire without touching the standard list
         InsertRowsCommand insert = new InsertRowsCommand("nbri_ehr", "dailyHealthCode");
-        insert.addRow(dailyHealthCode("HEVYMEN", "Menses", "Heavy mense"));
-        insert.addRow(dailyHealthCode("NRMLMEN", "Menses", "Present"));
-        insert.addRow(dailyHealthCode("POORAPP", "Appetite", "Low"));
-        insert.addRow(dailyHealthCode("LIQDSTL", "Stool", "Liquid"));
-        insert.addRow(dailyHealthCode("RAB", null, null));
-        insert.addRow(dailyHealthCode(RETIRING_DAILY_HEALTH_CODE, null, null));
+        insert.addRow(Map.of("code", RETIRING_DAILY_HEALTH_CODE, "enabled", true));
         insert.execute(createDefaultConnection(), getContainerPath());
     }
 
-    private static Map<String, Object> dailyHealthCode(String code, @Nullable String category, @Nullable String score)
+    private void runPopulateDailyHealthCodes()
     {
-        Map<String, Object> row = new HashMap<>();
-        row.put("code", code);
-        row.put("enabled", true);
-        row.put("observationCategory", category);
-        row.put("observationScore", score);
-        return row;
+        beginAt(WebTestHelper.buildURL("ehr", getContainerPath(), "ehrAdmin"));
+        clickAndWait(Locator.linkWithText("Populate Daily Health Codes"));
+        clickButton("OK");
+        // success lands on the code grid; a server error renders a page clickButton doesn't notice
+        new DataRegionTable("query", this);
     }
 
     @LogMethod
@@ -3634,6 +3629,43 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
      * Creates living demographics records for the given animals, replacing any left behind by an earlier run.
      */
     @Test
+    public void testPopulateDailyHealthCodes() throws Exception
+    {
+        File codeFile = FileUtil.appendPath(TestFileUtils.getLabKeyRoot(), org.labkey.api.util.Path.parse(getModulePath() + "/resources/data/dailyHealthCode.tsv"));
+        int standardCodes = TestFileUtils.getFileContents(codeFile).strip().split("\n").length - 1;
+        assertEquals("Setup should load every standard code plus the test's own", standardCodes + 1, getDailyHealthCodes().size());
+
+        log("Editing one standard code and deleting another, then populating again");
+        Map<String, Object> edited = getDailyHealthCodes().get("TOWEL");
+        UpdateRowsCommand update = new UpdateRowsCommand("nbri_ehr", "dailyHealthCode");
+        update.addRow(Map.of("rowid", edited.get("rowid"), "name", "Edited towel", "enabled", false));
+        update.execute(createDefaultConnection(), getContainerPath());
+        DeleteRowsCommand delete = new DeleteRowsCommand("nbri_ehr", "dailyHealthCode");
+        delete.addRow(Map.of("rowid", getDailyHealthCodes().get("WEAK").get("rowid")));
+        delete.execute(createDefaultConnection(), getContainerPath());
+
+        runPopulateDailyHealthCodes();
+
+        Map<String, Map<String, Object>> codes = getDailyHealthCodes();
+        assertEquals("Populating should restore only the deleted code", standardCodes + 1, codes.size());
+        assertNotNull("The deleted code should be restored", codes.get("WEAK"));
+        assertEquals("An edited code should keep its name", "Edited towel", codes.get("TOWEL").get("name"));
+        assertEquals("A retired code should stay retired", false, codes.get("TOWEL").get("enabled"));
+        assertEquals("Seeded observation mapping is missing", "Appetite", codes.get("POORAPP").get("observationCategory"));
+    }
+
+    private Map<String, Map<String, Object>> getDailyHealthCodes() throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("nbri_ehr", "dailyHealthCode");
+        select.setColumns(List.of("rowid", "code", "name", "enabled", "observationCategory"));
+        select.setMaxRows(-1);
+        Map<String, Map<String, Object>> codes = new HashMap<>();
+        for (Map<String, Object> row : select.execute(createDefaultConnection(), getContainerPath()).getRows())
+            codes.put((String) row.get("code"), row);
+        return codes;
+    }
+
+    @Test
     public void testDailyHealthApi() throws Exception
     {
         String animalId = DAILY_HEALTH_API_ANIMAL;
@@ -3765,15 +3797,16 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitAndClickAndWait(Locator.linkWithText("Daily Health"));
         Ext4GridRef codes = _helper.getExt4GridForFormSection("Daily Health");
         _helper.addRecordToGrid(codes);
-        codes.setGridCell(1, "Id", animalId);
+        _ext4Helper.queryOne("panel[title='Log Entry'] [name='Id']", Ext4FieldRef.class).setValue(animalId);
+        waitFor(() -> animalId.equals(codes.getFieldValue(1, "Id")), "The entry's animal didn't reach the existing row", WAIT_FOR_JAVASCRIPT);
         codes.setGridCellJS(1, "sortOrder", 1);
-        codes.setGridCell(1, "code", "POORAPP");
-        // waits out the next row's default time, which the form must replace with the first row's
+        selectDailyHealthCode(codes, 1, "POORAPP");
+        // waits out the next row's default time, which the form must replace with the entry's
         sleep(1500);
         _helper.addRecordToGrid(codes);
         assertEquals("A new row should take the entry's animal", animalId, codes.getFieldValue(2, "Id"));
         codes.setGridCellJS(2, "sortOrder", 2);
-        codes.setGridCell(2, "code", "RAB");
+        selectDailyHealthCode(codes, 2, "RAB");
         submitForm("Submit Final", "Finalize");
 
         log("Verifying the rows saved as one entry under the form's task");
@@ -3839,6 +3872,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final DateTimeFormatter DAILY_HEALTH_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     /** A scanner entry housed in room R1, with each code's sort order following its position. */
+    // setGridCell would save typed text even when the dropdown has no codes to offer
+    private void selectDailyHealthCode(Ext4GridRef grid, int rowIdx, String code)
+    {
+        grid.clickArrowOnGrid(rowIdx, "code");
+        waitAndClick(Ext4Helper.Locators.comboListItem().containing(code));
+        grid.completeEdit();
+    }
+
     private JSONObject dailyHealthEntry(String animalId, LocalDateTime observed, @Nullable String cage, String... codes)
     {
         JSONArray codeArray = new JSONArray();

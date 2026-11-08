@@ -8,21 +8,18 @@ EHR.model.DataModelManager.registerMetadata('DailyHealth', {
 
     },
     byQuery: {
+        // Id, date and performedby are entered once in the Log Entry section, which writes them into every row
         'study.dailyHealthLog': {
             Id: {
                 allowBlank: false,
                 nullable: false,
-                columnConfig: {
-                    width: 150
-                }
+                shownInGrid: false
             },
             date: {
                 label: 'Observation Date',
                 allowBlank: false,
                 nullable: false,
-                columnConfig: {
-                    width: 180
-                }
+                shownInGrid: false
             },
             sortOrder: {
                 allowBlank: false,
@@ -32,6 +29,8 @@ EHR.model.DataModelManager.registerMetadata('DailyHealth', {
                 }
             },
             code: {
+                // the shared EHR customizer turns faceting off on every column named code, which leaves the lookup combo without a store
+                facetingBehaviorType: 'AUTOMATIC',
                 xtype: 'combo',
                 allowBlank: false,
                 nullable: false,
@@ -58,7 +57,8 @@ EHR.model.DataModelManager.registerMetadata('DailyHealth', {
             },
             performedby: {
                 label: 'Technician',
-                allowBlank: false
+                allowBlank: false,
+                shownInGrid: false
             },
             remark: {
                 columnConfig: {
