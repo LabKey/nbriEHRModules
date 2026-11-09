@@ -1,0 +1,13 @@
+<customView xmlns="http://labkey.org/data/xml/queryCustomView" canOverride="true">
+    <sorts>
+        <sort column="date" descending="true"/>
+        <sort column="Id"/>
+    </sorts>
+    <columns>
+        <column name="Id"/>
+        <column name="date"/>
+        <column name="codes"/>
+        <column name="performedby"/>
+        <column name="QCState"/>
+    </columns>
+</customView>

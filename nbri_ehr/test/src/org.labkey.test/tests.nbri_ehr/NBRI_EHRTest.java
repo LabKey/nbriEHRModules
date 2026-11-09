@@ -3837,7 +3837,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         if (!today.toLocalDate().equals(LocalDate.now()))
             today = LocalDate.now().atStartOfDay();
 
-        JSONObject todayEntry = dailyHealthEntry(animalId, today, "C1", "POORAPP", "RAB");
+        // out of alphabetical order, so the entries report must follow sort order to pass
+        JSONObject todayEntry = dailyHealthEntry(animalId, today, "C1", "RAB", "POORAPP");
         JSONObject yesterdayEntry = dailyHealthEntry(animalId, today.minusDays(1), "C1", "LIQDSTL");
         Map<String, JSONObject> results = saveDailyHealth(todayEntry, yesterdayEntry);
         assertDailyHealthResult(results, todayEntry, "created", null);
@@ -3848,16 +3849,25 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitAndClickAndWait(Locator.linkWithText("Today's Daily Health Log"));
         DataRegionTable report = new AnimalHistoryPage<>(getDriver()).getActiveReportDataRegion();
         report.setFilter("Id", "Equals", animalId);
-        assertEquals("The report should open on today's codes", List.of("POORAPP", "RAB"), report.getColumnDataAsText("code"));
+        assertEquals("The report should open on today's codes", List.of("RAB", "POORAPP"), report.getColumnDataAsText("code"));
         report.clearFilter("date");
-        assertEquals("Clearing the date filter should reach earlier days", List.of("POORAPP", "RAB", "LIQDSTL"), report.getColumnDataAsText("code"));
+        assertEquals("Clearing the date filter should reach earlier days", List.of("RAB", "POORAPP", "LIQDSTL"), report.getColumnDataAsText("code"));
 
         log("Verifying the by-project/protocol report");
         goToEHRFolder();
         waitAndClickAndWait(Locator.linkWithText("Today's Daily Health Log By Project/Protocol"));
         report = new AnimalHistoryPage<>(getDriver()).getActiveReportDataRegion();
         report.setFilter("Id", "Equals", animalId);
-        assertEquals("The report should open on today's codes", List.of("POORAPP", "RAB"), report.getColumnDataAsText("code"));
+        assertEquals("The report should open on today's codes", List.of("RAB", "POORAPP"), report.getColumnDataAsText("code"));
+
+        log("Verifying the entries report shows one row per entry with its codes in sort order");
+        goToEHRFolder();
+        waitAndClickAndWait(Locator.linkWithText("Today's Daily Health Log Entries"));
+        report = new AnimalHistoryPage<>(getDriver()).getActiveReportDataRegion();
+        report.setFilter("Id", "Equals", animalId);
+        assertEquals("The report should open on today's entry", List.of("RAB, POORAPP"), report.getColumnDataAsText("codes"));
+        report.clearFilter("date");
+        assertEquals("Clearing the date filter should reach earlier entries", List.of("RAB, POORAPP", "LIQDSTL"), report.getColumnDataAsText("codes"));
 
         SelectRowsCommand select = new SelectRowsCommand("study", "dailyHealthLogByAssignment");
         select.setColumns(List.of("code", "project", "protocol"));

@@ -311,3 +311,7 @@ EHR.reports.dailyHealthLog = function(panel, tab){
 EHR.reports.dailyHealthLogByAssignment = function(panel, tab){
     addDailyHealthLogReport(panel, tab, 'dailyHealthLogByAssignment', 'Daily Health Log By Project/Protocol');
 };
+
+EHR.reports.dailyHealthLogEntries = function(panel, tab){
+    addDailyHealthLogReport(panel, tab, 'dailyHealthLogEntries', 'Daily Health Log Entries');
+};
