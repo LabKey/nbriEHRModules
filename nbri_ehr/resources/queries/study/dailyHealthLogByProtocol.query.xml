@@ -1,8 +1,8 @@
 <query xmlns="http://labkey.org/data/xml/query">
     <metadata>
         <tables xmlns="http://labkey.org/data/xml">
-            <table tableName="dailyHealthLogByAssignment" tableDbType="NOT_IN_DB">
-                <tableTitle>Daily Health Log By Project And Protocol</tableTitle>
+            <table tableName="dailyHealthLogByProtocol" tableDbType="NOT_IN_DB">
+                <tableTitle>Daily Health Log By Protocol</tableTitle>
                 <columns>
                     <column columnName="lsid">
                         <isKeyField>true</isKeyField>

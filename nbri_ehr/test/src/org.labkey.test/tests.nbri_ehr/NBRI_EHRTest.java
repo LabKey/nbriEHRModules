@@ -92,6 +92,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -3853,12 +3854,15 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         report.clearFilter("date");
         assertEquals("Clearing the date filter should reach earlier days", List.of("RAB", "POORAPP", "LIQDSTL"), report.getColumnDataAsText("code"));
 
-        log("Verifying the by-project/protocol report");
-        goToEHRFolder();
-        waitAndClickAndWait(Locator.linkWithText("Today's Daily Health Log By Project/Protocol"));
-        report = new AnimalHistoryPage<>(getDriver()).getActiveReportDataRegion();
-        report.setFilter("Id", "Equals", animalId);
-        assertEquals("The report should open on today's codes", List.of("RAB", "POORAPP"), report.getColumnDataAsText("code"));
+        for (String assignment : List.of("Project", "Protocol"))
+        {
+            log("Verifying the by-" + assignment.toLowerCase() + " report");
+            goToEHRFolder();
+            waitAndClickAndWait(Locator.linkWithText("Today's Daily Health Log By " + assignment));
+            report = new AnimalHistoryPage<>(getDriver()).getActiveReportDataRegion();
+            report.setFilter("Id", "Equals", animalId);
+            assertEquals("The report should open on today's codes", List.of("RAB", "POORAPP"), report.getColumnDataAsText("code"));
+        }
 
         log("Verifying the entries report shows one row per entry with its codes in sort order");
         goToEHRFolder();
@@ -3869,13 +3873,19 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         report.clearFilter("date");
         assertEquals("Clearing the date filter should reach earlier entries", List.of("RAB, POORAPP", "LIQDSTL"), report.getColumnDataAsText("codes"));
 
-        SelectRowsCommand select = new SelectRowsCommand("study", "dailyHealthLogByAssignment");
-        select.setColumns(List.of("code", "project", "protocol"));
-        select.addFilter(new Filter("Id", animalId));
-        for (Map<String, Object> row : select.execute(getApiHelper().getConnection(), getContainerPath()).getRows())
+        // one row per code for the animal's single project and single protocol
+        Map<String, String> expectedAssignments = Map.of("dailyHealthLogByProject", PROJECT_ID, "dailyHealthLogByProtocol", PROTOCOL_ID);
+        for (Map.Entry<String, String> expected : expectedAssignments.entrySet())
         {
-            assertEquals("Wrong project for " + row.get("code"), PROJECT_ID, String.valueOf(row.get("project")));
-            assertEquals("Wrong protocol for " + row.get("code"), PROTOCOL_ID, row.get("protocol"));
+            String column = expected.getKey().equals("dailyHealthLogByProject") ? "project" : "protocol";
+            SelectRowsCommand select = new SelectRowsCommand("study", expected.getKey());
+            select.setColumns(List.of("code", column));
+            select.addFilter(new Filter("Id", animalId));
+            List<Map<String, Object>> rows = select.execute(getApiHelper().getConnection(), getContainerPath()).getRows();
+            assertEquals("Wrong codes in " + expected.getKey(), Set.of("RAB", "POORAPP", "LIQDSTL"), rows.stream().map(row -> row.get("code")).collect(Collectors.toSet()));
+            assertEquals("Each code should appear once in " + expected.getKey(), 3, rows.size());
+            for (Map<String, Object> row : rows)
+                assertEquals("Wrong " + column + " for " + row.get("code"), expected.getValue(), String.valueOf(row.get(column)));
         }
     }
 

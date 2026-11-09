@@ -8,7 +8,6 @@
     </sorts>
     <columns>
         <column name="project"/>
-        <column name="protocol"/>
         <column name="Id"/>
         <column name="date"/>
         <column name="sortOrder"/>
