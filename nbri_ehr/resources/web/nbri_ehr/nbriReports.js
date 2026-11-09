@@ -285,3 +285,37 @@ EHR.reports.incompleteObservations = function(panel, tab, viewName){
         queryConfig: config
     });
 }
+// Opens on today's entries; the date filter is removable so earlier days stay reachable.
+function addDailyHealthLogReport(panel, tab, queryName, title) {
+    var filterArray = panel.getFilterArray(tab);
+    var today = Ext4.Date.format(new Date(), LABKEY.extDefaultDateFormat);
+
+    tab.add({
+        xtype: 'ldk-querycmp',
+        style: 'margin-bottom:20px;',
+        queryConfig: panel.getQWPConfig({
+            schemaName: 'study',
+            queryName: queryName,
+            title: title + panel.getTitleSuffix(),
+            filters: filterArray.nonRemovable,
+            removeableFilters: filterArray.removable.concat(LABKEY.Filter.create('date', today, LABKEY.Filter.Types.DATE_EQUAL)),
+            frame: true
+        })
+    });
+}
+
+EHR.reports.dailyHealthLog = function(panel, tab){
+    addDailyHealthLogReport(panel, tab, 'dailyHealthLog', 'Daily Health Log');
+};
+
+EHR.reports.dailyHealthLogByProject = function(panel, tab){
+    addDailyHealthLogReport(panel, tab, 'dailyHealthLogByProject', 'Daily Health Log By Project');
+};
+
+EHR.reports.dailyHealthLogByProtocol = function(panel, tab){
+    addDailyHealthLogReport(panel, tab, 'dailyHealthLogByProtocol', 'Daily Health Log By Protocol');
+};
+
+EHR.reports.dailyHealthLogEntries = function(panel, tab){
+    addDailyHealthLogReport(panel, tab, 'dailyHealthLogEntries', 'Daily Health Log Entries');
+};

@@ -481,6 +481,37 @@
             </column>
         </columns>
     </table>
+    <table tableName="dailyHealthLog" tableDbType="TABLE">
+        <tableTitle>Daily Health Log</tableTitle>
+        <description>Daily health observations, one row per code. Rows sharing a log entry Id were recorded together for one animal.</description>
+        <columns>
+            <column columnName="Id">
+                <datatype>varchar</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#ParticipantId</propertyURI>
+                <importAliases>
+                    <importAlias>ptid</importAlias>
+                </importAliases>
+            </column>
+            <column columnName="date">
+                <columnTitle>Observation Date</columnTitle>
+                <datatype>timestamp</datatype>
+                <propertyURI>http://cpas.labkey.com/Study#VisitDate</propertyURI>
+                <conceptURI>http://cpas.labkey.com/Study#VisitDate</conceptURI>
+            </column>
+            <column columnName="logEntryId">
+                <columnTitle>Log Entry Id</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+            <column columnName="sortOrder">
+                <columnTitle>Sort Order</columnTitle>
+                <datatype>integer</datatype>
+            </column>
+            <column columnName="code">
+                <columnTitle>Code</columnTitle>
+                <datatype>varchar</datatype>
+            </column>
+        </columns>
+    </table>
     <table tableName="demographics" tableDbType="TABLE">
         <tableTitle>Demographics</tableTitle>
         <description>Contains core demographic information for each primate, including species, sex, parentage, birth and death dates, and colony status.</description>

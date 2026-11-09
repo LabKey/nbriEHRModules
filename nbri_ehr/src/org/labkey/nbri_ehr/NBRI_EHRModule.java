@@ -84,7 +84,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
     @Override
     public @Nullable Double getSchemaVersion()
     {
-        return 26.007;
+        return 26.008;
     }
 
     @Override
@@ -187,6 +187,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         ehrService.registerActionOverride("enterData", this, "views/enterData.html");
         ehrService.registerActionOverride("protocolDetails", this, "views/protocolDetails.html");
         ehrService.registerActionOverride("dataEntryFormDetails", this, "views/dataEntryFormDetails.html");
+        ehrService.registerActionOverride("ehrAdmin", this, "views/ehrAdmin.html");
 
         RoleManager.registerRole(new NBRIEHRVetTechRole());
 
@@ -253,6 +254,7 @@ public class NBRI_EHRModule extends ExtendedSimpleModule
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIRearrivalFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIConceptionFormType.class, this));
         EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIProtocolAmendmentFormType.class, this));
+        EHRService.get().registerFormType(new DefaultDataEntryFormFactory(NBRIDailyHealthFormType.class, this));
     }
 
     @Override
