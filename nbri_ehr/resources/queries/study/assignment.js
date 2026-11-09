@@ -4,6 +4,7 @@
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
 require("ehr/triggers").initScript(this);
+var assignmentChecks = require("nbri_ehr/assignmentChecks");
 var projectData = {};
 var prevAnimalId;
 var prevDate;
@@ -89,3 +90,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
 });
 
+// onUpsert, not a BEFORE_UPSERT handler: nbri_triggers.js clears every BEFORE_UPSERT handler for study.assignment on each request
+function onUpsert(helper, scriptErrors, row, oldRow) {
+    assignmentChecks.verifyBeforeDeath(helper, scriptErrors, row, 'Project');
+}

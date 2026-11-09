@@ -42,6 +42,12 @@ function onInit(event, helper){
 }
 
 var protocolChecks = require("nbri_ehr/protocolChecks");
+var assignmentChecks = require("nbri_ehr/assignmentChecks");
+
+function onUpsert(helper, scriptErrors, row, oldRow) {
+    assignmentChecks.verifyBeforeDeath(helper, scriptErrors, row, 'Protocol');
+}
+
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 
 // the shared EHR check reaches the protocol through a project, which cannot see a protocol assignment here

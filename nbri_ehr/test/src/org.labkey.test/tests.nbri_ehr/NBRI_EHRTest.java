@@ -3191,6 +3191,53 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     }
 
     @Test
+    public void testAssignmentOnOrAfterDeathRejected()
+    {
+        String animalId = "DA9001";
+        LocalDateTime deathDate = LocalDateTime.now().minusDays(10).withHour(10).withMinute(0).withSecond(0).withNano(0);
+
+        log("Creating an animal and recording its death");
+        // species is required by the protocol assignment's species approval check
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "demographics", "lsid",
+                new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "QCStateLabel", "objectid", "performedby"},
+                new Object[][]{{animalId, "MMU", deathDate.minusYears(2), getMale(), deathDate.minusYears(2), "Alive", "Completed", UUID.randomUUID().toString(), 1004}}
+        ), getExtraContext());
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "deaths", "lsid",
+                new String[]{"Id", "date", "QCStateLabel", "performedby"},
+                new Object[][]{{animalId, deathDate, "Completed", 1004}}
+        ), getExtraContext());
+
+        log("Verify protocol and project assignments on the death day or later are rejected");
+        for (LocalDateTime date : List.of(deathDate.withHour(8), deathDate.plusDays(1)))
+        {
+            assertAssignmentRejected("protocolAssignment", "protocol", PROTOCOL_ID, animalId, date, "ERROR: Protocol cannot be assigned on or after the animal's death date");
+            assertAssignmentRejected("assignment", "project", PROTOCOL_PROJECT_ID, animalId, date, "ERROR: Project cannot be assigned on or after the animal's death date");
+        }
+
+        log("Verify protocol and project assignments before the death day are accepted");
+        LocalDateTime beforeDeath = deathDate.minusDays(1);
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "protocolAssignment", "lsid",
+                new String[]{"Id", "date", "protocol", "performedby"},
+                new Object[][]{{animalId, beforeDeath, PROTOCOL_ID, 1004}}
+        ), getExtraContext());
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "assignment", "lsid",
+                new String[]{"Id", "date", "project", "performedby"},
+                new Object[][]{{animalId, beforeDeath, PROTOCOL_PROJECT_ID, 1004}}
+        ), getExtraContext());
+    }
+
+    private void assertAssignmentRejected(String queryName, String valueColumn, String value, String animalId, LocalDateTime date, String expectedError)
+    {
+        SimplePostCommand insert = getApiHelper().prepareInsertCommand("study", queryName, "lsid",
+                new String[]{"Id", "date", valueColumn, "performedby"},
+                new Object[][]{{animalId, date, value, 1004}});
+        CommandException error = getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), insert, getExtraContext());
+        List<String> dateErrors = getApiHelper().extractErrors(error.getProperties()).getOrDefault("date", List.of());
+        Assert.assertTrue("Expected '" + expectedError + "' for " + queryName + " dated " + date + ", got: " + dateErrors,
+                dateErrors.stream().anyMatch(e -> e.startsWith(expectedError)));
+    }
+
+    @Test
     public void testClinicalCasesWorkflow()
     {
         String animalId = "8377984";
