@@ -2337,7 +2337,7 @@ public class NBRI_EHRTriggerHelper
     {
         List<String> errors = new ArrayList<>();
         Map<String, List<Map<String, Object>>> entries = new TableSelector(storageTable,
-                PageFlowUtil.set("logEntryId", "participantid", "date", "performedby", "sortOrder"),
+                PageFlowUtil.set("logEntryId", "participantid", "date", "performedby", "taskid", "sortOrder"),
                 new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryIds, CompareType.IN), null)
                 .getMapCollection().stream()
                 .map(row -> (Map<String, Object>) new CaseInsensitiveHashMap<>(row))
@@ -2353,9 +2353,10 @@ public class NBRI_EHRTriggerHelper
 
             boolean consistent = rows.stream().map(row -> row.get("participantid")).distinct().count() == 1
                     && rows.stream().map(row -> ConvertHelper.convert(row.get("date"), Date.class)).distinct().count() == 1
-                    && rows.stream().map(row -> row.get("performedby")).distinct().count() == 1;
+                    && rows.stream().map(row -> row.get("performedby")).distinct().count() == 1
+                    && rows.stream().map(row -> StringUtils.lowerCase(ConvertHelper.convert(row.get("taskid"), String.class))).distinct().count() == 1;
             if (!consistent)
-                errors.add("Every row of log entry " + logEntryId + " must have the same animal, observation date and technician");
+                errors.add("Every row of log entry " + logEntryId + " must have the same animal, observation date, technician and task");
         });
         return errors;
     }

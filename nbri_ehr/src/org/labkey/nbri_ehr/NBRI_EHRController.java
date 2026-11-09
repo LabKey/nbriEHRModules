@@ -66,6 +66,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -87,12 +88,19 @@ public class NBRI_EHRController extends SpringActionController
     }
 
     /**
-     * Saves daily health log entries from the barcode scanner service. Each entry saves under its own task in its own
-     * transaction, so one bad entry doesn't block the rest, and an entry already on file is reported rather than duplicated.
+     * Saves daily health log entries from the barcode scanner service as one atomic batch: every new entry saves, each
+     * under its own task, or none does. An entry already on file is reported rather than duplicated.
      */
     @RequiresPermission(InsertPermission.class)
     public static class SaveDailyHealthAction extends MutatingApiAction<SimpleApiJsonForm>
     {
+        private static final String CREATED = "created";
+        private static final String EXISTS = "exists";
+        private static final String ERROR = "error";
+        private static final String NOT_SAVED = "notSaved";
+
+        private record ParsedEntry(@Nullable String logEntryId, List<Map<String, Object>> rows, Map<String, Object> extraContext) {}
+
         @Override
         public void validateForm(SimpleApiJsonForm form, Errors errors)
         {
@@ -105,22 +113,47 @@ public class NBRI_EHRController extends SpringActionController
         public Object execute(SimpleApiJsonForm form, BindException errors)
         {
             JSONArray entries = form.getJsonObject().getJSONArray("entries");
+            TableInfo datasetTable = getTable("study", "dailyHealthLog");
             List<Map<String, Object>> results = new ArrayList<>();
+            Map<Integer, ParsedEntry> pending = new LinkedHashMap<>();
+            Set<String> seen = new HashSet<>();
             for (int i = 0; i < entries.length(); i++)
             {
-                JSONObject entry = entries.optJSONObject(i);
-                results.add(entry == null ? result(null, "error", List.of("Entry " + i + " is not an object")) : saveEntry(entry));
+                JSONObject json = entries.optJSONObject(i);
+                if (json == null)
+                {
+                    results.add(result(null, ERROR, List.of("Entry " + i + " is not an object")));
+                    continue;
+                }
+
+                List<String> problems = new ArrayList<>();
+                ParsedEntry entry = parseEntry(json, problems);
+                String logEntryId = entry.logEntryId();
+                if (logEntryId != null && !seen.add(logEntryId))
+                    problems.add("logEntryId " + logEntryId + " appears more than once in the batch");
+
+                if (!problems.isEmpty())
+                    results.add(result(logEntryId, ERROR, problems));
+                else if (new TableSelector(datasetTable, new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryId), null).exists())
+                    results.add(result(logEntryId, EXISTS, List.of()));
+                else
+                {
+                    results.add(result(logEntryId, NOT_SAVED, List.of()));
+                    pending.put(i, entry);
+                }
             }
+
+            if (!pending.isEmpty() && results.stream().noneMatch(r -> ERROR.equals(r.get("status"))))
+                saveAll(datasetTable, pending, results);
 
             ApiSimpleResponse response = new ApiSimpleResponse();
             response.put("results", results);
-            response.put("success", results.stream().noneMatch(r -> "error".equals(r.get("status"))));
+            response.put("success", results.stream().noneMatch(r -> ERROR.equals(r.get("status"))));
             return response;
         }
 
-        private Map<String, Object> saveEntry(JSONObject entry)
+        private ParsedEntry parseEntry(JSONObject entry, List<String> problems)
         {
-            List<String> problems = new ArrayList<>();
             String logEntryId = StringUtils.trimToNull(entry.optString("logEntryId", null));
             if (logEntryId == null || !UUID_PATTERN.matcher(logEntryId).matches())
                 problems.add("logEntryId must be a UUID");
@@ -166,23 +199,63 @@ public class NBRI_EHRController extends SpringActionController
                 }
             }
 
-            if (!problems.isEmpty())
-                return result(logEntryId, "error", problems);
-
-            TableInfo datasetTable = getTable("study", "dailyHealthLog");
-            if (new TableSelector(datasetTable, new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryId), null).exists())
-                return result(logEntryId, "exists", List.of());
-
             Map<String, Object> extraContext = new CaseInsensitiveHashMap<>();
             extraContext.put("locationArea", area);
             extraContext.put("locationEnclosure", enclosure);
             extraContext.put("locationCage", StringUtils.trimToNull(entry.optString("locationCage", null)));
+            return new ParsedEntry(logEntryId, rows, extraContext);
+        }
 
-            BatchValidationException saveErrors = new BatchValidationException();
+        /** Stops at the first entry that fails: closing a LabKey transaction without committing aborts it as a whole. */
+        private void saveAll(TableInfo datasetTable, Map<Integer, ParsedEntry> pending, List<Map<String, Object>> results)
+        {
             try (DbScope.Transaction transaction = datasetTable.getSchema().getScope().ensureTransaction())
             {
+                for (Map.Entry<Integer, ParsedEntry> item : pending.entrySet())
+                {
+                    List<String> entryErrors = insertEntry(datasetTable, item.getValue());
+                    if (!entryErrors.isEmpty())
+                    {
+                        results.set(item.getKey(), result(item.getValue().logEntryId(), ERROR, entryErrors));
+                        return;
+                    }
+                }
+                transaction.commit();
+            }
+            catch (RuntimeValidationException e)
+            {
+                // entry-level checks run as the transaction commits, and name the entries they reject
+                String message = e.getValidationException().getMessage();
+                List<String> parts = List.of(message.split("; "));
+                pending.forEach((i, entry) -> {
+                    String logEntryId = Objects.requireNonNull(entry.logEntryId());
+                    List<String> mine = parts.stream().filter(part -> part.contains(logEntryId)).toList();
+                    if (!mine.isEmpty())
+                        results.set(i, result(entry.logEntryId(), ERROR, mine));
+                });
+                if (results.stream().noneMatch(r -> ERROR.equals(r.get("status"))))
+                    pending.forEach((i, entry) -> results.set(i, result(entry.logEntryId(), ERROR, List.of(message))));
+                return;
+            }
+            catch (RuntimeException e)
+            {
+                LOG.error("Unable to save a batch of daily health log entries", e);
+                String message = StringUtils.defaultIfBlank(e.getMessage(), e.getClass().getSimpleName());
+                pending.forEach((i, entry) -> results.set(i, result(entry.logEntryId(), ERROR, List.of(message))));
+                return;
+            }
+
+            pending.forEach((i, entry) -> results.set(i, result(entry.logEntryId(), CREATED, List.of())));
+        }
+
+        /** Returns the entry's errors; empty when its task and rows were inserted. */
+        private List<String> insertEntry(TableInfo datasetTable, ParsedEntry entry)
+        {
+            BatchValidationException saveErrors = new BatchValidationException();
+            try
+            {
                 Map<String, Object> task = new CaseInsensitiveHashMap<>();
-                task.put("taskid", logEntryId);
+                task.put("taskid", entry.logEntryId());
                 task.put("title", NBRIDailyHealthFormType.NAME);
                 task.put("formtype", NBRIDailyHealthFormType.NAME);
                 task.put("category", "task");
@@ -191,29 +264,26 @@ public class NBRI_EHRController extends SpringActionController
                 Objects.requireNonNull(getTable("ehr", "tasks").getUpdateService()).insertRows(getUser(), getContainer(), List.of(task), saveErrors, null, null);
 
                 if (!saveErrors.hasErrors())
-                    Objects.requireNonNull(datasetTable.getUpdateService()).insertRows(getUser(), getContainer(), rows, saveErrors, null, extraContext);
-
-                if (!saveErrors.hasErrors())
-                {
-                    transaction.commit();
-                    return result(logEntryId, "created", List.of());
-                }
+                    Objects.requireNonNull(datasetTable.getUpdateService()).insertRows(getUser(), getContainer(), entry.rows(), saveErrors, null, entry.extraContext());
+            }
+            catch (BatchValidationException e)
+            {
+                saveErrors = e;
+            }
+            catch (RuntimeValidationException e)
+            {
+                return List.of(e.getValidationException().getMessage());
             }
             catch (Exception e)
             {
-                // entry-level checks run as the transaction commits
-                if (e instanceof RuntimeValidationException rve)
-                    return result(logEntryId, "error", List.of(rve.getValidationException().getMessage()));
-                if (e instanceof BatchValidationException bve)
-                    saveErrors = bve;
-                else
-                {
-                    LOG.error("Unable to save daily health log entry " + logEntryId, e);
-                    return result(logEntryId, "error", List.of(StringUtils.defaultIfBlank(e.getMessage(), e.getClass().getSimpleName())));
-                }
+                LOG.error("Unable to save daily health log entry " + entry.logEntryId(), e);
+                return List.of(StringUtils.defaultIfBlank(e.getMessage(), e.getClass().getSimpleName()));
             }
 
-            return result(logEntryId, "error", errorMessages(saveErrors));
+            List<String> messages = errorMessages(saveErrors);
+            if (saveErrors.hasErrors() && messages.isEmpty())
+                messages.add(StringUtils.defaultIfBlank(saveErrors.getMessage(), "Unable to save log entry " + entry.logEntryId()));
+            return messages;
         }
 
         private @Nullable Date parseDate(Object value, List<String> problems)

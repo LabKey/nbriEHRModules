@@ -64,7 +64,7 @@ The body is a JSON object with an `entries` array. Each entry is one log entry: 
 
 The location must match the animal's housing at the observation time: the room is looked up as `<locationArea>-<locationEnclosure>` and the cage as `<locationArea>-<locationEnclosure>-<locationCage>`. The location is only checked; it isn't stored with the entry.
 
-Example `entries.json` with one good entry and one that will be rejected:
+Example `entries.json` with one good entry and one that will be rejected, which rejects the whole batch:
 
 ```json
 {
@@ -101,14 +101,17 @@ Example `entries.json` with one good entry and one that will be rejected:
 
 ## What a save does
 
-- Each entry saves on its own, with its own EHR task (task id = `logEntryId`), so a bad entry doesn't stop the others in the batch. Within an entry it is all or nothing: a rejected entry leaves no rows and no task behind.
+- The batch is atomic: either every new entry saves or none does. One bad entry rejects the whole batch, leaving no rows and no tasks behind, so fix or drop it and resend the batch.
+- Each saved entry gets its own EHR task (task id = `logEntryId`).
 - Each code becomes one Daily Health Log row with the entry's animal, date, technician and `logEntryId`, in the Completed QC state.
 - `HEVYMEN`/`NRMLMEN` create a Menses clinical observation (heavy wins if both are sent), `POORAPP` an Appetite observation and `LIQDSTL` a Stool observation, once per entry.
-- Sending an entry whose `logEntryId` is already on file saves nothing and reports `exists`, so a scanner can safely resend a batch after a timeout.
+- An entry whose `logEntryId` is already on file is skipped and reported as `exists`, without failing the batch, so a scanner can safely resend a batch after a timeout.
+- The API never changes a saved entry: a resent entry's contents are ignored even if its codes, time or technician differ. Correct an entry in the EHR's Daily Health form by opening its task, whose task id is the `logEntryId`.
+- The fields of every entry are checked before anything is saved, so all of those errors come back together. The checks against EHR data (animal, housing, codes, sort orders) run as entries save, and the batch stops at the first entry that fails them, so a later bad entry shows up only on the next attempt.
 
 ## Response
 
-HTTP 200 means the batch was processed; check each entry's result. `success` is `true` only if no entry has status `error`.
+HTTP 200 means the batch was processed; check `success`. It is `true` when the batch saved, and `false` when it was rejected, in which case the entries with status `error` say why.
 
 ```json
 {
@@ -116,7 +119,7 @@ HTTP 200 means the batch was processed; check each entry's result. `success` is 
   "results": [
     {
       "logEntryId": "019a6a2e-7c3f-7b21-9d4e-5f1a2b3c4d5e",
-      "status": "created",
+      "status": "notSaved",
       "errors": []
     },
     {
@@ -131,14 +134,16 @@ HTTP 200 means the batch was processed; check each entry's result. `success` is 
 | `status` | Meaning |
 |---|---|
 | `created` | The entry and its task were saved. |
-| `exists` | An entry with this `logEntryId` is already on file; nothing was saved. |
-| `error` | Nothing was saved for this entry; `errors` says why. |
+| `notSaved` | Nothing was saved because another entry in the batch was rejected. An entry after the rejected one may still fail the EHR data checks on the next attempt. |
+| `exists` | An entry with this `logEntryId` is already on file; it was skipped and left unchanged. |
+| `error` | The entry was rejected, so nothing in the batch was saved; `errors` says why. |
 
 Entry errors you can expect:
 
 | Error | Cause |
 |---|---|
 | `logEntryId must be a UUID` | Missing or malformed `logEntryId`. |
+| `logEntryId <id> appears more than once in the batch` | Two entries in the batch share a `logEntryId`. |
 | `animalId is required` / `technician is required` / `observationDateTime is required` | Missing field. |
 | `observationDateTime must be an ISO 8601 date-time: ...` | The date-time didn't parse. |
 | `locationArea and locationEnclosure are required` | Missing location. |

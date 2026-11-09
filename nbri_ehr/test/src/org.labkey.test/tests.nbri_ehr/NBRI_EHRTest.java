@@ -3674,7 +3674,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         insertHousingAndAssignments(animalId, LocalDateTime.now().minusDays(10), CAGE_IN_R1, PROJECT_ID, PROTOCOL_ID, EHRQCState.COMPLETED);
         LocalDateTime observed = LocalDateTime.now().minusMinutes(5).truncatedTo(ChronoUnit.MINUTES);
 
-        log("Saving a batch mixing good and bad daily health entries");
+        log("Rejecting batches that hold a bad daily health entry");
         JSONObject menses = dailyHealthEntry(animalId, observed, "C1", "HEVYMEN", "NRMLMEN", "POORAPP");
         JSONObject roomOnly = dailyHealthEntry(animalId, observed, null, "LIQDSTL");
         JSONObject wrongCage = dailyHealthEntry(animalId, observed, "C2", "RAB");
@@ -3683,13 +3683,28 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         duplicateOrder.getJSONArray("codes").getJSONObject(1).put("sortOrder", 1);
         JSONObject unknownTechnician = dailyHealthEntry(animalId, observed, "C1", "RAB").put("technician", "nobody@nbritest.com");
 
-        Map<String, JSONObject> results = saveDailyHealth(menses, roomOnly, wrongCage, unknownCode, duplicateOrder, unknownTechnician);
+        Map<String, JSONObject> results = saveDailyHealth(menses, unknownTechnician);
+        assertDailyHealthResult(results, menses, "notSaved", null);
+        assertDailyHealthResult(results, unknownTechnician, "error", "nobody@nbritest.com is not an active LabKey user");
+        // the good entry is inserted before the bad one fails, so this checks the rollback
+        results = saveDailyHealth(menses, roomOnly, wrongCage);
+        assertDailyHealthResult(results, menses, "notSaved", null);
+        assertDailyHealthResult(results, roomOnly, "notSaved", null);
+        assertDailyHealthResult(results, wrongCage, "error", animalId + " was not housed in " + cageLocation("R1", "C2"));
+        assertDailyHealthResult(saveDailyHealth(menses, unknownCode), unknownCode, "error", "Unknown daily health code: NOPE123");
+        assertDailyHealthResult(saveDailyHealth(menses, duplicateOrder), duplicateOrder, "error", "Another row of this log entry has sort order 1");
+        assertDailyHealthResult(saveDailyHealth(menses, menses), menses, "error", "appears more than once in the batch");
+        for (JSONObject rejected : List.of(menses, roomOnly, wrongCage, unknownCode, duplicateOrder, unknownTechnician))
+        {
+            String rejectedId = rejected.getString("logEntryId");
+            assertEquals("Rejected batch left rows behind for " + rejectedId, 0, getDailyHealthRows(new Filter("logEntryId", rejectedId)).size());
+            Assert.assertNull("Rejected batch left a task behind for " + rejectedId, getTask(rejectedId));
+        }
+
+        log("Saving a batch of good daily health entries");
+        results = saveDailyHealth(menses, roomOnly);
         assertDailyHealthResult(results, menses, "created", null);
         assertDailyHealthResult(results, roomOnly, "created", null);
-        assertDailyHealthResult(results, wrongCage, "error", animalId + " was not housed in " + cageLocation("R1", "C2"));
-        assertDailyHealthResult(results, unknownCode, "error", "Unknown daily health code: NOPE123");
-        assertDailyHealthResult(results, duplicateOrder, "error", "Another row of this log entry has sort order 1");
-        assertDailyHealthResult(results, unknownTechnician, "error", "nobody@nbritest.com is not an active LabKey user");
 
         log("Verifying the saved entry and its task");
         String entryId = menses.getString("logEntryId");
@@ -3704,14 +3719,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assertNotNull("No task was created for the entry", task);
         assertEquals("Wrong task form type", "Daily Health", task.get("formtype"));
         assertEquals("Wrong task status", EHRQCState.COMPLETED.label, task.get("qcstate/Label"));
-
-        log("Verifying rejected entries saved nothing");
-        for (JSONObject rejected : List.of(wrongCage, unknownCode, duplicateOrder, unknownTechnician))
-        {
-            String rejectedId = rejected.getString("logEntryId");
-            assertEquals("Rejected entry " + rejectedId + " left rows behind", 0, getDailyHealthRows(new Filter("logEntryId", rejectedId)).size());
-            Assert.assertNull("Rejected entry " + rejectedId + " left a task behind", getTask(rejectedId));
-        }
 
         log("Verifying the generated clinical observations");
         Map<String, Map<String, Object>> observations = getDailyHealthObservations(animalId);
@@ -3750,7 +3757,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assertDailyHealthSaveRejected(dailyHealthUpdate(rows.get(1), "logEntryId", UUID.randomUUID().toString()), "The log entry Id cannot be changed");
         assertDailyHealthSaveRejected(dailyHealthInsert(entryId, animalId, date, 2, "POORAPP"), "Log entry " + entryId + " has more than one row with sort order 2");
         assertDailyHealthSaveRejected(dailyHealthInsert(entryId, animalId, LocalDate.now().minusDays(2).atTime(8, 0).format(DAILY_HEALTH_DATE_FORMAT), 4, "POORAPP"),
-                "Every row of log entry " + entryId + " must have the same animal, observation date and technician");
+                "Every row of log entry " + entryId + " must have the same animal, observation date, technician and task");
+        assertDailyHealthSaveRejected(dailyHealthUpdate(rows.get(2), "taskid", UUID.randomUUID().toString()),
+                "Every row of log entry " + entryId + " must have the same animal, observation date, technician and task");
         assertDailyHealthSaveRejected(dailyHealthInsert(UUID.randomUUID().toString(), animalId, date, 1, "NOPE123"), "Unknown daily health code: NOPE123");
 
         log("Rejecting a new entry for an animal that is not alive");
