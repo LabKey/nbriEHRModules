@@ -1085,7 +1085,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         _helper.getExt4FieldForFormSection("Protocol", "IACUC Protocol").setValue(protocol);
         _helper.getExt4FieldForFormSection("Protocol", "Title").setValue("New protocol form fixture");
         _helper.getExt4FieldForFormSection("Protocol", "PI").setValue(getInvestigatorRowId(INVES_LAST_NAME));
-        getProtocolFormField("project_type").setValue("E");
+        getProtocolFormField("project_type").setValue("EXPERIMENTAL");
         _helper.getExt4FieldForFormSection("Protocol", "Approval Date").setValue(approve.format(_dateFormat));
 
         log("Verifying the end date defaults to three years after approval");
