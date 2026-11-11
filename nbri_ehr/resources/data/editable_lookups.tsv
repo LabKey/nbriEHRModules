@@ -1,163 +1,163 @@
 sch	query	category	title	description
-ehr_lookups	abdominal_obs_types	Clinical	Abdominal Observation Types	Used in clinical observations.
+ehr_lookups	abdominal_obs_types	Clinical	Abdominal Observation Types	"Datasets: Clinical/Behavior Observations (Observation/Score for category 'Abdominal Observations'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	abnormal_behavior_types	Clinical	Abnormal Behavior Observation Types	Used in clinical observations.
-ehr_lookups	acquisition_type	Colony Management	Acquisition Type	Types of acquisition for Arrivals.
-ehr_lookups	activity	Behavior	Activity	Behavior observation fixed values.
+ehr_lookups	acquisition_type	Colony Management	Acquisition Type	Types of acquisition for Arrivals. Datasets: Arrival (Acquisition Type). Forms: Arrivals (Arrivals > Acquisition Type).
+ehr_lookups	activity	Behavior	Activity	"Behavior observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Activity'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	ageclass	Colony Management	Age Class	"Categories of age, such as infant or adult, by species. Used in various reports grouping animals by age class."
-ehr_lookups	alias_category	Colony Management	Alias Category	
-ehr_lookups	alopecia_score	Behavior	Alopecia Score	Behavior observation fixed values.
-ehr_lookups	alopecia_type	Behavior	Alopecia Type	Behavior observation fixed values.
-ehr_lookups	alopecia_regrowth	Behavior	Alopecia Regrowth	Behavior observation fixed values.
-ehr_lookups	amount_units	Clinical	Amount Units	"Used in drugs, treatments given and treatments ordered datasets."
-ehr_lookups	app_score	Behavior	Appetite Score	Behavior observation fixed values.
+ehr_lookups	alias_category	Colony Management	Alias Category	Datasets: Alias (Type). Forms: Alias (Alias > Type).
+ehr_lookups	alopecia_score	Behavior	Alopecia Score	"Behavior observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Alopecia Score'). Forms: Behavioral Cases, Behavioral Rounds, Bulk Behavior Entry, Observations (Observations > Observation/Score)."
+ehr_lookups	alopecia_type	Behavior	Alopecia Type	"Behavior observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Alopecia Type'). Forms: Behavioral Cases, Behavioral Rounds, Bulk Behavior Entry, Observations (Observations > Observation/Score)."
+ehr_lookups	alopecia_regrowth	Behavior	Alopecia Regrowth	"Behavior observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Alopecia Regrowth'). Forms: Behavioral Cases, Behavioral Rounds, Bulk Behavior Entry, Observations (Observations > Observation/Score)."
+ehr_lookups	amount_units	Clinical	Amount Units	"Datasets: Drug Administration (Amount Units); Treatment Orders (Amount Units). Forms: Behavioral Cases, Bulk Behavior Entry (Medications/Treatments Orders > Amount Units); Bulk Clinical Entry, Clinical Cases, Medications/Treatments (Medications/Treatments Given > Amount Units; Medications/Treatments Orders > Amount Units); Clinical Rounds (Medications/Treatments Given > Amount Units)."
+ehr_lookups	app_score	Behavior	Appetite Score	"Behavior observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Appetite'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	areas	Housing	Areas	Top level of the housing location hierarchy.
-ehr_lookups	arrival_type	Colony Management	Arrival Type	Types of arrivals.
+ehr_lookups	arrival_type	Colony Management	Arrival Type	Types of arrivals. Datasets: Arrival (Arrival Type). Forms: Arrivals (Arrivals > Arrival Type); Rearrivals (Rearrivals > Arrival Type).
 ehr_lookups	arthritis_types	Clinical	Arthritis Types	Clinical observation fixed values.
-ehr_lookups	att_score	Behavior	Attitude Score	Behavior observation fixed values.
-ehr_lookups	bandage_observations	Clinical	Bandage Observations	Clinical observation fixed values.
-ehr_lookups	bcs_score	Clinical	Body Condition Score	Clinical observation fixed values.
-ehr_lookups	behavior_abnormality	Clinical	Behavior Abnormality	Clinical observation fixed values.
-ehr_lookups	behavior_mgmt_codes	Behavior	Behavior Management Codes	Behavior observation fixed values.
-ehr_lookups	behavior_types	Behavior	Behavior Types	Behavior observation fixed values.
-ehr_lookups	blood_draw_reason	Clinical	Blood Draw Reason	Used in blood draw datasets.
-ehr_lookups	blood_draw_tube_type	Clinical	Blood Draw Tube Type	Used in blood draw datasets.
-ehr_lookups	blood_sample_type	Clinical	Blood Sample Types	Used in blood draw datasets.
-ehr_lookups	blood_tube_volumes	Clinical	Blood Tube Volumes	Used in blood draw datasets.
-ehr_lookups	breeding_type	Colony Management	Breeding Type	Breeding group assignment codes.
+ehr_lookups	att_score	Behavior	Attitude Score	"Behavior observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Attitude'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	bandage_observations	Clinical	Bandage Observations	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Bandage/Splint Observations'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	bcs_score	Clinical	Body Condition Score	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'BCS'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	behavior_abnormality	Clinical	Behavior Abnormality	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Behavior Abnormality'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	behavior_mgmt_codes	Behavior	Behavior Management Codes	"Behavior observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Behavior Management'). Forms: Behavioral Cases, Behavioral Rounds, Bulk Behavior Entry, Observations (Observations > Observation/Score)."
+ehr_lookups	behavior_types	Behavior	Behavior Types	"Behavior observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Abnormal Behaviors'). Forms: Behavioral Cases, Behavioral Rounds, Bulk Behavior Entry, Observations (Observations > Observation/Score)."
+ehr_lookups	blood_draw_reason	Clinical	Blood Draw Reason	Datasets: Blood Draws (Reason).
+ehr_lookups	blood_draw_tube_type	Clinical	Blood Draw Tube Type	"Datasets: Blood Draws (Tube Type). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds (Blood Draws > Tube Type)."
+ehr_lookups	blood_sample_type	Clinical	Blood Sample Types	"Datasets: Blood Draws (Sample Type). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds (Blood Draws > Sample Type)."
+ehr_lookups	blood_tube_volumes	Clinical	Blood Tube Volumes	"Datasets: Blood Draws (Tube Volume (mL)). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds (Blood Draws > Tube Volume (mL))."
+ehr_lookups	breeding_type	Colony Management	Breeding Type	Breeding group assignment codes. Datasets: Animal Group Members (Group); Arrival (Group); Birth (Group). Forms: Animal Group Assignment (Group Assignments > New Group); Arrivals (Arrivals > Group); Birth (Births > Group); Rearrivals (Rearrivals > Group).
 ehr_lookups	buildings	Housing	Buildings	Buildings within an area.
-ehr_lookups	cage	Housing	Cages	Cage locations within a room.
+ehr_lookups	cage	Housing	Cages	"Cage locations within a room. Datasets: Arrival (Location); Birth (Location); Demographics (Cage); Housing (Location); Pairings (Location). Forms: Arrivals (Arrivals > Location); Birth (Births > Location); Clinical Cases, Clinical Rounds, Housing Transfers (Housing Transfers > New Location); Pairing Observations (Pairings > Location); Rearrivals (Rearrivals > Location)."
 ehr_lookups	cage_type	Colony Management	Cage Type	Used in cage details.
 ehr_lookups	cageclass	Housing	Cage Class	Cage size requirements by weight. Used in cage size calculations.
-ehr_lookups	calculated_status_codes	Colony Management	Calculated Status	Animal status values.
-ehr_lookups	capillary_refill_time	Clinical	Capillary Refill Times	Used clinical observations.
+ehr_lookups	calculated_status_codes	Colony Management	Calculated Status	Animal status values. Datasets: Demographics (Animal Status).
+ehr_lookups	capillary_refill_time	Clinical	Capillary Refill Times	"Datasets: Clinical/Behavior Observations (Observation/Score for category 'Capillary Refill Time'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	card_format	Colony Management	Card Format	
 ehr_lookups	census_activity_status	Colony Management	Census Activity Status	
 ehr_lookups	clinremarks_category	Clinical	Clinical Remark Category	Clinical remarks category.
-ehr_lookups	conc_units	Clinical	Concentration Units	Used in drug and treatment datasets.
+ehr_lookups	conc_units	Clinical	Concentration Units	"Datasets: Drug Administration (Conc Units); Treatment Orders (Conc Units). Forms: Behavioral Cases, Bulk Behavior Entry (Medications/Treatments Orders > Conc Units); Bulk Clinical Entry, Clinical Cases, Medications/Treatments (Medications/Treatments Given > Conc Units; Medications/Treatments Orders > Conc Units); Clinical Rounds (Medications/Treatments Given > Conc Units)."
 ehr_lookups	congenital_abnormalities	Clinical	Congenital Abnormalities	Clinical observation fixed values.
 ehr_lookups	cost_center	Colony Management	Cost Center	
 ehr_lookups	cost_type	Colony Management	Cost Type	
 ehr_lookups	country	Colony Management	Country	
 ehr_lookups	country_category	Colony Management	Country Category	
-ehr_lookups	daily_enrich_codes	Behavior	Daily enrichment codes.	
-ehr_lookups	data_category	Clinical	Data Categories	Used in datasets.
-ehr_lookups	death_type	Colony Management	Death Type	Death type codes.
-ehr_lookups	delivery_mode	Colony Management	Delivery Mode
+ehr_lookups	daily_enrich_codes	Behavior	Daily enrichment codes.	"Datasets: Clinical/Behavior Observations (Observation/Score for category 'Daily Enrichment'). Forms: Behavioral Cases, Behavioral Rounds, Bulk Behavior Entry, Observations (Observations > Observation/Score)."
+ehr_lookups	data_category	Clinical	Data Categories	Datasets: Clinical Remarks (Category); Drug Administration (Category); Procedure Orders (Category); Procedures (Category); Treatment Cases (Category); Treatment Orders (Category); Vital Signs (Category); Weight (Category).
+ehr_lookups	death_type	Colony Management	Death Type	Death type codes. Datasets: Deaths (Death Type). Forms: Deaths (Deaths > Death Type).
+ehr_lookups	delivery_mode	Colony Management	Delivery Mode	Datasets: Birth (Delivery Mode); Pregnancy Outcomes (Delivery Mode). Forms: Birth (Births > Delivery Mode); Pregnancy Outcomes (Pregnancy Outcomes > Delivery Mode).
 ehr_lookups	delivery_state	Colony Management	Delivery State
-ehr_lookups	dental_obs	Clinical	Dental Observation Types	Clinical observation values.
-ehr_lookups	derm_obs	Clinical	Dermatologic Observation Types	Clinical observation values.
+ehr_lookups	dental_obs	Clinical	Dental Observation Types	"Clinical observation values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Dental/Oral Observations'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	derm_obs	Clinical	Dermatologic Observation Types	"Clinical observation values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Dermatologic Observations'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	digit_amputation	Clinical	Digit Amputation	Clinical observation fixed values.
-ehr_lookups	divider_types	Colony Management	Divider Type	Used in cage details.
-ehr_lookups	dosage_units	Clinical	Dosage Units	Used in drug and treatment datasets.
+ehr_lookups	divider_types	Colony Management	Divider Type	"Datasets: Housing (Divider). Forms: Clinical Cases, Clinical Rounds, Housing Transfers (Housing Transfers > Divider)."
+ehr_lookups	dosage_units	Clinical	Dosage Units	"Datasets: Drug Administration (Dosage Units); Treatment Orders (Dosage Units). Forms: Behavioral Cases, Bulk Behavior Entry (Medications/Treatments Orders > Dosage Units); Bulk Clinical Entry, Clinical Cases, Medications/Treatments (Medications/Treatments Given > Dosage Units; Medications/Treatments Orders > Dosage Units); Clinical Rounds (Medications/Treatments Given > Dosage Units)."
 ehr_lookups	drug_defaults	Clinical	Formulary	Default values in drug and treatment datasets.
 ehr_lookups	ear_types	Clinical	Ear Types	Clinical observation fixed values.
-ehr_lookups	encounter_roles	Pathology	Staff Roles	Roles for staff recorded on a procedure.
+ehr_lookups	encounter_roles	Pathology	Staff Roles	"Roles for staff recorded on a procedure. Datasets: Procedure Staff (Role). Forms: Necropsy, Necropsy Final (Staff > Role)."
 ehr_lookups	esig_events	Colony Management	Esig Events	
 ehr_lookups	euthanasia_type	Colony Management	Euthanasia Type	
-ehr_lookups	exam_findings	Clinical	Exam Findings	Physical exam values.
-ehr_lookups	exemption_category	Colony Management	Exemption Category	
+ehr_lookups	exam_findings	Clinical	Exam Findings	"Physical exam values. Datasets: Clinical/Behavior Observations (Observation/Score for categories 'Annual Physical Exam', 'Introductory Physical Exam', 'Preshipment Physical Exam'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	exemption_category	Colony Management	Exemption Category	Datasets: Exemptions (Category). Forms: Exemptions (Exemptions > Category).
 ehr_lookups	expense_class	Colony Management	Expense Class	
 ehr_lookups	fecal_score	Clinical	Fecal Score	Clinical observation fixed values.
 ehr_lookups	fecal_smear_score	Clinical	Fecal Smear Score	Clinical observation fixed values.
-ehr_lookups	feed_assess_types	Behavior	Fecal Assessment Types	Behavior observation fixed values.
+ehr_lookups	feed_assess_types	Behavior	Fecal Assessment Types	"Behavior observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Feed Assessment'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	flag_categories	Colony Management	Flag Categories	Used to specify flag behavior.
-ehr_lookups	flag_values	Colony Management	Flag Values	Animal flag values.
+ehr_lookups	flag_values	Colony Management	Flag Values	Animal flag values. Datasets: Animal Record Flags (Flag). Forms: Flags (Animal Record Flags > Flag).
 ehr_lookups	floors	Housing	Floors	Floors within a building.
 ehr_lookups	gastro_types	Clinical	Gastrointestinal Types	Clinical observation fixed values.
-ehr_lookups	gender_codes	Colony Management	Sex Codes	Used in demographics dataset.
-ehr_lookups	general_obs	Clinical	General Observation Types	Clinical observation types.
+ehr_lookups	gender_codes	Colony Management	Sex Codes	Datasets: Arrival (Gender); Birth (Gender); Demographics (sex). Forms: Arrivals (Arrivals > Gender); Birth (Births > Gender); Rearrivals (Rearrivals > Gender).
+ehr_lookups	general_obs	Clinical	General Observation Types	"Clinical observation types. Datasets: Clinical/Behavior Observations (Observation/Score for category 'General Observations'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	genital_types	Colony Management	Genital Types	Clinical observation fixed values.
-ehr_lookups	genitourinary_obs	Clinical	Genitourinary Observation Types	Clinical observation fixed values.
-ehr_lookups	geographic_origins	Colony Management	Geographic Origins	Used in demographics dataset.
-ehr_lookups	hernia_types	Clinical	Hernia Types	Clinical observation fixed values.
-ehr_lookups	histology_stain	Pathology	Histology Stain	Histology slide stains.
-ehr_lookups	housing_reason	Housing	Housing Move Reason	Used in housing dataset for location transfers.
-ehr_lookups	hyd_score	Clinical	Hydration Score	Clinical observation fixed values.
-ehr_lookups	incision_score	Clinical	Incision Status	Clinical observation fixed values.
+ehr_lookups	genitourinary_obs	Clinical	Genitourinary Observation Types	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Genitourinary Observations'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	geographic_origins	Colony Management	Geographic Origins	Datasets: Arrival (Geographic Origin); Birth (Geographic Origin); Demographics (Origin). Forms: Arrivals (Arrivals > Geographic Origin); Birth (Births > Geographic Origin); Rearrivals (Rearrivals > Geographic Origin).
+ehr_lookups	hernia_types	Clinical	Hernia Types	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Hernia'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	histology_stain	Pathology	Histology Stain	Histology slide stains. Datasets: Histology (Stain).
+ehr_lookups	housing_reason	Housing	Housing Move Reason	"Datasets: Housing (Reason For Move). Forms: Clinical Cases, Clinical Rounds, Housing Transfers (Housing Transfers > Reason For Move)."
+ehr_lookups	hyd_score	Clinical	Hydration Score	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Hydration'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	incision_score	Clinical	Incision Status	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Incision Status'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	indoor_outdoor	Colony Management	Indoor/Outdoor	Cage details
 ehr	investigators	Colony Management	Investigators	Investigators available for protocol and project assignment.
 ehr_lookups	keyword	Clinical	Keyword	Clinical observation fixed values.
-ehr_lookups	lameness	Clinical	Lameness	Clinical observation fixed values.
+ehr_lookups	lameness	Clinical	Lameness	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Lameness'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	mass_type	Clinical	Mass Type	Clinical observation fixed values.
-ehr_lookups	mens_score	Clinical	Menses Types	Clinical observation fixed values.
-ehr_lookups	mucous_membranes	Clinical	Mucous Membranes	Used in clinical observations.
+ehr_lookups	mens_score	Clinical	Menses Types	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Menses'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	mucous_membranes	Clinical	Mucous Membranes	"Datasets: Clinical/Behavior Observations (Observation/Score for category 'Mucous Membranes'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	musculoskeletal_observations	Clinical	Musculoskeletal Observations	Used in clinical observations.
-ehr_lookups	necropsy_cause_category	Pathology	Cause of Death Category	Underlying cause of death categories for necropsy reporting.
-ehr_lookups	necropsy_diagnosis	Pathology	Necropsy Diagnosis	Morphologic diagnoses for necropsy findings.
-ehr_lookups	necropsy_diagnosis_distribution	Pathology	Necropsy Diagnosis Distribution	Distribution of a necropsy lesion.
-ehr_lookups	necropsy_diagnosis_severity	Pathology	Necropsy Diagnosis Severity	Severity of a necropsy lesion.
-ehr_lookups	necropsy_disposition_codes	Pathology	Necropsy Disposition Codes	What was done with a tissue collected at necropsy.
+ehr_lookups	necropsy_cause_category	Pathology	Cause of Death Category	Underlying cause of death categories for necropsy reporting. Datasets: Necropsy Final (Cause of Death Category). Forms: Necropsy Final (Final Results > Cause of Death Category).
+ehr_lookups	necropsy_diagnosis	Pathology	Necropsy Diagnosis	Morphologic diagnoses for necropsy findings. Datasets: Final Diagnoses (Diagnosis); Gross Diagnoses (Diagnosis).
+ehr_lookups	necropsy_diagnosis_distribution	Pathology	Necropsy Diagnosis Distribution	Distribution of a necropsy lesion. Datasets: Final Diagnoses (Distribution); Gross Diagnoses (Distribution).
+ehr_lookups	necropsy_diagnosis_severity	Pathology	Necropsy Diagnosis Severity	Severity of a necropsy lesion. Datasets: Final Diagnoses (Severity); Gross Diagnoses (Severity).
+ehr_lookups	necropsy_disposition_codes	Pathology	Necropsy Disposition Codes	"What was done with a tissue collected at necropsy. Datasets: Tissue Disposition (Tissue Disposition Code). Forms: Necropsy, Necropsy Final (Tissue Disposition > Tissue Disposition Code)."
 ehr_lookups	necropsy_priority	Pathology	Necropsy Priority	Necropsy request priorities.
-ehr_lookups	necropsy_tissue	Pathology	Necropsy Tissue	Tissues recorded for tissue disposition.
-ehr_lookups	neurologic_observations	Clinical	Neurologic Observations	Used in clinical observations..
-ehr_lookups	nhp_training_reason	Behavior	NHP Training Reason	Behavior training reason values
-ehr_lookups	nhp_training_result	Behavior	NHP Training Result	Behavior training result values
-ehr_lookups	nhp_training_type	Behavior	NHP Training Type	Behavior training type values
-ehr_lookups	normal_abnormal_only	Clinical	Normal/Abnormal Values	Clinical observation values.
-ehr_lookups	numeric_unit	Colony Management	Numeric Unit	
-ehr_lookups	observation_areas	Clinical	Observation Areas	Clinical observation areas.
-ehr_lookups	obstetric_observations	Clinical	Obstetric Observations	Obstetric Observations Fixed Values.
+ehr_lookups	necropsy_tissue	Pathology	Necropsy Tissue	"Tissues recorded for tissue disposition. Datasets: Tissue Disposition (Tissue). Forms: Necropsy, Necropsy Final (Tissue Disposition > Tissue)."
+ehr_lookups	neurologic_observations	Clinical	Neurologic Observations	"Datasets: Clinical/Behavior Observations (Observation/Score for category 'Neurologic Observations'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	nhp_training_reason	Behavior	NHP Training Reason	Behavior training reason values. Datasets: Animal Training (Reason). Forms: Animal Training (Animal Training > Reason).
+ehr_lookups	nhp_training_result	Behavior	NHP Training Result	Behavior training result values. Datasets: Animal Training (Result). Forms: Animal Training (Animal Training > Result).
+ehr_lookups	nhp_training_type	Behavior	NHP Training Type	Behavior training type values. Datasets: Animal Training (Training Type). Forms: Animal Training (Animal Training > Training Type).
+ehr_lookups	normal_abnormal_only	Clinical	Normal/Abnormal Values	"Clinical observation values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Auscultation'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	numeric_unit	Colony Management	Numeric Unit	Datasets: Blood Draws (Units); Physical Exam (Units); Vital Signs (Units); Weight (Units).
+ehr_lookups	observation_areas	Clinical	Observation Areas	"Clinical observation areas. Datasets: Clinical/Behavior Observations (Area); Observation Orders (Area). Forms: Behavioral Cases, Bulk Behavior Entry (Observation Orders > Area); Bulk Clinical Entry, Clinical Cases (Observation Orders > Area; Observations > Area); Clinical Rounds, Observations (Observations > Area)."
+ehr_lookups	obstetric_observations	Clinical	Obstetric Observations	"Obstetric Observations Fixed Values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Obstetric Observations'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	ocular_observations	Clinical	Ocular Observations	Ocular Observations Fixed Values.
-ehr_lookups	ocular_problem	Clinical	Ocular Problem	Clinical observation fixed values.
-ehr_lookups	pairing_formation_types	Behavior	Pairing Formation Type	Pairing formation values.
-ehr_lookups	pairing_goal	Behavior	Pairing Goal	Used in pairing dataset.
-ehr_lookups	pairing_reason	Behavior	Introduction Reason	Used in pairing dataset.
-ehr_lookups	pairing_observation	Behavior	Interaction Summary	Used in pairing dataset.
-ehr_lookups	pairing_separation_reason	Colony Management	Pairing Status Change Reason	Pairing Status Change Reason Fixed Values.
+ehr_lookups	ocular_problem	Clinical	Ocular Problem	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Ocular Observations'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	pairing_formation_types	Behavior	Pairing Formation Type	Pairing formation values. Datasets: Pairings (Formation Type). Forms: Pairing Observations (Pairings > Formation Type).
+ehr_lookups	pairing_goal	Behavior	Pairing Goal	"Datasets: Pairings (End State, Goal). Forms: Pairing Observations (Pairings > End State; Pairings > Goal)."
+ehr_lookups	pairing_reason	Behavior	Introduction Reason	Datasets: Pairings (Introduction Reason). Forms: Pairing Observations (Pairings > Introduction Reason).
+ehr_lookups	pairing_observation	Behavior	Interaction Summary	Datasets: Pairings (Interaction Summary). Forms: Pairing Observations (Pairings > Interaction Summary).
+ehr_lookups	pairing_separation_reason	Colony Management	Pairing Status Change Reason	Pairing Status Change Reason Fixed Values. Datasets: Pairings (Separation Reason). Forms: Pairing Observations (Pairings > Separation Reason).
 ehr_lookups	per_diem	Housing	Per Diem	Per diem housing categories for cages.
-ehr_lookups	preferences	Behavior	Preferences	Behavior observation fixed values.
-ehr_lookups	pregnancy_result	Colony Management	Pregancy Result	
-ehr_lookups	pregnancy_type	Colony Management	Pregnancy Type	Used in births and pregnancy outcomes.
+ehr_lookups	preferences	Behavior	Preferences	"Behavior observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Preferences'). Forms: Behavioral Cases, Behavioral Rounds, Bulk Behavior Entry, Observations (Observations > Observation/Score)."
+ehr_lookups	pregnancy_result	Colony Management	Pregancy Result	Datasets: Pregnancy Outcomes (Result). Forms: Pregnancy Outcomes (Pregnancy Outcomes > Result).
+ehr_lookups	pregnancy_type	Colony Management	Pregnancy Type	Datasets: Birth (Pregnancy Type); Pregnancy Outcomes (Pregnancy Type). Forms: Birth (Births > Pregnancy Type); Pregnancy Outcomes (Pregnancy Outcomes > Pregnancy Type).
 ehr_lookups	procedure_category	Clinical	Procedure Category	Used in procedures to group procedures.
-ehr_lookups	procedures	Clinical	Procedures	List of animal procedures.F
-ehr_lookups	problem_list_category	Clinical	Problem List Category	Used in problem list dataset. Set when opening a case.
-ehr_lookups	problem_list_subcategory	Clinical	Problem List Subcategory	Used in problem list to categorize problems.
-ehr	project	Colony Management	Projects	Projects animals can be assigned to.
+ehr_lookups	procedures	Clinical	Procedures	"List of animal procedures. Datasets: Procedure Orders (Procedure); Procedures (Procedure). Forms: Bulk Clinical Entry, Clinical Cases (Procedure Orders > Procedure; Procedures > Procedure); Clinical Rounds (Procedures > Procedure)."
+ehr_lookups	problem_list_category	Clinical	Problem List Category	"Set when opening a case. Datasets: Problem List (Category); Treatment Cases (Problem Area). Forms: Behavioral Cases, Behavioral Rounds, Clinical Cases, Clinical Rounds (Treatment Cases > Problem Area)."
+ehr_lookups	problem_list_subcategory	Clinical	Problem List Subcategory	"Used in problem list to categorize problems. Datasets: Problem List (Subcategory); Treatment Cases (Problem Subcategory). Forms: Behavioral Cases, Behavioral Rounds, Clinical Cases, Clinical Rounds (Treatment Cases > Problem Subcategory)."
+ehr	project	Colony Management	Projects	Projects animals can be assigned to. Datasets: Arrival (Project); Birth (Project); Clinical Remarks (Project); Drug Administration (Project); Project Assignments (Project); Treatment Orders (Project). Forms: Assignment (Project Assignment > New Project).
 ehr_lookups	project_types	Colony Management	Project Types	Used in projects.
-ehr	protocol	Colony Management	Protocols	IACUC protocols animals can be assigned to.
+ehr	protocol	Colony Management	Protocols	IACUC protocols animals can be assigned to. Datasets: Arrival (Protocol); Birth (Protocol); Protocol Assignments (Protocol).
 ehr_lookups	protocol_category	Colony Management	Protocol Category	
 ehr_lookups	protocol_state	Colony Management	Protocol State	
 ehr_lookups	protocol_type	Colony Management	Protocol Type	
 ehr_lookups	qualifier	Colony Management	Qualifier	
 ehr_lookups	questionnaire	Colony Management	Questionnaire	
-ehr_lookups	rectal_prolapse	Clinical	Rectal Prolapse	Used in clinical observations.
+ehr_lookups	rectal_prolapse	Clinical	Rectal Prolapse	"Datasets: Clinical/Behavior Observations (Observation/Score for category 'Rectal Prolapse'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	regulatory_stress_levels	Colony Management	Regulatory Stress Levels	
 ehr_lookups	req_order_state	Colony Management	Request Order State	
 ehr_lookups	req_order_type	Colony Management	Request Order Type	
-ehr_lookups	respiratory_observations	Clinical	Respiratory Observations	Used in clinical observations.
-ehr_lookups	rooms	Housing	Rooms	Rooms within a building and floor.
-ehr_lookups	routes	Clinical	Treatment Routes	Used in drug and treatment datasets.
-ehr_lookups	sib_score	Behavior	SIB Score	Behavior observation fixed values.
+ehr_lookups	respiratory_observations	Clinical	Respiratory Observations	"Datasets: Clinical/Behavior Observations (Observation/Score for category 'Respiratory Observations'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	rooms	Housing	Rooms	Rooms within a building and floor. Datasets: Arrival (Room); Birth (Birth Room); Deaths (Room At Time); Demographics (Room); Housing (Room).
+ehr_lookups	routes	Clinical	Treatment Routes	"Datasets: Drug Administration (Route); Treatment Orders (Route). Forms: Behavioral Cases, Bulk Behavior Entry (Medications/Treatments Orders > Route); Bulk Clinical Entry, Clinical Cases, Medications/Treatments (Medications/Treatments Given > Route; Medications/Treatments Orders > Route); Clinical Rounds (Medications/Treatments Given > Route)."
+ehr_lookups	sib_score	Behavior	SIB Score	"Behavior observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'SIB Score'). Forms: Behavioral Cases, Behavioral Rounds, Bulk Behavior Entry, Observations (Observations > Observation/Score)."
 ehr_lookups	skin_problem	Clinical	Skin Problems	Clinical observation fixed values.
-ehr_lookups	social_code	Colony Management	Social Code	Rearing and acquisition codes recorded once per animal at birth or arrival.
-ehr_lookups	source	Colony Management	Source	
-ehr_lookups	species	Colony Management	Species	
-ehr_lookups	snomed	Research	Treatments	List of animal treatments and drugs.
+ehr_lookups	social_code	Colony Management	Social Code	Rearing and acquisition codes recorded once per animal at birth or arrival. Datasets: Demographics (Social Code).
+ehr_lookups	source	Colony Management	Source	"Datasets: Arrival (Source, Source Facility); Birth (Origin); Demographics (Origin); Departure (Destination). Forms: Arrivals (Arrivals > Source; Arrivals > Source Facility); Departure (Departure > Destination); Rearrivals (Rearrivals > Source; Rearrivals > Source Facility)."
+ehr_lookups	species	Colony Management	Species	Datasets: Arrival (Species); Birth (Species); Demographics (Species). Forms: Arrivals (Arrivals > Species); Birth (Births > Species); Rearrivals (Rearrivals > Species).
+ehr_lookups	snomed	Research	Treatments	"List of animal treatments and drugs. Datasets: Drug Administration (Treatment); Problem List (Code); Treatment Orders (Treatment). Forms: Behavioral Cases, Bulk Behavior Entry, Bulk Clinical Entry, Clinical Cases, Medications/Treatments (Medications/Treatments Given > Treatment; Medications/Treatments Orders > Treatment); Behavioral Rounds, Clinical Rounds (Medications/Treatments Given > Treatment)."
 ehr_lookups	species_codes	Colony Management	Species Codes	
-ehr_lookups	status_codes	Colony Management	Status Codes	Status field values.
+ehr_lookups	status_codes	Colony Management	Status Codes	Status field values. Datasets: Demographics (Status).
 ehr_lookups	stool_score	Clinical	Stool Score	
-ehr_lookups	stool_types	Clinical	Stool Types	
+ehr_lookups	stool_types	Clinical	Stool Types	"Datasets: Clinical/Behavior Observations (Observation/Score for category 'Stool'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	tb_obs_score	Clinical	TB Observation Scores	Clinical observation fixed values.
-ehr_lookups	temperament	Behavior	Temperament	Behavior observation fixed values.
-ehr_lookups	testicular_volume	Clinical	Testicular Volume	Testicular volume values.
-ehr_lookups	termination_reason_codes	Clinical	Termination Reason Codes	Clinical observation fixed values.
-ehr_lookups	tissue	Pathology	Pathology Tissues	Tissues recorded at necropsy and in histology.
-ehr_lookups	tissue_measurement_units	Pathology	Tissue Measurement Units	Units for tissue measurements.
-ehr_lookups	tissue_preparation	Pathology	Tissue Preparation	How a collected tissue was prepared.
-ehr_lookups	tissue_qualifier	Pathology	Tissue Qualifier	Anatomical qualifiers for a tissue.
-ehr_lookups	tissue_weight_units	Pathology	Tissue Weight Units	Units for tissue weights.
+ehr_lookups	temperament	Behavior	Temperament	"Behavior observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Temperament'). Forms: Behavioral Cases, Behavioral Rounds, Bulk Behavior Entry, Observations (Observations > Observation/Score)."
+ehr_lookups	testicular_volume	Clinical	Testicular Volume	"Testicular volume values. Datasets: Clinical/Behavior Observations (Observation/Score for categories 'Testicular volume-Left', 'Testicular volume-Right'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	termination_reason_codes	Clinical	Termination Reason Codes	Clinical observation fixed values. Datasets: Demographics (Termination).
+ehr_lookups	tissue	Pathology	Pathology Tissues	Tissues recorded at necropsy and in histology. Datasets: Final Diagnoses (Organ/Tissue); Gross Diagnoses (Organ/Tissue); Histology (Tissue); Tissue Measurements (Tissue). Forms: Necropsy (Tissue Measurements > Tissue); Necropsy Final (Histology > Tissue; Tissue Measurements > Tissue).
+ehr_lookups	tissue_measurement_units	Pathology	Tissue Measurement Units	"Units for tissue measurements. Datasets: Tissue Measurements (Units). Forms: Necropsy, Necropsy Final (Tissue Measurements > Units)."
+ehr_lookups	tissue_preparation	Pathology	Tissue Preparation	"How a collected tissue was prepared. Datasets: Tissue Measurements (Preparation). Forms: Necropsy, Necropsy Final (Tissue Measurements > Preparation)."
+ehr_lookups	tissue_qualifier	Pathology	Tissue Qualifier	"Anatomical qualifiers for a tissue. Datasets: Histology (Qualifier); Tissue Measurements (Qualifier). Forms: Necropsy, Necropsy Final (Tissue Measurements > Qualifier)."
+ehr_lookups	tissue_weight_units	Pathology	Tissue Weight Units	"Units for tissue weights. Datasets: Tissue Measurements (Weight Units). Forms: Necropsy, Necropsy Final (Tissue Measurements > Weight Units)."
 ehr_lookups	trauma_size	Clinical	Trauma Size	Clinical observation fixed values.
-ehr_lookups	treatment_frequency	Clinical	Treatment Frequency	Used in treatment and drug datasets.
+ehr_lookups	treatment_frequency	Clinical	Treatment Frequency	"Datasets: Observation Orders (Frequency); Treatment Orders (Frequency). Forms: Behavioral Cases, Bulk Behavior Entry, Bulk Clinical Entry, Clinical Cases (Medications/Treatments Orders > Frequency; Observation Orders > Frequency); Medications/Treatments (Medications/Treatments Orders > Frequency)."
 ehr_lookups	treatment_frequency_times	Clinical	Treatment Frequency Times	"Used in treatment, drug and observation datasets."
 ehr_lookups	turgor_score	Clinical	Turgor Score	Clinical observation fixed values.
-ehr_lookups	vaginal_uterine_prolapse	Clinical	Vaginal Uterine Prolapse	Clinical observation fixed values.
+ehr_lookups	vaginal_uterine_prolapse	Clinical	Vaginal Uterine Prolapse	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Vaginal/Uterine Prolapse'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	vendor_approval_code	Colony Management	Vendor Approval Code	
 ehr_lookups	vendor_production_location	Colony Management	Vendor Production Location	
-ehr_lookups	volume_units	Clinical	Volume Units	Used in drug and treatment datasets.
+ehr_lookups	volume_units	Clinical	Volume Units	"Datasets: Drug Administration (Vol Units); Treatment Orders (Volume Units). Forms: Behavioral Cases, Bulk Behavior Entry (Medications/Treatments Orders > Volume Units); Bulk Clinical Entry, Clinical Cases, Medications/Treatments (Medications/Treatments Given > Vol Units; Medications/Treatments Orders > Volume Units); Clinical Rounds (Medications/Treatments Given > Vol Units)."
 ehr_lookups	weight_ranges	Clinical	Weight Ranges	Min/Max allowable weight per species. Used in various weight reports.
 ehr_lookups	wound_score	Clinical	Wound Score	Clinical observation fixed values.
-ehr_lookups	wound_severity	Clinical	Wound Severity	Clinical observation fixed values.
-ehr_lookups	wound_status_behavior	Behavior	Wound Status	Behavioral observation fixed values.
-ehr_lookups	wound_status_clinical	Clinical	Wound Status	Clinical observation fixed values.
-ehr_lookups	yes_no_order	Clinical	Yes/No Values in Order	Used for yes/no values in various datasets. Includes sort order.
+ehr_lookups	wound_severity	Clinical	Wound Severity	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Wound Severity'). Forms: Behavioral Cases, Behavioral Rounds, Bulk Behavior Entry, Observations (Observations > Observation/Score)."
+ehr_lookups	wound_status_behavior	Behavior	Wound Status	"Behavioral observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Wound Status'). Forms: Behavioral Cases, Behavioral Rounds, Bulk Behavior Entry, Observations (Observations > Observation/Score)."
+ehr_lookups	wound_status_clinical	Clinical	Wound Status	"Clinical observation fixed values. Datasets: Clinical/Behavior Observations (Observation/Score for category 'Clinical Wound Status'). Forms: Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
+ehr_lookups	yes_no_order	Clinical	Yes/No Values in Order	"Includes sort order. Datasets: Clinical/Behavior Observations (Observation/Score for categories 'Environmental Change', 'New Injury Observed', 'Other Stereotopy', 'Self Biting Observed', 'Special Enrichment', 'Verified Id?'). Forms: Behavioral Cases, Behavioral Rounds, Bulk Behavior Entry, Bulk Clinical Entry, Clinical Cases, Clinical Rounds, Observations (Observations > Observation/Score)."
 ehr_lookups	yes_no_only	Clinical	Yes/No Forced Selection	Must choose yes or no.

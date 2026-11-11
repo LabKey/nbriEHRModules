@@ -10,6 +10,7 @@
                     <column columnName="totalAssigned">
                         <columnTitle>Total Animals Assigned</columnTitle>
                         <description>Distinct animals ever assigned to the protocol; ended and repeated assignments count once</description>
+                        <url>/query/executeQuery.view?schemaName=study&amp;query.queryName=protocolAssignment&amp;query.protocol~eq=${protocol}</url>
                     </column>
                     <column columnName="assignedBySpecies">
                         <columnTitle>Animals Assigned By Species</columnTitle>
