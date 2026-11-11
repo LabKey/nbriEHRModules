@@ -4,6 +4,7 @@
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
 require("ehr/triggers").initScript(this);
+var presenceChecks = require("nbri_ehr/presenceChecks");
 var prevAnimalId;
 var prevDate;
 
@@ -58,6 +59,8 @@ function onInit(event, helper){
 }
 
 function onUpsert(helper, scriptErrors, row, oldRow){
+    presenceChecks.verifyAnimalPresent(helper, scriptErrors, row, 'Housing');
+
     //verify we dont have 2 opened records for the same ID
     if (!helper.isETL() && !row.enddate && row.Id){
         var map = helper.getProperty('housingInTransaction');

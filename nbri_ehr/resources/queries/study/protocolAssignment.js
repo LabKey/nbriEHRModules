@@ -42,10 +42,10 @@ function onInit(event, helper){
 }
 
 var protocolChecks = require("nbri_ehr/protocolChecks");
-var assignmentChecks = require("nbri_ehr/assignmentChecks");
+var presenceChecks = require("nbri_ehr/presenceChecks");
 
 function onUpsert(helper, scriptErrors, row, oldRow) {
-    assignmentChecks.verifyBeforeDeath(helper, scriptErrors, row, 'Protocol');
+    presenceChecks.verifyAnimalPresent(helper, scriptErrors, row, 'Protocol assignment');
 }
 
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
