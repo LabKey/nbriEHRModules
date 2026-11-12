@@ -15,8 +15,15 @@ EHR.model.DataModelManager.registerMetadata('ProtocolAmendment', {
                 hidden: true
             },
             protocol: {
+                xtype: 'ehr-protocolfield',
                 allowBlank: false,
                 nullable: false,
+                editorConfig: {
+                    // keep expired protocols, or reopening an amendment on one shows a blank protocol
+                    storeConfig: {
+                        filterArray: []
+                    }
+                },
                 columnConfig: {
                     width: 220
                 },
