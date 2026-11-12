@@ -169,6 +169,27 @@ EHR.model.DataModelManager.registerMetadata('Default', {
                 }
             },
         },
+        'study.weight': {
+            weight: {
+                editorConfig: {
+                    decimalPrecision: 3
+                }
+            }
+        },
+        'study.deaths': {
+            deathWeight: {
+                editorConfig: {
+                    decimalPrecision: 3
+                }
+            }
+        },
+        'study.necropsy': {
+            weight: {
+                editorConfig: {
+                    decimalPrecision: 3
+                }
+            }
+        },
         'study.arrival': {
             initialRoom: {
                 allowBlank: true,

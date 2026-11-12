@@ -8,6 +8,9 @@
                         <columnTitle>Necropsy Date/Time</columnTitle>
                         <formatString>DateTime</formatString>
                     </column>
+                    <column columnName="weight">
+                        <formatString>0.###</formatString>
+                    </column>
                     <column columnName="remark">
                         <isHidden>true</isHidden>
                     </column>

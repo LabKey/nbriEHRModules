@@ -4,6 +4,7 @@
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
 require("ehr/triggers").initScript(this);
+var weightUtils = require("nbri_ehr/weightUtils");
 
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);
 var idMap = {};
@@ -75,6 +76,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 });
 
 function onUpsert(helper, scriptErrors, row, oldRow) {
+    weightUtils.roundWeight(row, 'deathWeight');
 
     if (!helper.isETL()) {
 

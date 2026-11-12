@@ -19,6 +19,7 @@
                     </column>
                     <column columnName="deathWeight">
                         <columnTitle>Death Weight (kg)</columnTitle>
+                        <formatString>0.###</formatString>
                     </column>
                     <column columnName="remark" />
                     <column columnName="performedby" />
