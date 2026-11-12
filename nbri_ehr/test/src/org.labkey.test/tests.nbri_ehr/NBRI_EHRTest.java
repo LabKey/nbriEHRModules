@@ -3190,6 +3190,95 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
                 "Shipped", getCalculatedStatus(animalId));
     }
 
+    private static final Map<String, String> PRESENCE_CHECKED_RECORDS = Map.of(
+            "protocolAssignment", "Protocol assignment",
+            "assignment", "Project assignment",
+            "animal_group_members", "Group assignment",
+            "housing", "Housing");
+
+    @Test
+    public void testRecordsOnOrAfterDeathRejected()
+    {
+        String animalId = "DA9001";
+        LocalDateTime deathDate = LocalDateTime.now().minusDays(10).withHour(10).withMinute(0).withSecond(0).withNano(0);
+
+        log("Creating an animal and recording its death");
+        createPresenceTestAnimal(animalId, deathDate.minusYears(2));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "deaths", "lsid",
+                new String[]{"Id", "date", "QCStateLabel", "performedby"},
+                new Object[][]{{animalId, deathDate, "Completed", 1004}}
+        ), getExtraContext());
+
+        verifyRecordsRejectedFrom(animalId, deathDate, "death");
+    }
+
+    @Test
+    public void testRecordsOnOrAfterDepartureRejected() throws Exception
+    {
+        String animalId = "DP9001";
+        LocalDateTime departureDate = LocalDateTime.now().minusDays(10).withHour(10).withMinute(0).withSecond(0).withNano(0);
+
+        log("Creating an animal and recording its departure");
+        createPresenceTestAnimal(animalId, departureDate.minusYears(2));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "departure", "lsid",
+                new String[]{"Id", "date", "destination", "QCStateLabel", "performedby"},
+                new Object[][]{{animalId, departureDate, "ORPRC", "Completed", 1004}}
+        ), getExtraContext());
+
+        verifyRecordsRejectedFrom(animalId, departureDate, "departure");
+
+        log("Verify a rearrival can open records after the departure");
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), arrivalInsert(PROTOCOL_ID, EHRQCState.COMPLETED, true, null, animalId), getExtraContext());
+        assertEquals("The rearrival should open a protocol assignment", 1,
+                countRows("protocolAssignment", new Filter("Id", animalId), new Filter("enddate", null, Filter.Operator.ISBLANK)));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), presenceInsert("housing", animalId, LocalDateTime.now()), getExtraContext());
+    }
+
+    // species is required by the protocol assignment's species approval check
+    private void createPresenceTestAnimal(String animalId, LocalDateTime birth)
+    {
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "demographics", "lsid",
+                new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "QCStateLabel", "objectid", "performedby"},
+                new Object[][]{{animalId, "MMU", birth, getFemale(), birth, "Alive", "Completed", UUID.randomUUID().toString(), 1004}}
+        ), getExtraContext());
+    }
+
+    private void verifyRecordsRejectedFrom(String animalId, LocalDateTime eventDate, String eventName)
+    {
+        log("Verify housing and assignments starting on the " + eventName + " day or later are rejected");
+        for (LocalDateTime date : List.of(eventDate.withHour(8), eventDate.plusDays(1)))
+        {
+            PRESENCE_CHECKED_RECORDS.forEach((queryName, label) -> {
+                CommandException error = getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), presenceInsert(queryName, animalId, date), getExtraContext());
+                List<String> dateErrors = getApiHelper().extractErrors(error.getProperties()).getOrDefault("date", List.of());
+                String expectedError = "ERROR: " + label + " cannot start on or after the animal's " + eventName + " date";
+                Assert.assertTrue("Expected '" + expectedError + "' for " + queryName + " dated " + date + ", got: " + dateErrors,
+                        dateErrors.stream().anyMatch(e -> e.startsWith(expectedError)));
+            });
+        }
+
+        log("Verify housing and assignments starting before the " + eventName + " day are accepted");
+        PRESENCE_CHECKED_RECORDS.keySet().forEach(queryName ->
+                getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), presenceInsert(queryName, animalId, eventDate.minusDays(1)), getExtraContext()));
+    }
+
+    private SimplePostCommand presenceInsert(String queryName, String animalId, LocalDateTime date)
+    {
+        Map<String, Object> row = new LinkedHashMap<>(Map.of("Id", animalId, "date", date, "performedby", 1004));
+        switch (queryName)
+        {
+            case "protocolAssignment" -> row.put("protocol", PROTOCOL_ID);
+            case "assignment" -> row.put("project", PROTOCOL_PROJECT_ID);
+            case "animal_group_members" -> row.put("groupId", "T");
+            case "housing" -> {
+                row.put("room", getRooms()[0]);
+                row.put("cage", CAGE_IN_R1);
+            }
+            default -> throw new IllegalArgumentException(queryName);
+        }
+        return getApiHelper().prepareInsertCommand("study", queryName, "lsid", row.keySet().toArray(String[]::new), new Object[][]{row.values().toArray()});
+    }
+
     @Test
     public void testClinicalCasesWorkflow()
     {
