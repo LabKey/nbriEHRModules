@@ -354,3 +354,31 @@ EHR.model.DataModelManager.registerMetadata('Default', {
         }
     }
 });
+
+(function(){
+    var threeDecimalWeight = {
+        extFormat: '0.000',
+        editorConfig: {
+            decimalPrecision: 3,
+            // Ext number fields drop trailing zeros, so 12.010 would show as 12.01
+            valueToRaw: function(value){
+                value = this.fixPrecision(this.parseValue(value));
+                return Ext4.isNumber(value) ? value.toFixed(this.decimalPrecision).replace('.', this.decimalSeparator) : '';
+            }
+        }
+    };
+
+    EHR.model.DataModelManager.registerMetadata('Default', {
+        byQuery: {
+            'study.weight': {
+                weight: threeDecimalWeight
+            },
+            'study.deaths': {
+                deathWeight: threeDecimalWeight
+            },
+            'study.necropsy': {
+                weight: threeDecimalWeight
+            }
+        }
+    });
+})();

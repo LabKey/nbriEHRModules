@@ -4,6 +4,7 @@
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
 require("ehr/triggers").initScript(this);
+var weightUtils = require("nbri_ehr/weightUtils");
 
 function onInit(event, helper){
     helper.decodeExtraContextProperty('skipIdNotFoundError');
@@ -56,6 +57,8 @@ function onInit(event, helper){
 }
 
 function onUpsert(helper, scriptErrors, row, oldRow){
+    weightUtils.roundWeight(row, 'weight');
+
     if (!row.weight){
         EHR.Server.Utils.addError(scriptErrors, 'weight', 'This field is required', 'WARN');
     }
