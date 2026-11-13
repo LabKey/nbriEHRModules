@@ -9,7 +9,7 @@
                         <formatString>DateTime</formatString>
                     </column>
                     <column columnName="weight">
-                        <formatString>0.###</formatString>
+                        <formatString>0.000</formatString>
                     </column>
                     <column columnName="remark">
                         <isHidden>true</isHidden>
