@@ -190,6 +190,13 @@ Ext4.define('NBRI_EHR.data.CaseStoreCollection', {
         return null
     },
 
+    getExtraContext: function(){
+        var ret = this.callParent(arguments);
+        // Lets the server tell a save from the case's own task apart from one on another task
+        ret.formTaskId = this.getTaskId();
+        return ret;
+    },
+
     setClientModelDefaults: function(model){
         if (!model.get('taskid')){
             model.suspendEvents();

@@ -77,6 +77,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -1603,29 +1604,83 @@ public class NBRI_EHRTriggerHelper
             throw errors;
     }
 
-    public void closeDailyClinicalObs(String caseid, String enddate)
+    public boolean isCaseClosed(String caseid)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("objectid"), caseid);
+        filter.addCondition(FieldKey.fromString("enddate"), null, CompareType.NONBLANK);
+        return new TableSelector(getTableInfo("study", "cases"), filter, null).exists();
+    }
+
+    public void closeDailyClinicalObs(String caseid, Date enddate)
     {
         TableInfo ti = getTableInfo("study", "observation_order");
         SimpleFilter filter = new SimpleFilter(FieldKey.fromString("caseid"), caseid);
-        TableSelector ts = new TableSelector(ti, PageFlowUtil.set("objectid"), filter, null);
+        Collection<Map<String, Object>> orders = new TableSelector(ti, PageFlowUtil.set("objectid", "date", "enddate"), filter, null).getMapCollection();
 
-        Map<String, Object>[] orders = ts.getMapArray();
-        List<Map<String, Object>> rows = new ArrayList<>();
+        List<String> notStarted = new ArrayList<>();
+        List<Map<String, Object>> toEnd = new ArrayList<>();
         for (Map<String, Object> order : orders)
         {
-
-            Map<String, Object> row = new CaseInsensitiveHashMap<>();
-            row.put("objectid", order.get("objectid"));
-            row.put("enddate", enddate);
-            rows.add(row);
+            Date start = ConvertHelper.convert(order.get("date"), Date.class);
+            Date end = ConvertHelper.convert(order.get("enddate"), Date.class);
+            if (start != null && start.after(enddate))
+            {
+                notStarted.add((String) order.get("objectid"));
+            }
+            else if (end == null || end.after(enddate))
+            {
+                Map<String, Object> row = new CaseInsensitiveHashMap<>();
+                row.put("objectid", order.get("objectid"));
+                row.put("enddate", enddate);
+                toEnd.add(row);
+            }
         }
+
         try
         {
-            ti.getUpdateService().updateRows(_user, _container, rows, null, null, getExtraContext());
+            if (!toEnd.isEmpty())
+                Objects.requireNonNull(ti.getUpdateService()).updateRows(_user, _container, toEnd, null, null, getExtraContext());
         }
         catch (Exception e)
         {
             _log.error("Error closing daily clinical observation order", e);
+        }
+
+        if (notStarted.isEmpty())
+            return;
+
+        // An end date before the start trips the shared EHR end-date WARN and blocks every later save of the case's task.
+        // Delete after commit, since the case's own form saves its copies of these orders later in the same transaction.
+        try (DbScope.Transaction transaction = ti.getSchema().getScope().ensureTransaction())
+        {
+            transaction.addCommitTask(() -> deleteUnstartedOrders(notStarted), DbScope.CommitTaskOption.POSTCOMMIT);
+            transaction.commit();
+        }
+    }
+
+    private void deleteUnstartedOrders(List<String> orderIds)
+    {
+        SimpleFilter observedFilter = new SimpleFilter(FieldKey.fromString("orderId"), orderIds, CompareType.IN);
+        Set<String> observed = new HashSet<>(new TableSelector(getTableInfo("study", "clinical_observations"), Collections.singleton("orderId"), observedFilter, null).getArrayList(String.class));
+
+        List<Map<String, Object>> keys = orderIds.stream()
+                .filter(id -> !observed.contains(id))
+                .map(id -> {
+                    Map<String, Object> key = new CaseInsensitiveHashMap<>();
+                    key.put("objectid", id);
+                    return key;
+                })
+                .collect(Collectors.toList());
+        if (keys.isEmpty())
+            return;
+
+        try
+        {
+            Objects.requireNonNull(getTableInfo("study", "observation_order").getUpdateService()).deleteRows(_user, _container, keys, null, getExtraContext());
+        }
+        catch (Exception e)
+        {
+            _log.error("Error deleting observation orders that had not started when their case closed", e);
         }
     }
 

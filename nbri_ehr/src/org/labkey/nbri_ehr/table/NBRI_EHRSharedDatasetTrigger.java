@@ -17,8 +17,11 @@ package org.labkey.nbri_ehr.table;
 
 import org.jetbrains.annotations.Nullable;
 import org.labkey.api.data.Container;
+import org.labkey.api.data.ConvertHelper;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.triggers.Trigger;
+import org.labkey.api.qc.DataState;
+import org.labkey.api.qc.QCStateManager;
 import org.labkey.api.query.QueryUpdateService;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.User;
@@ -62,5 +65,27 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
                              ValidationException errors, Map<String, Object> extraContext)
     {
         verifyPerformedBy(table, newRow, errors);
+        keepCaseInReview(table, c, newRow, oldRow, extraContext);
+    }
+
+    // Only a case's own task may finalize its review; a form on another task would leave the rest of that task in review.
+    // Done here rather than in cases.js because the core EHR cases.js runs after it and reapplies the form's target QC state.
+    private void keepCaseInReview(TableInfo table, Container c, @Nullable Map<String, Object> newRow, @Nullable Map<String, Object> oldRow, @Nullable Map<String, Object> extraContext)
+    {
+        if (newRow == null || oldRow == null || extraContext == null || !"cases".equalsIgnoreCase(table.getName()))
+            return;
+
+        Object formTaskId = extraContext.get("formTaskId");
+        Object caseTaskId = oldRow.get("taskid");
+        if (formTaskId == null || caseTaskId == null || formTaskId.toString().equalsIgnoreCase(caseTaskId.toString()))
+            return;
+
+        // The EHR scripts null out oldRow's QCState and leave only its label
+        DataState oldState = QCStateManager.getInstance().getStateForLabel(c, ConvertHelper.convert(oldRow.get("QCStateLabel"), String.class));
+        if (oldState != null && "Review Required".equals(oldState.getLabel()))
+        {
+            newRow.put("QCState", oldState.getRowId());
+            newRow.put("QCStateLabel", oldState.getLabel());
+        }
     }
 }

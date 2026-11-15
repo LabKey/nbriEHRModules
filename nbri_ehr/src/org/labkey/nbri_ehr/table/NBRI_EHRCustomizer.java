@@ -392,6 +392,9 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         ti.addColumn(ci);
     }
 
+    private static final FieldKey TASK_ID = FieldKey.fromString("taskid");
+    private static final FieldKey TASK_QC_LABEL = FieldKey.fromParts("taskid", "qcstate", "Label");
+
     private void appendCaseCheckCol(AbstractTableInfo ti, String name, String linkLabel, String colLabel)
     {
         if (ti.getColumn(name) != null)
@@ -425,9 +428,17 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
                             url.addParameter("formType", "Clinical Cases");
                         }
 
-                        String caseId = (String)ctx.get("objectid");
-                        url.addParameter("caseid", caseId);
-                        url.addParameter("edit", true);
+                        // Saving from a new task would complete the case alone and strand the rest of its task in review
+                        String taskId = ctx.get(TASK_ID, String.class);
+                        if (taskId != null && "Review Required".equals(ctx.get(TASK_QC_LABEL, String.class)))
+                        {
+                            url.addParameter("taskId", taskId);
+                        }
+                        else
+                        {
+                            url.addParameter("caseid", (String)ctx.get("objectid"));
+                            url.addParameter("edit", true);
+                        }
                         out.write(LinkBuilder.labkeyLink(linkLabel, url).target("_blank"));
                     }
 
@@ -437,6 +448,8 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
                         super.addQueryFieldKeys(keys);
                         keys.add(FieldKey.fromString("objectid"));
                         keys.add(FieldKey.fromString("category"));
+                        keys.add(TASK_ID);
+                        keys.add(TASK_QC_LABEL);
                     }
 
                     @Override
