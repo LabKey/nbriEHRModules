@@ -6,11 +6,17 @@
 
 function roundWeight(row, fieldName) {
     var value = row[fieldName];
-    if (value === null || value === undefined || value === '' || isNaN(value)) {
+    // Number() turns blank strings and booleans into 0 or 1; leave them for type conversion to reject
+    if (value === null || value === undefined || typeof value === 'boolean' || (typeof value === 'string' && value.trim() === '')) {
         return;
     }
 
-    row[fieldName] = Math.round(Number(value) * 1000) / 1000;
+    var number = Number(value);
+    if (!isFinite(number)) {
+        return;
+    }
+
+    row[fieldName] = Math.round(number * 1000) / 1000;
 }
 
 exports.roundWeight = roundWeight;
