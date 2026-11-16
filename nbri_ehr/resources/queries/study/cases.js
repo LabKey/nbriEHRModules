@@ -46,12 +46,13 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 qc = EHR.Server.Security.getQCStateByRowId(row.QCState);
             }
 
-            // A save from another task keeps the case's own status and task; the shared dataset trigger enforces it after this script
+            // A save from another task keeps the case's own status and task unless a case form takes over a Completed case; the shared dataset trigger enforces it after this script
             var fromOtherTask = oldRow && oldRow.taskid && (!row.taskid || String(row.taskid).toLowerCase() !== String(oldRow.taskid).toLowerCase());
-            if (fromOtherTask) {
+            var takesOver = fromOtherTask && row.taskid && triggerHelper.takesOverCompletedCase(String(row.taskid), oldRow.QCStateLabel);
+            if (fromOtherTask && !takesOver) {
                 qc = EHR.Server.Security.getQCStateByLabel(oldRow.QCStateLabel);
             }
-            var caseTaskId = oldRow && oldRow.taskid ? oldRow.taskid : row.taskid;
+            var caseTaskId = oldRow && oldRow.taskid && !takesOver ? oldRow.taskid : row.taskid;
 
             if (!qc) {
                 console.error('Unable to find QCState: ' + row.QCState + '/' + row.QCStateLabel);

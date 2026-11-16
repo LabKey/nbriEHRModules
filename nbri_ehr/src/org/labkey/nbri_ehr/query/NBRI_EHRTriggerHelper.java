@@ -70,6 +70,7 @@ import org.labkey.nbri_ehr.notification.NBRIDeathNotification;
 import org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification;
 import org.labkey.nbri_ehr.notification.NBRIPregnancyOutcomeNotification;
 import org.labkey.nbri_ehr.notification.TriggerScriptNotification;
+import org.labkey.nbri_ehr.table.NBRI_EHRSharedDatasetTrigger;
 
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
@@ -1239,6 +1240,11 @@ public class NBRI_EHRTriggerHelper
     public boolean canCloseCase()
     {
         return _container.hasPermission(_user, EHRVeterinarianPermission.class);
+    }
+
+    public boolean takesOverCompletedCase(String rowTaskId, String caseQcLabel)
+    {
+        return NBRI_EHRSharedDatasetTrigger.takesOverCompletedCase(_container, _user, rowTaskId, caseQcLabel);
     }
 
     /** Returns an error when the protocol does not exist or has expired by the assignment date, or null when it is usable. */

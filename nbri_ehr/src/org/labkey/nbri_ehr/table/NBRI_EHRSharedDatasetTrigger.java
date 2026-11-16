@@ -20,15 +20,23 @@ import org.jetbrains.annotations.Nullable;
 import org.labkey.api.collections.CaseInsensitiveHashSet;
 import org.labkey.api.data.Container;
 import org.labkey.api.data.ConvertHelper;
+import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.TableInfo;
+import org.labkey.api.data.TableSelector;
 import org.labkey.api.data.triggers.Trigger;
 import org.labkey.api.qc.DataState;
 import org.labkey.api.qc.QCStateManager;
+import org.labkey.api.query.FieldKey;
+import org.labkey.api.query.QueryService;
 import org.labkey.api.query.QueryUpdateService;
+import org.labkey.api.query.UserSchema;
 import org.labkey.api.query.ValidationException;
 import org.labkey.api.security.User;
+import org.labkey.nbri_ehr.dataentry.form.NBRIBehavioralCasesFormType;
+import org.labkey.nbri_ehr.dataentry.form.NBRICasesFormType;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
@@ -71,14 +79,17 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
                              ValidationException errors, Map<String, Object> extraContext)
     {
         verifyPerformedBy(table, newRow, errors);
-        guardCaseTask(table, c, newRow, oldRow, errors, extraContext);
+        guardCaseTask(table, c, user, newRow, oldRow, errors, extraContext);
     }
 
-    private static final Set<String> CASE_BOOKKEEPING_FIELDS = new CaseInsensitiveHashSet("QCState", "QCStateLabel", "taskid", "description", "modified", "modifiedby", "created", "createdby", "lsid", "objectid", "container");
+    // The EHR script trigger rewrites vetreview and vetreviewdate on every save
+    private static final Set<String> CASE_BOOKKEEPING_FIELDS = new CaseInsensitiveHashSet("QCState", "QCStateLabel", "taskid", "description", "modified", "modifiedby", "created", "createdby", "lsid", "objectid", "container", "vetreview", "vetreviewdate");
 
-    // A case never leaves the task that created it, and another task may change its status only when it leaves the case's fields alone.
+    private static final Set<String> CASE_FORM_TYPES = new CaseInsensitiveHashSet(NBRICasesFormType.NAME, NBRIBehavioralCasesFormType.NAME);
+
+    // A case stays on its own task unless a case form saves it while Completed, and another task may change its status only when it leaves the case's fields alone.
     // Runs after the script triggers, which fill fields the update omitted from oldRow and put the form's target status on newRow.
-    private void guardCaseTask(TableInfo table, Container c, @Nullable Map<String, Object> newRow, @Nullable Map<String, Object> oldRow, ValidationException errors, @Nullable Map<String, Object> extraContext)
+    private void guardCaseTask(TableInfo table, Container c, User user, @Nullable Map<String, Object> newRow, @Nullable Map<String, Object> oldRow, ValidationException errors, @Nullable Map<String, Object> extraContext)
     {
         if (newRow == null || oldRow == null || !"cases".equalsIgnoreCase(table.getName()))
             return;
@@ -88,24 +99,45 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
             return;
 
         Object rowTaskId = newRow.get("taskid");
-        newRow.put("taskid", caseTaskId);
         if ((rowTaskId != null && caseTaskId.toString().equalsIgnoreCase(rowTaskId.toString())) || isValidateOnly(extraContext))
+        {
+            newRow.put("taskid", caseTaskId);
             return;
+        }
 
         DataState oldState = getState(c, oldRow);
+        if (oldState != null && takesOverCompletedCase(c, user, rowTaskId, oldState.getLabel()))
+            return;
+
+        newRow.put("taskid", caseTaskId);
         DataState newState = getState(c, newRow);
         if (oldState == null || newState == null || oldState.getRowId() == newState.getRowId())
             return;
 
         if (caseFieldsChanged(newRow, oldRow))
         {
-            errors.addGlobalError("This case belongs to another task in " + oldState.getLabel() + ". Save case changes with the same status, or from the case's own task.");
+            errors.addGlobalError("This case belongs to another task with " + oldState.getLabel() + " status. Save case changes with the same status, or from the case's own task.");
         }
         else
         {
             newRow.put("QCState", oldState.getRowId());
             newRow.put("QCStateLabel", oldState.getLabel());
         }
+    }
+
+    // Case Update starts a new case form task for a Completed case, and that task then owns the case
+    public static boolean takesOverCompletedCase(Container c, User user, @Nullable Object rowTaskId, @Nullable String caseQcLabel)
+    {
+        if (rowTaskId == null || !"Completed".equals(caseQcLabel))
+            return false;
+
+        UserSchema ehr = QueryService.get().getUserSchema(user, c, "ehr");
+        TableInfo tasks = ehr == null ? null : ehr.getTable("tasks");
+        if (tasks == null)
+            return false;
+
+        String formType = new TableSelector(tasks, Collections.singleton("formtype"), new SimpleFilter(FieldKey.fromString("taskid"), rowTaskId), null).getObject(String.class);
+        return formType != null && CASE_FORM_TYPES.contains(formType);
     }
 
     private static boolean isValidateOnly(@Nullable Map<String, Object> extraContext)
