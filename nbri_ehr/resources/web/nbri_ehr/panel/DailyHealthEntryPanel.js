@@ -37,7 +37,8 @@ Ext4.define('NBRI_EHR.panel.DailyHealthEntryPanel', {
         this.mon(this.logStore, 'add', this.onRecordAdd, this);
         this.mon(this.logStore, 'validation', this.showRecordErrors, this, {buffer: 200});
 
-        if (this.dataEntryPanel.storeCollection.hasLoaded)
+        // hasLoaded is set on a delay after initialload, and form sections are built during initialload, so it is still false here
+        if (this.dataEntryPanel.storeCollection.haveStoresLoaded)
             this.loadEntryValues();
         else
             this.mon(this.dataEntryPanel.storeCollection, 'initialload', this.loadEntryValues, this, {single: true});
