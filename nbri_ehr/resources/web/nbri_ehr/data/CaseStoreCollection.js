@@ -190,13 +190,6 @@ Ext4.define('NBRI_EHR.data.CaseStoreCollection', {
         return null
     },
 
-    getExtraContext: function(){
-        var ret = this.callParent(arguments);
-        // Lets the server tell a save from the case's own task apart from one on another task
-        ret.formTaskId = this.getTaskId();
-        return ret;
-    },
-
     setClientModelDefaults: function(model){
         if (!model.get('taskid')){
             model.suspendEvents();
@@ -211,11 +204,14 @@ Ext4.define('NBRI_EHR.data.CaseStoreCollection', {
         // ensure all records are using this taskId and alert if not
         var taskid = this.getTaskId();
         if (taskid){
+            // A case loaded from another task carries this one so the server can tell; the server keeps the case on its own task
             this.clientStores.each(function(cs){
-                if (cs.getFields().get('taskid') != null && cs.storeId !== this.collectionId + '-cases'){
+                if (cs.getFields().get('taskid') != null){
+                    var isCases = cs.storeId === this.collectionId + '-cases';
                     cs.each(function(r){
                         if (taskid != r.get('taskid')){
-                            LDK.Assert.assertEquality('Incorrect taskid for client store:' + cs.storeId, taskid, r.get('taskid'));
+                            if (!isCases)
+                                LDK.Assert.assertEquality('Incorrect taskid for client store:' + cs.storeId, taskid, r.get('taskid'));
                             r.beginEdit();
                             r.set('taskid', this.getTaskId());
                             r.endEdit(true);
@@ -225,14 +221,16 @@ Ext4.define('NBRI_EHR.data.CaseStoreCollection', {
             }, this);
 
             this.serverStores.each(function(cs){
-                if (cs.getFields().get('taskid') != null && cs.storeId.indexOf('|cases|') === -1){
+                if (cs.getFields().get('taskid') != null){
+                    var isCases = cs.storeId.indexOf('|cases|') !== -1;
                     cs.each(function(r){
                         if (r.isRemovedRequest){
                             return;  //do not check these records.  they have deliberately been separated.
                         }
 
                         if (taskid != r.get('taskid')){
-                            LDK.Assert.assertEquality('Incorrect taskid for server store:' + cs.storeId, taskid, r.get('taskid'));
+                            if (!isCases)
+                                LDK.Assert.assertEquality('Incorrect taskid for server store:' + cs.storeId, taskid, r.get('taskid'));
                             r.beginEdit();
                             r.set('taskid', this.getTaskId());
                             r.endEdit(true);

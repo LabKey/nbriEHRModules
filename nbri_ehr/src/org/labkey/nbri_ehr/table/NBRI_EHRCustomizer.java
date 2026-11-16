@@ -393,7 +393,8 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
     }
 
     private static final FieldKey TASK_ID = FieldKey.fromString("taskid");
-    private static final FieldKey TASK_QC_LABEL = FieldKey.fromParts("taskid", "qcstate", "Label");
+    private static final FieldKey TASK_FORM_TYPE = FieldKey.fromParts("taskid", "formtype");
+    private static final FieldKey CASE_QC_LABEL = FieldKey.fromParts("QCState", "Label");
 
     private void appendCaseCheckCol(AbstractTableInfo ti, String name, String linkLabel, String colLabel)
     {
@@ -428,10 +429,12 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
                             url.addParameter("formType", "Clinical Cases");
                         }
 
-                        // Saving from a new task would complete the case alone and strand the rest of its task in review
+                        // Only a Completed case may start a new task; until then, edits from another task can't change its status
                         String taskId = ctx.get(TASK_ID, String.class);
-                        if (taskId != null && "Review Required".equals(ctx.get(TASK_QC_LABEL, String.class)))
+                        String taskFormType = ctx.get(TASK_FORM_TYPE, String.class);
+                        if (taskId != null && taskFormType != null && !"Completed".equals(ctx.get(CASE_QC_LABEL, String.class)))
                         {
+                            url.replaceParameter("formType", taskFormType);
                             url.addParameter("taskId", taskId);
                         }
                         else
@@ -449,7 +452,8 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
                         keys.add(FieldKey.fromString("objectid"));
                         keys.add(FieldKey.fromString("category"));
                         keys.add(TASK_ID);
-                        keys.add(TASK_QC_LABEL);
+                        keys.add(TASK_FORM_TYPE);
+                        keys.add(CASE_QC_LABEL);
                     }
 
                     @Override
