@@ -3245,8 +3245,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
     private void verifyRecordsRejectedFrom(String animalId, LocalDateTime eventDate, String eventName)
     {
-        log("Verify housing and assignments starting on the " + eventName + " day or later are rejected");
-        for (LocalDateTime date : List.of(eventDate.withHour(8), eventDate.plusDays(1)))
+        log("Verify housing and assignments starting at the " + eventName + " or later are rejected");
+        for (LocalDateTime date : List.of(eventDate, eventDate.plusHours(2)))
         {
             PRESENCE_CHECKED_RECORDS.forEach((queryName, label) -> {
                 CommandException error = getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), presenceInsert(queryName, animalId, date), getExtraContext());
@@ -3257,9 +3257,9 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
             });
         }
 
-        log("Verify housing and assignments starting before the " + eventName + " day are accepted");
+        log("Verify housing and assignments starting earlier on the " + eventName + " day are accepted");
         PRESENCE_CHECKED_RECORDS.keySet().forEach(queryName ->
-                getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), presenceInsert(queryName, animalId, eventDate.minusDays(1)), getExtraContext()));
+                getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), presenceInsert(queryName, animalId, eventDate.minusHours(2)), getExtraContext()));
     }
 
     private SimplePostCommand presenceInsert(String queryName, String animalId, LocalDateTime date)

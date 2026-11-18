@@ -45,7 +45,7 @@ var protocolChecks = require("nbri_ehr/protocolChecks");
 var presenceChecks = require("nbri_ehr/presenceChecks");
 
 function onUpsert(helper, scriptErrors, row, oldRow) {
-    presenceChecks.verifyAnimalPresent(helper, scriptErrors, row, 'Protocol assignment');
+    presenceChecks.verifyAnimalPresent(helper, scriptErrors, row, oldRow, 'Protocol assignment');
 }
 
 var triggerHelper = new org.labkey.nbri_ehr.query.NBRI_EHRTriggerHelper(LABKEY.Security.currentUser.id, LABKEY.Security.currentContainer.id);

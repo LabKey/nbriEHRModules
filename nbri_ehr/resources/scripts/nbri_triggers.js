@@ -68,7 +68,7 @@ exports.init = function (EHR) {
     });
 
     EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'study', 'animal_group_members', function(helper, scriptErrors, row, oldRow) {
-        presenceChecks.verifyAnimalPresent(helper, scriptErrors, row, 'Group assignment');
+        presenceChecks.verifyAnimalPresent(helper, scriptErrors, row, oldRow, 'Group assignment');
     });
 
     EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.INIT, 'study', 'assignment', function(event, helper) {

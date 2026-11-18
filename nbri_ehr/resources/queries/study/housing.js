@@ -59,7 +59,7 @@ function onInit(event, helper){
 }
 
 function onUpsert(helper, scriptErrors, row, oldRow){
-    presenceChecks.verifyAnimalPresent(helper, scriptErrors, row, 'Housing');
+    presenceChecks.verifyAnimalPresent(helper, scriptErrors, row, oldRow, 'Housing');
 
     //verify we dont have 2 opened records for the same ID
     if (!helper.isETL() && !row.enddate && row.Id){

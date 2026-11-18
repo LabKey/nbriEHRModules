@@ -92,5 +92,5 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
 
 // onUpsert, not a BEFORE_UPSERT handler: nbri_triggers.js clears every BEFORE_UPSERT handler for study.assignment on each request
 function onUpsert(helper, scriptErrors, row, oldRow) {
-    presenceChecks.verifyAnimalPresent(helper, scriptErrors, row, 'Project assignment');
+    presenceChecks.verifyAnimalPresent(helper, scriptErrors, row, oldRow, 'Project assignment');
 }
