@@ -160,7 +160,42 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             {
                 customizePairing(ti);
             }
+
+            if (matches(ti, "study", "dailyHealthLog"))
+            {
+                addDailyHealthEntryCodes(ti);
+            }
         }
+    }
+
+    /** All codes of the row's log entry in sort order; LabKey SQL's GROUP_CONCAT always sorts its values alphabetically. */
+    private void addDailyHealthEntryCodes(AbstractTableInfo ti)
+    {
+        String name = "entryCodes";
+        TableInfo realTable = getRealTable(ti);
+        if (ti.getColumn(name) != null || realTable == null)
+            return;
+
+        // a folder import customizes the dataset before its columns are defined
+        ColumnInfo logEntryId = ti.getColumn("logEntryId");
+        ColumnInfo realCode = realTable.getColumn("code");
+        ColumnInfo realSortOrder = realTable.getColumn("sortOrder");
+        ColumnInfo realLogEntryId = realTable.getColumn("logEntryId");
+        if (logEntryId == null || realCode == null || realSortOrder == null || realLogEntryId == null)
+            return;
+
+        SQLFragment sql = new SQLFragment("(SELECT string_agg(c.")
+                .appendIdentifier(realCode.getSelectIdentifier())
+                .append(", ', ' ORDER BY c.")
+                .appendIdentifier(realSortOrder.getSelectIdentifier())
+                .append(") FROM ").append(realTable.getFromSQL("c"))
+                .append(" WHERE c.").appendIdentifier(realLogEntryId.getSelectIdentifier())
+                .append(" = ").append(logEntryId.getValueSql(ExprColumn.STR_TABLE_ALIAS)).append(")");
+
+        ExprColumn col = new ExprColumn(ti, name, sql, JdbcType.VARCHAR, logEntryId);
+        col.setLabel("Codes");
+        col.setUserEditable(false);
+        ti.addColumn(col);
     }
 
     private void customizePairing(AbstractTableInfo ti)

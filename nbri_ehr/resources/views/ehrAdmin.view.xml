@@ -1,0 +1,8 @@
+<view xmlns="http://labkey.org/data/xml/view" title="EHR Administration" frame="none" >
+    <requiresPermissions>
+        <permissionClass name="org.labkey.api.security.permissions.AdminPermission"/>
+    </requiresPermissions>
+    <dependencies>
+        <dependency path="ehr.context" />
+    </dependencies>
+</view>
