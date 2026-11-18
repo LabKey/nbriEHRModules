@@ -105,7 +105,7 @@ Example `entries.json` with one good entry and one that will be rejected, which 
 - Each saved entry gets its own EHR task (task id = `logEntryId`).
 - Each code becomes one Daily Health Log row with the entry's animal, date, technician and `logEntryId`, in the Completed QC state.
 - `HEVYMEN`/`NRMLMEN` create a Menses clinical observation (heavy wins if both are sent), `POORAPP` an Appetite observation and `LIQDSTL` a Stool observation, once per entry.
-- An entry whose `logEntryId` is already on file is skipped and reported as `exists`, without failing the batch, so a scanner can safely resend a batch after a timeout.
+- An entry whose `logEntryId` is already on file is skipped and reported as `exists`, without failing the batch, so a scanner can safely resend a batch after a timeout, even while the first attempt is still running: entries that attempt saves come back as `exists`.
 - The API never changes a saved entry: a resent entry's contents are ignored even if its codes, time or technician differ. Correct an entry in the EHR's Daily Health form by opening its task, whose task id is the `logEntryId`.
 - The fields of every entry are checked before anything is saved, so all of those errors come back together. The checks against EHR data (animal, housing, codes, sort orders) run as entries save, and the batch stops at the first entry that fails them, so a later bad entry shows up only on the next attempt.
 
@@ -153,10 +153,13 @@ Entry errors you can expect:
 | `<animal> was not housed in <location> on <date>` | The location doesn't match the animal's housing at that time. |
 | `Unknown daily health code: <code>` / `Daily health code <code> is retired` | The code isn't in the code list, or is disabled. |
 | `Another row of this log entry has sort order N` | Two codes in the entry share a sort order. |
+| `Unexpected server error saving the entry; see the server log` | A server-side failure; the details are in the LabKey server log. |
 
 Request-level failures:
 
 | HTTP status | Cause |
 |---|---|
 | 400 | The body isn't a JSON object with an `entries` array (`"exception": "Expected a JSON body with an 'entries' array"`). |
-| 401 | Missing or invalid API key, the account lacks permission, or the CSRF token or cookie is missing or stale. |
+| 400 | The folder has no EHR QC states (`"exception": "EHR QC states are not configured in this folder"`). |
+| 401 | Missing or invalid API key, or the CSRF token or cookie is missing or stale. |
+| 403 | The API key's account lacks insert permission in the folder. |

@@ -511,6 +511,11 @@
                 <datatype>varchar</datatype>
             </column>
         </columns>
+        <indices>
+            <index type="non-unique">
+                <column>logEntryId</column>
+            </index>
+        </indices>
     </table>
     <table tableName="demographics" tableDbType="TABLE">
         <tableTitle>Demographics</tableTitle>

@@ -2246,6 +2246,12 @@ public class NBRI_EHRTriggerHelper
         return new TableSelector(getTableInfo("study", "demographics"), Collections.singleton("Id"), filter, null).exists();
     }
 
+    public boolean isDailyHealthEntrySaved(String logEntryId)
+    {
+        return new TableSelector(getTableInfo("study", "dailyHealthLog"), Collections.singleton("logEntryId"),
+                new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryId), null).exists();
+    }
+
     // Scanners send building, room name and an optional cage; NBRI keys a room as building-name and a cage as room-cage.
     public @Nullable String validateDailyHealthLocation(String id, Object dateValue, @Nullable Object area, @Nullable Object enclosure, @Nullable Object cage)
     {

@@ -43,8 +43,8 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         if (row.Id !== undefined && row.Id !== oldRow.Id)
             EHR.Server.Utils.addError(scriptErrors, 'Id', 'The animal cannot be changed on a saved log entry', 'ERROR');
     }
-    // checked on insert only, so earlier entries for an animal that has since died stay editable
-    else if (row.Id && !triggerHelper.isAnimalAlive(row.Id)) {
+    // checked only for a new log entry, so earlier entries for an animal that has since died can still gain codes
+    else if (row.Id && !(row.logEntryId && triggerHelper.isDailyHealthEntrySaved(row.logEntryId)) && !triggerHelper.isAnimalAlive(row.Id)) {
         EHR.Server.Utils.addError(scriptErrors, 'Id', row.Id + ' is not a living animal', 'ERROR');
     }
 

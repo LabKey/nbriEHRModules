@@ -32,6 +32,7 @@ import org.labkey.api.data.DbScope;
 import org.labkey.api.data.SimpleFilter;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
+import org.labkey.api.ehr.EHRQCState;
 import org.labkey.api.ehr.EHRService;
 import org.labkey.api.module.ModuleLoader;
 import org.labkey.api.query.BatchValidationException;
@@ -98,8 +99,11 @@ public class NBRI_EHRController extends SpringActionController
         private static final String EXISTS = "exists";
         private static final String ERROR = "error";
         private static final String NOT_SAVED = "notSaved";
+        private static final String UNEXPECTED_ERROR = "Unexpected server error saving the entry; see the server log";
 
         private record ParsedEntry(@Nullable String logEntryId, List<Map<String, Object>> rows, Map<String, Object> extraContext) {}
+
+        private Integer _completedQCState;
 
         @Override
         public void validateForm(SimpleApiJsonForm form, Errors errors)
@@ -107,6 +111,12 @@ public class NBRI_EHRController extends SpringActionController
             JSONObject json = form.getJsonObject();
             if (json == null || !(json.opt("entries") instanceof JSONArray))
                 errors.reject(ERROR_MSG, "Expected a JSON body with an 'entries' array");
+
+            EHRQCState completed = EHRService.get().getQCStates(getContainer()).get(EHRService.QCSTATES.Completed.getLabel());
+            if (completed == null)
+                errors.reject(ERROR_MSG, "EHR QC states are not configured in this folder");
+            else
+                _completedQCState = completed.getRowId();
         }
 
         @Override
@@ -134,7 +144,7 @@ public class NBRI_EHRController extends SpringActionController
 
                 if (!problems.isEmpty())
                     results.add(result(logEntryId, ERROR, problems));
-                else if (new TableSelector(datasetTable, new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryId), null).exists())
+                else if (isSaved(datasetTable, logEntryId))
                     results.add(result(logEntryId, EXISTS, List.of()));
                 else
                 {
@@ -206,8 +216,33 @@ public class NBRI_EHRController extends SpringActionController
             return new ParsedEntry(logEntryId, rows, extraContext);
         }
 
-        /** Stops at the first entry that fails: closing a LabKey transaction without committing aborts it as a whole. */
+        private static boolean isSaved(TableInfo datasetTable, String logEntryId)
+        {
+            return new TableSelector(datasetTable, new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryId), null).exists();
+        }
+
+        /** A retry that overlaps a still-running request fails on its task ids once that request commits; report those entries as existing and save the rest. */
         private void saveAll(TableInfo datasetTable, Map<Integer, ParsedEntry> pending, List<Map<String, Object>> results)
+        {
+            if (trySave(datasetTable, pending, results))
+                return;
+
+            Map<Integer, ParsedEntry> remaining = new LinkedHashMap<>();
+            pending.forEach((i, entry) -> {
+                if (isSaved(datasetTable, entry.logEntryId()))
+                    results.set(i, result(entry.logEntryId(), EXISTS, List.of()));
+                else
+                    remaining.put(i, entry);
+            });
+            if (remaining.size() == pending.size() || remaining.isEmpty())
+                return;
+
+            remaining.forEach((i, entry) -> results.set(i, result(entry.logEntryId(), NOT_SAVED, List.of())));
+            trySave(datasetTable, remaining, results);
+        }
+
+        /** Stops at the first entry that fails: closing a LabKey transaction without committing aborts it as a whole. */
+        private boolean trySave(TableInfo datasetTable, Map<Integer, ParsedEntry> pending, List<Map<String, Object>> results)
         {
             try (DbScope.Transaction transaction = datasetTable.getSchema().getScope().ensureTransaction())
             {
@@ -217,7 +252,7 @@ public class NBRI_EHRController extends SpringActionController
                     if (!entryErrors.isEmpty())
                     {
                         results.set(item.getKey(), result(item.getValue().logEntryId(), ERROR, entryErrors));
-                        return;
+                        return false;
                     }
                 }
                 transaction.commit();
@@ -235,17 +270,17 @@ public class NBRI_EHRController extends SpringActionController
                 });
                 if (results.stream().noneMatch(r -> ERROR.equals(r.get("status"))))
                     pending.forEach((i, entry) -> results.set(i, result(entry.logEntryId(), ERROR, List.of(message))));
-                return;
+                return false;
             }
             catch (RuntimeException e)
             {
                 LOG.error("Unable to save a batch of daily health log entries", e);
-                String message = StringUtils.defaultIfBlank(e.getMessage(), e.getClass().getSimpleName());
-                pending.forEach((i, entry) -> results.set(i, result(entry.logEntryId(), ERROR, List.of(message))));
-                return;
+                pending.forEach((i, entry) -> results.set(i, result(entry.logEntryId(), ERROR, List.of(UNEXPECTED_ERROR))));
+                return false;
             }
 
             pending.forEach((i, entry) -> results.set(i, result(entry.logEntryId(), CREATED, List.of())));
+            return true;
         }
 
         /** Returns the entry's errors; empty when its task and rows were inserted. */
@@ -259,7 +294,7 @@ public class NBRI_EHRController extends SpringActionController
                 task.put("title", NBRIDailyHealthFormType.NAME);
                 task.put("formtype", NBRIDailyHealthFormType.NAME);
                 task.put("category", "task");
-                task.put("qcstate", EHRService.get().getQCStates(getContainer()).get(EHRService.QCSTATES.Completed.getLabel()).getRowId());
+                task.put("qcstate", _completedQCState);
                 task.put("assignedto", getUser().getUserId());
                 Objects.requireNonNull(getTable("ehr", "tasks").getUpdateService()).insertRows(getUser(), getContainer(), List.of(task), saveErrors, null, null);
 
@@ -277,7 +312,7 @@ public class NBRI_EHRController extends SpringActionController
             catch (Exception e)
             {
                 LOG.error("Unable to save daily health log entry " + entry.logEntryId(), e);
-                return List.of(StringUtils.defaultIfBlank(e.getMessage(), e.getClass().getSimpleName()));
+                return List.of(UNEXPECTED_ERROR);
             }
 
             List<String> messages = errorMessages(saveErrors);

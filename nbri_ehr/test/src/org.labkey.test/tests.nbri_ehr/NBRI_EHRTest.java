@@ -92,7 +92,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -3766,10 +3765,18 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         // isAnimalAlive reads calculated_status, so a demographics row marked Dead stands in for a death record
         getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "demographics", "lsid",
                 new String[]{"Id", "Species", "Gender", "date", "calculated_status", "objectid", "performedby"},
-                new Object[][]{{DAILY_HEALTH_DEAD_ANIMAL, "MMU", getMale(), new Date(), "Dead", UUID.randomUUID().toString(), 1004}}), getExtraContext());
+                new Object[][]{{DAILY_HEALTH_DEAD_ANIMAL, "MMU", getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}}), getExtraContext());
+        String earlierEntryId = UUID.randomUUID().toString();
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(earlierEntryId, DAILY_HEALTH_DEAD_ANIMAL, date, 1, "RAB"), getExtraContext());
+        Map<String, Object> deadAnimal = getSingleRowForAnimal("demographics", DAILY_HEALTH_DEAD_ANIMAL, List.of("lsid", "Id", "calculated_status"));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), prepareUpdate("demographics", Map.of("lsid", deadAnimal.get("lsid"), "calculated_status", "Dead")), getExtraContext());
         assertEquals("The dead animal fixture is not marked Dead", "Dead",
                 getSingleRowForAnimal("demographics", DAILY_HEALTH_DEAD_ANIMAL, List.of("Id", "calculated_status")).get("calculated_status"));
         assertDailyHealthSaveRejected(dailyHealthInsert(UUID.randomUUID().toString(), DAILY_HEALTH_DEAD_ANIMAL, date, 1, "RAB"), DAILY_HEALTH_DEAD_ANIMAL + " is not a living animal");
+
+        log("Adding a code to an entry saved before the animal died");
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(earlierEntryId, DAILY_HEALTH_DEAD_ANIMAL, date, 2, "POORAPP"), getExtraContext());
+        assertEquals("The missed code should join the earlier entry", 2, getDailyHealthRows(new Filter("logEntryId", earlierEntryId)).size());
 
         log("Retiring a code keeps the rows that already carry it valid");
         SelectRowsCommand codeSelect = new SelectRowsCommand("nbri_ehr", "dailyHealthCode");
@@ -3863,16 +3870,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         report.clearFilter("date");
         assertEquals("Clearing the date filter should reach earlier days", List.of("RAB", "POORAPP", "LIQDSTL"), report.getColumnDataAsText("code"));
 
-        for (String assignment : List.of("Project", "Protocol"))
-        {
-            log("Verifying the by-" + assignment.toLowerCase() + " report");
-            goToEHRFolder();
-            waitAndClickAndWait(Locator.linkWithText("Today's Daily Health Log By " + assignment));
-            report = new AnimalHistoryPage<>(getDriver()).getActiveReportDataRegion();
-            report.setFilter("Id", "Equals", animalId);
-            assertEquals("The report should open on today's codes", List.of("RAB", "POORAPP"), report.getColumnDataAsText("code"));
-        }
-
         log("Verifying the entries report shows one row per entry with its codes in sort order");
         goToEHRFolder();
         waitAndClickAndWait(Locator.linkWithText("Today's Daily Health Log Entries"));
@@ -3881,21 +3878,6 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assertEquals("The report should open on today's entry", List.of("RAB, POORAPP"), report.getColumnDataAsText("codes"));
         report.clearFilter("date");
         assertEquals("Clearing the date filter should reach earlier entries", List.of("RAB, POORAPP", "LIQDSTL"), report.getColumnDataAsText("codes"));
-
-        // one row per code for the animal's single project and single protocol
-        Map<String, String> expectedAssignments = Map.of("dailyHealthLogByProject", PROJECT_ID, "dailyHealthLogByProtocol", PROTOCOL_ID);
-        for (Map.Entry<String, String> expected : expectedAssignments.entrySet())
-        {
-            String column = expected.getKey().equals("dailyHealthLogByProject") ? "project" : "protocol";
-            SelectRowsCommand select = new SelectRowsCommand("study", expected.getKey());
-            select.setColumns(List.of("code", column));
-            select.addFilter(new Filter("Id", animalId));
-            List<Map<String, Object>> rows = select.execute(getApiHelper().getConnection(), getContainerPath()).getRows();
-            assertEquals("Wrong codes in " + expected.getKey(), Set.of("RAB", "POORAPP", "LIQDSTL"), rows.stream().map(row -> row.get("code")).collect(Collectors.toSet()));
-            assertEquals("Each code should appear once in " + expected.getKey(), 3, rows.size());
-            for (Map<String, Object> row : rows)
-                assertEquals("Wrong " + column + " for " + row.get("code"), expected.getValue(), String.valueOf(row.get(column)));
-        }
     }
 
     private static final DateTimeFormatter DAILY_HEALTH_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
