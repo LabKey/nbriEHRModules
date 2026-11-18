@@ -142,6 +142,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String DAILY_HEALTH_DEAD_ANIMAL = "DHD0001";
     private static final String DAILY_HEALTH_FORM_ANIMAL = "DHF0001";
     private static final String DAILY_HEALTH_REPORT_ANIMAL = "DHR0001";
+    private static final String DAILY_HEALTH_AT_TIME_ANIMAL = "DHP0001";
     // Retired by testDailyHealthTriggerRules, so no other test may use it.
     private static final String RETIRING_DAILY_HEALTH_CODE = "OLDCODE";
 
@@ -3878,6 +3879,82 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assertEquals("The report should open on today's entry", List.of("RAB, POORAPP"), report.getColumnDataAsText("codes"));
         report.clearFilter("date");
         assertEquals("Clearing the date filter should reach earlier entries", List.of("RAB, POORAPP", "LIQDSTL"), report.getColumnDataAsText("codes"));
+    }
+
+    @Test
+    public void testAssignmentAtTimeColumns() throws Exception
+    {
+        String animalId = DAILY_HEALTH_AT_TIME_ANIMAL;
+        createAliveAnimals(new String[]{animalId});
+        LocalDate transfer = LocalDate.now().minusDays(10);
+
+        log("Moving the animal to a new project and protocol on " + transfer);
+        insertAssignments(animalId, transfer.minusDays(10).atTime(9, 0), transfer.atTime(9, 0), PROJECT_ID, PROTOCOL_ID);
+        insertAssignments(animalId, transfer.atTime(9, 0), null, PROTOCOL_PROJECT_ID, DUMMY_PROTOCOL);
+
+        Map<String, LocalDate> entryDates = Map.of(
+                "before", transfer.minusDays(20),
+                "first", transfer.minusDays(5),
+                "transfer", transfer,
+                "second", transfer.plusDays(5));
+        Map<String, String> entryIds = new HashMap<>();
+        for (Map.Entry<String, LocalDate> entry : entryDates.entrySet())
+        {
+            String entryId = UUID.randomUUID().toString();
+            entryIds.put(entryId, entry.getKey());
+            getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(entryId, animalId, entry.getValue().atTime(8, 0).format(DAILY_HEALTH_DATE_FORMAT), 1, "RAB"), getExtraContext());
+        }
+
+        SelectRowsCommand select = new SelectRowsCommand("study", "dailyHealthLog");
+        select.setColumns(List.of("logEntryId", "projectAtTime", "protocolAtTime", "protocolAtTime/title"));
+        select.addFilter(new Filter("Id", animalId));
+        Map<String, Map<String, Object>> rows = new HashMap<>();
+        for (Map<String, Object> row : select.execute(getApiHelper().getConnection(), getContainerPath()).getRows())
+            rows.put(entryIds.get((String) row.get("logEntryId")), row);
+
+        // Assignments are matched by date with an inclusive end, so the transfer day carries both.
+        assertAtTime(rows.get("before"), List.of(), List.of());
+        assertAtTime(rows.get("first"), List.of(PROJECT_ID), List.of(PROTOCOL_ID));
+        assertAtTime(rows.get("transfer"), List.of(PROJECT_ID, PROTOCOL_PROJECT_ID), List.of(DUMMY_PROTOCOL, PROTOCOL_ID));
+        assertAtTime(rows.get("second"), List.of(PROTOCOL_PROJECT_ID), List.of(DUMMY_PROTOCOL));
+        assertEquals("Protocol lookup should resolve through to the protocol's title", List.of(PROTOCOL_ID), atTimeValues(rows.get("first"), "protocolAtTime/title"));
+    }
+
+    private void insertAssignments(String animalId, LocalDateTime date, @Nullable LocalDateTime enddate, String project, String protocol) throws IOException, CommandException
+    {
+        Map<String, Object> base = new HashMap<>(Map.of("Id", animalId, "date", date, "QCStateLabel", EHRQCState.COMPLETED.label, "performedby", 1004));
+        if (enddate != null)
+            base.put("enddate", enddate);
+
+        InsertRowsCommand assignment = new InsertRowsCommand("study", "assignment");
+        Map<String, Object> assignmentRow = new HashMap<>(base);
+        assignmentRow.put("project", project);
+        assignment.addRow(assignmentRow);
+        assignment.execute(getApiHelper().getConnection(), getContainerPath());
+
+        InsertRowsCommand protocolAssignment = new InsertRowsCommand("study", "protocolAssignment");
+        Map<String, Object> protocolRow = new HashMap<>(base);
+        protocolRow.put("protocol", protocol);
+        protocolAssignment.addRow(protocolRow);
+        protocolAssignment.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    private void assertAtTime(Map<String, Object> row, List<String> projects, List<String> protocols)
+    {
+        Assert.assertNotNull("Daily health entry was not returned", row);
+        assertEquals("Wrong projects at time", projects, atTimeValues(row, "projectAtTime"));
+        assertEquals("Wrong protocols at time", protocols, atTimeValues(row, "protocolAtTime"));
+    }
+
+    // Multi-valued lookups come back as JSON arrays.
+    private List<String> atTimeValues(Map<String, Object> row, String column)
+    {
+        Object value = row.get(column);
+        Iterable<?> values = value instanceof JSONArray array ? array : value instanceof Iterable<?> list ? list : value == null ? List.of() : List.of(value);
+        List<String> result = new ArrayList<>();
+        values.forEach(v -> result.add(String.valueOf(v)));
+        Collections.sort(result);
+        return result;
     }
 
     private static final DateTimeFormatter DAILY_HEALTH_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
