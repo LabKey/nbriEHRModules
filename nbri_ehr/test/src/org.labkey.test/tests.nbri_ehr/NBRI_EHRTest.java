@@ -3892,17 +3892,18 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         insertAssignments(animalId, transfer.minusDays(10).atTime(9, 0), transfer.atTime(9, 0), PROJECT_ID, PROTOCOL_ID);
         insertAssignments(animalId, transfer.atTime(9, 0), null, PROTOCOL_PROJECT_ID, DUMMY_PROTOCOL);
 
-        Map<String, LocalDate> entryDates = Map.of(
-                "before", transfer.minusDays(20),
-                "first", transfer.minusDays(5),
-                "transfer", transfer,
-                "second", transfer.plusDays(5));
+        Map<String, LocalDateTime> entryDates = Map.of(
+                "before", transfer.minusDays(20).atTime(8, 0),
+                "first", transfer.minusDays(5).atTime(8, 0),
+                "transferMorning", transfer.atTime(8, 0),
+                "transferAfternoon", transfer.atTime(14, 0),
+                "second", transfer.plusDays(5).atTime(8, 0));
         Map<String, String> entryIds = new HashMap<>();
-        for (Map.Entry<String, LocalDate> entry : entryDates.entrySet())
+        for (Map.Entry<String, LocalDateTime> entry : entryDates.entrySet())
         {
             String entryId = UUID.randomUUID().toString();
             entryIds.put(entryId, entry.getKey());
-            getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(entryId, animalId, entry.getValue().atTime(8, 0).format(DAILY_HEALTH_DATE_FORMAT), 1, "RAB"), getExtraContext());
+            getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(entryId, animalId, entry.getValue().format(DAILY_HEALTH_DATE_FORMAT), 1, "RAB"), getExtraContext());
         }
 
         SelectRowsCommand select = new SelectRowsCommand("study", "dailyHealthLog");
@@ -3912,10 +3913,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         for (Map<String, Object> row : select.execute(getApiHelper().getConnection(), getContainerPath()).getRows())
             rows.put(entryIds.get((String) row.get("logEntryId")), row);
 
-        // Assignments are matched by date with an inclusive end, so the transfer day carries both.
         assertAtTime(rows.get("before"), List.of(), List.of());
         assertAtTime(rows.get("first"), List.of(PROJECT_ID), List.of(PROTOCOL_ID));
-        assertAtTime(rows.get("transfer"), List.of(PROJECT_ID, PROTOCOL_PROJECT_ID), List.of(DUMMY_PROTOCOL, PROTOCOL_ID));
+        assertAtTime(rows.get("transferMorning"), List.of(PROJECT_ID), List.of(PROTOCOL_ID));
+        assertAtTime(rows.get("transferAfternoon"), List.of(PROTOCOL_PROJECT_ID), List.of(DUMMY_PROTOCOL));
         assertAtTime(rows.get("second"), List.of(PROTOCOL_PROJECT_ID), List.of(DUMMY_PROTOCOL));
         assertEquals("Protocol lookup should resolve through to the protocol's title", List.of(PROTOCOL_ID), atTimeValues(rows.get("first"), "protocolAtTime/title"));
     }
