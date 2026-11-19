@@ -932,7 +932,7 @@ public class NBRI_EHRTriggerHelper
         SimpleFilter filter = getRecordFilter(id, finalRecords);
 
         Set<FieldKey> keys = new HashSet<>();
-        keys.add(FieldKey.fromString("protocol/title"));
+        keys.add(FieldKey.fromString("protocol/displayName"));
         keys.add(FieldKey.fromString("protocol/InvestigatorId/LastName"));
         final Map<FieldKey, ColumnInfo> cols = QueryService.get().getColumns(ti, keys);
         TableSelector ts = new TableSelector(ti, cols.values(), filter, null);
@@ -941,15 +941,15 @@ public class NBRI_EHRTriggerHelper
 
         ts.forEach(object -> {
             Results rs = new ResultsImpl(object, cols);
-            String title = rs.getString(FieldKey.fromString("protocol/title"));
+            String displayName = rs.getString(FieldKey.fromString("protocol/displayName"));
             String inves = rs.getString(FieldKey.fromString("protocol/InvestigatorId/LastName"));
-            if (title == null)
+            if (displayName == null)
             {
                 protocol.setValue("None");
             }
             else
             {
-                protocol.setValue(title + (inves == null ? "" : " - " + inves));
+                protocol.setValue(displayName + (inves == null ? "" : " (" + inves + ")"));
             }
         });
         return protocol.get();
