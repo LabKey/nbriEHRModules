@@ -34,7 +34,9 @@ import org.labkey.api.data.ConvertHelper;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.Results;
 import org.labkey.api.data.ResultsImpl;
+import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
+import org.labkey.api.data.SqlExecutor;
 import org.labkey.api.data.Sort;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
@@ -67,12 +69,15 @@ import org.labkey.api.util.JobRunner;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.nbri_ehr.NBRI_EHRManager;
+import org.labkey.nbri_ehr.NBRI_EHRSchema;
 import org.labkey.nbri_ehr.dataentry.form.NBRIClinicalObservationsFormType;
 import org.labkey.nbri_ehr.dataentry.form.NBRINecropsyBaseFormType;
 import org.labkey.nbri_ehr.notification.NBRIClinicalMoveNotification;
+import org.labkey.nbri_ehr.notification.NBRIDailyHealthUrgentNotification;
 import org.labkey.nbri_ehr.notification.NBRIDeathNotification;
 import org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification;
 import org.labkey.nbri_ehr.notification.NBRIPregnancyOutcomeNotification;
+import org.labkey.nbri_ehr.notification.NotificationHelper;
 import org.labkey.nbri_ehr.notification.TriggerScriptNotification;
 
 import java.sql.SQLException;
@@ -2492,5 +2497,224 @@ public class NBRI_EHRTriggerHelper
                 new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryIds, CompareType.IN), new Sort("sortOrder"))
                 .getMapCollection().stream()
                 .collect(Collectors.groupingBy(row -> ConvertHelper.convert(row.get("logEntryId"), String.class), LinkedHashMap::new, Collectors.toList()));
+    }
+    /** Alerts for the entries this save touched, from a background job once the whole save has committed. */
+    public void queueDailyHealthUrgentNotifications(List<String> logEntryIds)
+    {
+        if (!NotificationService.get().isServiceEnabled() || !NotificationService.get().isActive(new NBRIDailyHealthUrgentNotification(), _container))
+            return;
+
+        DailyHealthUrgentTask task = new DailyHealthUrgentTask();
+        task.add(logEntryIds);
+        DailyHealthUrgentTask queued = Objects.requireNonNull(StudyService.get()).getDatasetSchema().getScope().addCommitTask(task, DbScope.CommitTaskOption.POSTCOMMIT);
+        if (queued != task)
+            queued.add(logEntryIds);
+    }
+
+    /** One per container per transaction; equality on the container lets later saves in the transaction join the queued task. */
+    private class DailyHealthUrgentTask implements Runnable
+    {
+        private final Set<String> _logEntryIds = new LinkedHashSet<>();
+
+        void add(List<String> logEntryIds)
+        {
+            _logEntryIds.addAll(logEntryIds);
+        }
+
+        @Override
+        public void run()
+        {
+            List<String> logEntryIds = new ArrayList<>(_logEntryIds);
+            JobRunner.getDefault().execute(() -> sendDailyHealthUrgentNotification(logEntryIds));
+        }
+
+        private String containerId()
+        {
+            return _container.getId();
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            return o instanceof DailyHealthUrgentTask other && containerId().equals(other.containerId());
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(DailyHealthUrgentTask.class, containerId());
+        }
+    }
+
+    private record DailyHealthUrgentGroup(int rowId, String name, String description, List<String> codes) {}
+
+    private record DailyHealthUrgentMatch(DailyHealthUrgentGroup group, List<Map<String, Object>> rows) {}
+
+    private void sendDailyHealthUrgentNotification(List<String> logEntryIds)
+    {
+        try
+        {
+            Set<UserPrincipal> recipients = NotificationService.get().getRecipients(new NBRIDailyHealthUrgentNotification(), _container);
+            if (recipients.isEmpty())
+            {
+                _log.warn("No NBRI recipients set for the daily health urgent alert, skipping notification");
+                return;
+            }
+
+            List<DailyHealthUrgentGroup> groups = getDailyHealthUrgentGroups();
+            if (groups.isEmpty())
+                return;
+
+            List<DailyHealthUrgentMatch> matches = new ArrayList<>();
+            getCompletedDailyHealthRows(logEntryIds).forEach((logEntryId, rows) -> {
+                List<String> codes = rows.stream().map(row -> ConvertHelper.convert(row.get("code"), String.class)).toList();
+                groups.stream()
+                        .filter(group -> containsInOrder(codes, group.codes()) && claimDailyHealthUrgentAlert(logEntryId, group.rowId()))
+                        .forEach(group -> matches.add(new DailyHealthUrgentMatch(group, rows)));
+            });
+            if (matches.isEmpty())
+                return;
+
+            _log.debug("NBRI daily health urgent alert sending {} match(es) in container {}", matches.size(), _container.getPath());
+            TriggerScriptNotification.sendMessage(getDailyHealthUrgentSubject(matches), getDailyHealthUrgentHtml(matches), recipients, _container, _user);
+        }
+        catch (Exception e)
+        {
+            _log.error("Unable to send the daily health urgent alert in " + _container.getPath(), e);
+        }
+    }
+
+    /** Enabled groups that have codes, each with its codes in sort order. */
+    private List<DailyHealthUrgentGroup> getDailyHealthUrgentGroups()
+    {
+        Map<Integer, List<String>> codesByGroup = new HashMap<>();
+        new TableSelector(getTableInfo(NBRI_EHRSchema.NAME, "dailyHealthUrgentGroupCode"), PageFlowUtil.set("groupId", "code"), null, new Sort("groupId,sortOrder"))
+                .forEachMap(row -> codesByGroup.computeIfAbsent(ConvertHelper.convert(row.get("groupId"), Integer.class), _ -> new ArrayList<>())
+                        .add(ConvertHelper.convert(row.get("code"), String.class)));
+
+        List<DailyHealthUrgentGroup> groups = new ArrayList<>();
+        new TableSelector(getTableInfo(NBRI_EHRSchema.NAME, "dailyHealthUrgentGroup"), PageFlowUtil.set("rowid", "name", "description"),
+                new SimpleFilter(FieldKey.fromString("enabled"), true), new Sort("name"))
+                .forEachMap(row -> {
+                    Integer rowId = ConvertHelper.convert(row.get("rowid"), Integer.class);
+                    List<String> codes = codesByGroup.get(rowId);
+                    if (rowId != null && codes != null)
+                        groups.add(new DailyHealthUrgentGroup(rowId, (String) row.get("name"), (String) row.get("description"), codes));
+                });
+        return groups;
+    }
+
+    /** The Completed rows of each log entry, in sort order. */
+    private Map<String, List<Map<String, Object>>> getCompletedDailyHealthRows(List<String> logEntryIds)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryIds, CompareType.IN);
+        filter.addCondition(FieldKey.fromString("QCState/PublicData"), true);
+        return new TableSelector(getTableInfo("study", "dailyHealthLog"),
+                PageFlowUtil.set("logEntryId", "Id", "date", "performedby", "sortOrder", "code", "remark"), filter, new Sort("sortOrder"))
+                .getMapCollection().stream()
+                .collect(Collectors.groupingBy(row -> String.valueOf(row.get("logEntryId")), LinkedHashMap::new, Collectors.toList()));
+    }
+
+    /** Whether the wanted codes appear in this order, other codes allowed between them. */
+    private static boolean containsInOrder(List<String> codes, List<String> wanted)
+    {
+        int next = 0;
+        for (String code : codes)
+        {
+            if (next < wanted.size() && wanted.get(next).equalsIgnoreCase(code))
+                next++;
+        }
+        return next == wanted.size();
+    }
+
+    /** False when this entry already alerted for the group; the unique key makes concurrent saves claim it only once. */
+    private boolean claimDailyHealthUrgentAlert(String logEntryId, int groupId)
+    {
+        TableInfo table = NBRI_EHRSchema.getInstance().getSchema().getTable("dailyHealthUrgentNotification");
+        SQLFragment sql = new SQLFragment("INSERT INTO ").append(table.getSelectName())
+                .append(" (logEntryId, groupId, Container, Created, CreatedBy) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING")
+                .addAll(StringUtils.lowerCase(logEntryId), groupId, _container.getId(), new Date(), _user.getUserId());
+        return new SqlExecutor(table.getSchema()).execute(sql) > 0;
+    }
+
+    private String getDailyHealthUrgentSubject(List<DailyHealthUrgentMatch> matches)
+    {
+        String subject = NBRIDailyHealthUrgentNotification.NAME + ": ";
+        if (matches.size() == 1)
+            return subject + matches.getFirst().rows().getFirst().get("Id") + " - " + matches.getFirst().group().name();
+
+        long entries = matches.stream().map(match -> match.rows().getFirst().get("logEntryId")).distinct().count();
+        if (entries == 1)
+            return subject + matches.getFirst().rows().getFirst().get("Id") + " - " + matches.size() + " urgent groups";
+        return subject + entries + " entries";
+    }
+
+    private String getDailyHealthUrgentHtml(List<DailyHealthUrgentMatch> matches)
+    {
+        Map<String, String> codeNames = new HashMap<>();
+        new TableSelector(getTableInfo(NBRI_EHRSchema.NAME, "dailyHealthCode"), PageFlowUtil.set("code", "name"), null, null)
+                .forEachMap(row -> codeNames.put(StringUtils.upperCase((String) row.get("code")), (String) row.get("name")));
+        SimpleDateFormat dateTimeFormat = new SimpleDateFormat(LookAndFeelProperties.getInstance(_container).getDefaultDateTimeFormat());
+
+        StringBuilder html = new StringBuilder();
+        html.append("Daily health log entries matched an urgent group:<br><br>");
+        html.append("<table style=\"border-collapse: collapse;\"><tr>");
+        List.of("Urgent Group", "Id", "Observation Date", "Location", "Technician", "Codes", "Remarks", "Entry")
+                .forEach(header -> html.append(NotificationHelper.getNotificationGridCellHeader(_container, header)));
+        html.append("</tr>");
+
+        for (DailyHealthUrgentMatch match : matches)
+        {
+            Map<String, Object> first = match.rows().getFirst();
+            String id = (String) first.get("Id");
+            Date date = ConvertHelper.convert(first.get("date"), Date.class);
+            String codes = match.rows().stream()
+                    .map(row -> {
+                        String code = ConvertHelper.convert(row.get("code"), String.class);
+                        String name = codeNames.get(StringUtils.upperCase(code));
+                        return name == null ? code : code + " (" + name + ")";
+                    })
+                    .collect(Collectors.joining(", "));
+            String remarks = match.rows().stream()
+                    .map(row -> StringUtils.trimToNull(ConvertHelper.convert(row.get("remark"), String.class)))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.joining("; "));
+            String location = getDailyHealthLocation(id, date);
+            String entryUrl = new ActionURL("query", "executeQuery", _container)
+                    .addParameter("schemaName", "study")
+                    .addParameter("query.queryName", "dailyHealthLog")
+                    .addParameter("query.logEntryId~eq", (String) first.get("logEntryId"))
+                    .getURIString();
+
+            html.append("<tr>");
+            html.append(NotificationHelper.getNotificationGridCell(_container, PageFlowUtil.filter(match.group().name()) + "<br>" + PageFlowUtil.filter(match.group().description()), null, false, false, true));
+            html.append(NotificationHelper.getNotificationGridCell(_container, id, null, false, true, false));
+            html.append(NotificationHelper.getNotificationGridCell(_container, date == null ? "" : dateTimeFormat.format(date)));
+            html.append(NotificationHelper.getNotificationGridCell(_container, location == null ? "unknown" : location));
+            html.append(NotificationHelper.getNotificationGridCell(_container, StringUtils.defaultString(ConvertHelper.convert(first.get("performedby"), String.class))));
+            html.append(NotificationHelper.getNotificationGridCell(_container, codes));
+            html.append(NotificationHelper.getNotificationGridCell(_container, remarks));
+            html.append(NotificationHelper.getNotificationGridCell(_container, "<a href=\"" + PageFlowUtil.filter(entryUrl) + "\">View entry</a>", null, false, false, true));
+            html.append("</tr>");
+        }
+        html.append("</table>");
+        return html.toString();
+    }
+
+    /** The animal's cage, or room when it had no cage, at the observation date. */
+    private @Nullable String getDailyHealthLocation(@Nullable String id, @Nullable Date date)
+    {
+        if (id == null || date == null)
+            return null;
+
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
+        filter.addCondition(FieldKey.fromString("date"), date, CompareType.LTE);
+        filter.addClause(new SimpleFilter.OrClause(new CompareType.EqualsCompareClause(FieldKey.fromString("enddate"), CompareType.GT, date), new CompareType.CompareClause(FieldKey.fromString("enddate"), CompareType.ISBLANK, null)));
+        filter.addCondition(FieldKey.fromString("qcstate/publicdata"), true);
+        Map<String, Object> housing = new TableSelector(getTableInfo("study", "housing"), PageFlowUtil.set("room", "cage"), filter, new Sort("-date"))
+                .setMaxRows(1).getMap();
+        if (housing == null)
+            return null;
+        return StringUtils.defaultIfBlank((String) housing.get("cage"), (String) housing.get("room"));
     }
 }

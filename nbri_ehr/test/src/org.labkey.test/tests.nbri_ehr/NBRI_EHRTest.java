@@ -81,6 +81,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -114,6 +115,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String DEATH_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRIDeathNotification";
     private static final String NECROPSY_REQUEST_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification";
     private static final String PROTOCOL_EXPIRATION_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRIProtocolExpirationNotification";
+    private static final String DAILY_HEALTH_URGENT_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRIDailyHealthUrgentNotification";
     private static final String PROTOCOL_EXPIRATION_SUBJECT = "Protocols expiring in the next 30 days";
     private static final String ACCESSION_NUMBER = "N26-001";
     // Assign the vet-tech role by its class-based name rather than its "EHR Veterinarian Technician" display
@@ -142,6 +144,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private static final String DAILY_HEALTH_DEAD_ANIMAL = "DHD0001";
     private static final String DAILY_HEALTH_FORM_ANIMAL = "DHF0001";
     private static final String DAILY_HEALTH_REPORT_ANIMAL = "DHR0001";
+    private static final String DAILY_HEALTH_URGENT_ANIMAL = "DHU0001";
     // Retired by testDailyHealthTriggerRules, so no other test may use it.
     private static final String RETIRING_DAILY_HEALTH_CODE = "OLDCODE";
 
@@ -3844,6 +3847,103 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     }
 
     @Test
+    public void testDailyHealthUrgentNotification() throws Exception
+    {
+        String animalId = DAILY_HEALTH_URGENT_ANIMAL;
+        createAliveAnimals(new String[]{animalId});
+        insertHousingAndAssignments(animalId, LocalDateTime.now().minusDays(10), CAGE_IN_R1, PROJECT_ID, PROTOCOL_ID, EHRQCState.COMPLETED);
+        enableNotification(DAILY_HEALTH_URGENT_NOTIFICATION);
+        enableEmailRecorder();
+
+        log("Defining an urgent group and a disabled one");
+        int urgentGroup = insertUrgentGroup("GI Urgent", true, "POORAPP", "LIQDSTL");
+        insertUrgentGroup("Disabled Urgent", false, "RAB");
+        LocalDateTime observed = LocalDateTime.now().minusMinutes(5).truncatedTo(ChronoUnit.MINUTES);
+        String date = observed.format(DAILY_HEALTH_DATE_FORMAT);
+
+        log("Saving entries that must not alert");
+        JSONObject wrongOrder = dailyHealthEntry(animalId, observed, "C1", "LIQDSTL", "RAB", "POORAPP");
+        assertDailyHealthResult(saveDailyHealth(wrongOrder), wrongOrder, "created", null);
+        String skippedId = UUID.randomUUID().toString();
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(skippedId, animalId, date, 1, "POORAPP", 2, "LIQDSTL"),
+                getExtraContext().put("skipDailyHealthUrgentNotification", true));
+        String partialId = UUID.randomUUID().toString();
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(partialId, animalId, date, 1, "POORAPP"), getExtraContext());
+        String draftId = UUID.randomUUID().toString();
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(draftId, animalId, date, EHRQCState.IN_PROGRESS, 1, "POORAPP", 2, "RAB", 3, "LIQDSTL"), getExtraContext());
+
+        log("Saving entries that alert: from the API, by a later code, and by submitting the draft");
+        JSONObject apiMatch = dailyHealthEntry(animalId, observed, "C1", "POORAPP", "RAB", "LIQDSTL");
+        assertDailyHealthResult(saveDailyHealth(apiMatch), apiMatch, "created", null);
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(partialId, animalId, date, 2, "LIQDSTL"), getExtraContext());
+        for (Map<String, Object> row : getDailyHealthRows(new Filter("logEntryId", draftId)))
+            getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthUpdate(row, "QCStateLabel", EHRQCState.COMPLETED.label), getExtraContext());
+
+        log("Re-saving matched entries");
+        assertDailyHealthResult(saveDailyHealth(apiMatch), apiMatch, "exists", null);
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthUpdate(getDailyHealthRowsByOrder(partialId).get(1), "remark", "Seen again"), getExtraContext());
+
+        log("Verifying each matching entry alerted once, and no other entry did");
+        String apiMatchId = apiMatch.getString("logEntryId").toLowerCase();
+        Set<String> expected = Set.of(apiMatchId + "|" + urgentGroup, partialId + "|" + urgentGroup, draftId + "|" + urgentGroup);
+        Set<String> entryIds = Set.of(apiMatchId, partialId, draftId, skippedId, wrongOrder.getString("logEntryId").toLowerCase());
+        waitFor(() -> {
+            try
+            {
+                return getUrgentAlerts(entryIds).size() >= expected.size();
+            }
+            catch (IOException | CommandException e)
+            {
+                throw new RuntimeException(e);
+            }
+        }, "The urgent alerts were not recorded", WAIT_FOR_PAGE);
+        // gives a late job the chance to record an alert it should not
+        sleep(2000);
+        List<String> alerts = getUrgentAlerts(entryIds);
+        assertEquals("Wrong urgent alerts recorded", expected, new HashSet<>(alerts));
+        assertEquals("An entry alerted more than once", expected.size(), alerts.size());
+
+        String subject = "Daily Health Urgent Alert: " + animalId + " - GI Urgent";
+        goToModule("Dumbster");
+        waitFor(() -> {
+            refresh();
+            return new EmailRecordTable(this).getMessages(subject).size() >= expected.size();
+        }, "The urgent alert emails were not sent", WAIT_FOR_PAGE);
+        EmailRecordTable notifications = new EmailRecordTable(this);
+        assertEquals("Wrong number of urgent alert emails", expected.size(), notifications.getMessages(subject).size());
+        EmailRecordTable.EmailMessage message = notifications.getMessages(subject).getFirst();
+        notifications.clickMessage(message);
+        String body = message.getBody();
+        for (String expectedText : List.of("GI Urgent", CAGE_IN_R1, "POORAPP, RAB, LIQDSTL", "View entry"))
+            Assert.assertTrue("Urgent alert is missing \"" + expectedText + "\": " + body, body.contains(expectedText));
+    }
+
+    /** Inserts a daily health urgent group with its codes in order and returns its rowid. */
+    private int insertUrgentGroup(String name, boolean enabled, String... codes) throws IOException, CommandException
+    {
+        InsertRowsCommand group = new InsertRowsCommand("nbri_ehr", "dailyHealthUrgentGroup");
+        group.addRow(Map.of("name", name, "description", name + " codes", "enabled", enabled));
+        int rowId = ((Number) group.execute(createDefaultConnection(), getContainerPath()).getRows().getFirst().get("rowid")).intValue();
+
+        InsertRowsCommand groupCodes = new InsertRowsCommand("nbri_ehr", "dailyHealthUrgentGroupCode");
+        for (int i = 0; i < codes.length; i++)
+            groupCodes.addRow(Map.of("groupId", rowId, "sortOrder", i + 1, "code", codes[i]));
+        groupCodes.execute(createDefaultConnection(), getContainerPath());
+        return rowId;
+    }
+
+    /** The recorded urgent alerts of these entries, as logEntryId|groupId. */
+    private List<String> getUrgentAlerts(Collection<String> logEntryIds) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("nbri_ehr", "dailyHealthUrgentNotification");
+        select.setColumns(List.of("logEntryId", "groupId"));
+        select.addFilter(new Filter("logEntryId", String.join(";", logEntryIds), Filter.Operator.IN));
+        return select.execute(createDefaultConnection(), getContainerPath()).getRows().stream()
+                .map(row -> row.get("logEntryId") + "|" + ((Number) row.get("groupId")).intValue())
+                .toList();
+    }
+
+    @Test
     public void testDailyHealthReports() throws Exception
     {
         String animalId = DAILY_HEALTH_REPORT_ANIMAL;
@@ -3937,9 +4037,14 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     /** Inserts rows of one entry, given as alternating sort orders and codes. */
     private SimplePostCommand dailyHealthInsert(String entryId, String animalId, String date, Object... ordersAndCodes)
     {
+        return dailyHealthInsert(entryId, animalId, date, EHRQCState.COMPLETED, ordersAndCodes);
+    }
+
+    private SimplePostCommand dailyHealthInsert(String entryId, String animalId, String date, EHRQCState qcState, Object... ordersAndCodes)
+    {
         Object[][] data = new Object[ordersAndCodes.length / 2][];
         for (int i = 0; i < data.length; i++)
-            data[i] = new Object[]{animalId, date, entryId, ordersAndCodes[2 * i], ordersAndCodes[2 * i + 1], 1004, EHRQCState.COMPLETED.label};
+            data[i] = new Object[]{animalId, date, entryId, ordersAndCodes[2 * i], ordersAndCodes[2 * i + 1], 1004, qcState.label};
         return getApiHelper().prepareInsertCommand("study", "dailyHealthLog", "lsid",
                 new String[]{"Id", "date", "logEntryId", "sortOrder", "code", "performedby", "QCStateLabel"}, data);
     }
