@@ -42,7 +42,7 @@ public class NBRIProtocolAssignmentFormSection extends BaseFormSection
     @Override
     protected List<FieldKey> getFieldKeys(TableInfo ti)
     {
-        List<FieldKey> keys = withCurrentValueColumn(super.getFieldKeys(ti), "Id/activeProtocolAssignments/protocolDisplayName", "protocol");
+        List<FieldKey> keys = withCurrentValueColumn(super.getFieldKeys(ti), "Id/activeProtocolAssignments/protocolDisplayText", "protocol");
         keys.add(FieldKey.fromString("protocol/description"));
 
         return keys;

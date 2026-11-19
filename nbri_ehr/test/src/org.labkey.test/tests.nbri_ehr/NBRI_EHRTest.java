@@ -988,8 +988,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         Map<String, Object> current = getCurrentValues(animalId);
         assertEquals("Unexpected current group for " + animalId, List.of(currentGroupTitle), current.get("activeAnimalGroups/groups"));
-        String currentProtocol = (String) current.get("activeProtocolAssignments/protocolDisplayName");
-        Assert.assertTrue("No current protocol for " + animalId, StringUtils.isNotBlank(currentProtocol));
+        String currentProtocol = (String) current.get("activeProtocolAssignments/protocolDisplayText");
+        assertEquals("Current protocol should read like the New Protocol dropdown", protocolChoice(PROTOCOL_ID, INVES_LAST_NAME), currentProtocol);
         String currentProject = String.valueOf(current.get("activeProjectAssignments/project"));
 
         log("Verifying the group assignment form shows the current group");
@@ -1010,7 +1010,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Ext4GridRef protocols = getExpandedFormSectionGrid("Protocol Assignment");
         _helper.addRecordToGrid(protocols);
         protocols.setGridCell(1, "Id", animalId);
-        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayName", "Current Protocol", currentProtocol, "protocol", "New Protocol");
+        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayText", "Current Protocol", currentProtocol, "protocol", "New Protocol");
         protocols.setGridCell(1, "protocol", protocolChoice(DUMMY_PROTOCOL, DUMMY_INVES_LAST_NAME));
 
         Ext4GridRef projects = getExpandedFormSectionGrid("Project Assignment");
@@ -1023,7 +1023,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitForFormValidationToClear();
         clickAndWait(Locator.linkWithText("Save Draft"));
         Map<String, Object> afterDraft = getCurrentValues(animalId);
-        assertEquals("A draft protocol assignment counted as current", currentProtocol, afterDraft.get("activeProtocolAssignments/protocolDisplayName"));
+        assertEquals("A draft protocol assignment counted as current", currentProtocol, afterDraft.get("activeProtocolAssignments/protocolDisplayText"));
         assertEquals("A draft project assignment counted as current", currentProject, String.valueOf(afterDraft.get("activeProjectAssignments/project")));
 
         SelectRowsCommand draftSelect = new SelectRowsCommand("study", "assignment");
@@ -1036,7 +1036,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitForElement(Locator.linkWithText("Submit Final"), WAIT_FOR_PAGE);
         lockForm();
         protocols = getExpandedFormSectionGrid("Protocol Assignment");
-        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayName", "Current Protocol", currentProtocol, "protocol", "New Protocol");
+        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayText", "Current Protocol", currentProtocol, "protocol", "New Protocol");
         assertEquals("Reopened draft has the wrong number of protocol rows", 1, protocols.getRowCount());
         projects = getExpandedFormSectionGrid("Project Assignment");
         verifyCurrentValueColumn(projects, "Id/activeProjectAssignments/project", "Current Project", currentProject, "project", "New Project");
@@ -1051,7 +1051,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private Map<String, Object> getCurrentValues(String animalId) throws Exception
     {
         SelectRowsCommand select = new SelectRowsCommand("study", "Animal");
-        select.setColumns(List.of("activeAnimalGroups/groups", "activeProtocolAssignments/protocolDisplayName", "activeProjectAssignments/project"));
+        select.setColumns(List.of("activeAnimalGroups/groups", "activeProtocolAssignments/protocolDisplayText", "activeProjectAssignments/project"));
         select.addFilter(new Filter("Id", animalId));
         List<Map<String, Object>> rows = select.execute(getApiHelper().getConnection(), getContainerPath()).getRows();
         assertEquals("Expected one study.Animal row for " + animalId, 1, rows.size());
@@ -1092,7 +1092,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     /** The text every protocol dropdown displays for a protocol, built by ehr/activeProtocols.sql. */
     private static String protocolChoice(String protocol, String investigatorLastName)
     {
-        return protocol + " - " + investigatorLastName;
+        return protocol + " (" + investigatorLastName + ")";
     }
 
     /** A column config property, such as the rendered header or editability, which only the config carries. Null when

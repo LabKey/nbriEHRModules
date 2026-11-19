@@ -11,10 +11,14 @@
 Ext4.define('NBRI_EHR.data.CurrentValueClientStore', {
     extend: 'EHR.data.DataEntryClientStore',
 
-    // demographics property and its column for each current-value field
+    // demographics property and its column (or a function of the row) for each current-value field
     currentValueSources: {
         'Id/activeAnimalGroups/groups': {property: 'activeAnimalGroups', column: 'groupId/title'},
-        'Id/activeProtocolAssignments/protocolDisplayName': {property: 'protocolAssignments', column: 'protocol/displayName'},
+        // must match protocolDisplayText in study/demographicsActiveProtocolAssignment.sql, or a reopened draft turns dirty
+        'Id/activeProtocolAssignments/protocolDisplayText': {property: 'protocolAssignments', column: function(row){
+            var lastName = row['protocol/InvestigatorId/lastName'];
+            return Ext4.isEmpty(lastName) ? row['protocol/displayName'] : row['protocol/displayName'] + ' (' + lastName + ')';
+        }},
         'Id/activeProjectAssignments/project': {property: 'activeAssignments', column: 'project/name'}
     },
 
@@ -92,7 +96,7 @@ Ext4.define('NBRI_EHR.data.CurrentValueClientStore', {
     getCurrentValue: function(demographics, source){
         var values = [];
         Ext4.Array.forEach(demographics.getProperty(source.property) || [], function(row){
-            var v = row[source.column];
+            var v = Ext4.isFunction(source.column) ? source.column(row) : row[source.column];
             v = Ext4.isEmpty(v) ? null : Ext4.String.trim(String(v));
             if (v && !Ext4.Array.contains(values, v))
                 values.push(v);
