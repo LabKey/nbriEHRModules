@@ -21,12 +21,10 @@ EHR.model.DataModelManager.registerMetadata('DailyHealth', {
                 nullable: false,
                 shownInGrid: false
             },
+            // set from the row's grid position by NBRI_EHR.data.DailyHealthClientStore, after the add that validates the row
             sortOrder: {
-                allowBlank: false,
-                nullable: false,
-                columnConfig: {
-                    width: 90
-                }
+                allowBlank: true,
+                shownInGrid: false
             },
             code: {
                 // the shared EHR customizer turns faceting off on every column named code, which leaves the lookup combo without a store

@@ -3,13 +3,14 @@
  *
  * Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
  */
--- One row per log entry; entryCodes keeps the codes in sort order, which GROUP_CONCAT would not.
+-- One row per log entry; entryCodes and entryRemarks keep sort order, which GROUP_CONCAT would not.
 SELECT
     d.logEntryId,
     d.Id,
     d.date,
     d.performedby,
     MAX(d.entryCodes) AS codes,
+    MAX(d.entryRemarks) AS remarks,
     d.taskid,
     d.QCState
 FROM study.dailyHealthLog d

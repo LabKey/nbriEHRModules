@@ -304,10 +304,6 @@ function addDailyHealthLogReport(panel, tab, queryName, title) {
     });
 }
 
-EHR.reports.dailyHealthLog = function(panel, tab){
-    addDailyHealthLogReport(panel, tab, 'dailyHealthLog', 'Daily Health Log');
-};
-
 EHR.reports.dailyHealthLogEntries = function(panel, tab){
     addDailyHealthLogReport(panel, tab, 'dailyHealthLogEntries', 'Daily Health Log Entries');
 };

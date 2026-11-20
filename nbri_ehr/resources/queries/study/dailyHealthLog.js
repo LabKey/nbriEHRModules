@@ -84,11 +84,16 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
         entryIdsInSave.push(row.logEntryId);
 });
 
-EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.COMPLETE, 'study', 'dailyHealthLog', function() {
+EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.COMPLETE, 'study', 'dailyHealthLog', function(event, errors, helper) {
     if (!entryIdsInSave.length)
         return;
 
     var entryIds = toJavaStrings(entryIdsInSave);
     triggerHelper.syncDailyHealthObservations(entryIds, toJavaStrings(deletedObjectIds));
     triggerHelper.queueDailyHealthEntryChecks(entryIds);
+
+    // bulk loads of historical entries pass skipDailyHealthUrgentNotification to stay silent
+    var extraContext = helper.getExtraContext() || {};
+    if (!helper.isValidateOnly() && !extraContext.skipDailyHealthUrgentNotification)
+        triggerHelper.queueDailyHealthUrgentNotifications(entryIds);
 });
