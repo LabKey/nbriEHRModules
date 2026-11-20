@@ -427,6 +427,10 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         ti.addColumn(ci);
     }
 
+    private static final FieldKey TASK_ID = FieldKey.fromString("taskid");
+    private static final FieldKey TASK_FORM_TYPE = FieldKey.fromParts("taskid", "formtype");
+    private static final FieldKey CASE_QC_LABEL = FieldKey.fromParts("QCState", "Label");
+
     private void appendCaseCheckCol(AbstractTableInfo ti, String name, String linkLabel, String colLabel)
     {
         if (ti.getColumn(name) != null)
@@ -460,9 +464,19 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
                             url.addParameter("formType", "Clinical Cases");
                         }
 
-                        String caseId = (String)ctx.get("objectid");
-                        url.addParameter("caseid", caseId);
-                        url.addParameter("edit", true);
+                        // Only a Completed case may start a new task; until then, edits from another task can't change its status
+                        String taskId = ctx.get(TASK_ID, String.class);
+                        String taskFormType = ctx.get(TASK_FORM_TYPE, String.class);
+                        if (taskId != null && taskFormType != null && !"Completed".equals(ctx.get(CASE_QC_LABEL, String.class)))
+                        {
+                            url.replaceParameter("formType", taskFormType);
+                            url.addParameter("taskId", taskId);
+                        }
+                        else
+                        {
+                            url.addParameter("caseid", (String)ctx.get("objectid"));
+                            url.addParameter("edit", true);
+                        }
                         out.write(LinkBuilder.labkeyLink(linkLabel, url).target("_blank"));
                     }
 
@@ -472,6 +486,9 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
                         super.addQueryFieldKeys(keys);
                         keys.add(FieldKey.fromString("objectid"));
                         keys.add(FieldKey.fromString("category"));
+                        keys.add(TASK_ID);
+                        keys.add(TASK_FORM_TYPE);
+                        keys.add(CASE_QC_LABEL);
                     }
 
                     @Override
