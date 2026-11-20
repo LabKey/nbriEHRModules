@@ -2511,7 +2511,7 @@ public class NBRI_EHRTriggerHelper
             queued.add(logEntryIds);
     }
 
-    /** One per container per transaction; equality on the container lets later saves in the transaction join the queued task. */
+    /** One per container and user per transaction; that equality lets later saves in the transaction join the queued task. */
     private class DailyHealthUrgentTask implements Runnable
     {
         private final Set<String> _logEntryIds = new LinkedHashSet<>();
@@ -2533,16 +2533,21 @@ public class NBRI_EHRTriggerHelper
             return _container.getId();
         }
 
+        private int userId()
+        {
+            return _user.getUserId();
+        }
+
         @Override
         public boolean equals(Object o)
         {
-            return o instanceof DailyHealthUrgentTask other && containerId().equals(other.containerId());
+            return o instanceof DailyHealthUrgentTask other && containerId().equals(other.containerId()) && userId() == other.userId();
         }
 
         @Override
         public int hashCode()
         {
-            return Objects.hash(DailyHealthUrgentTask.class, containerId());
+            return Objects.hash(DailyHealthUrgentTask.class, containerId(), userId());
         }
     }
 
@@ -2565,18 +2570,23 @@ public class NBRI_EHRTriggerHelper
             if (groups.isEmpty())
                 return;
 
-            List<DailyHealthUrgentMatch> matches = new ArrayList<>();
-            getCompletedDailyHealthRows(logEntryIds).forEach((logEntryId, rows) -> {
-                List<String> codes = rows.stream().map(row -> ConvertHelper.convert(row.get("code"), String.class)).toList();
-                groups.stream()
-                        .filter(group -> containsInOrder(codes, group.codes()) && claimDailyHealthUrgentAlert(logEntryId, group.rowId()))
-                        .forEach(group -> matches.add(new DailyHealthUrgentMatch(group, rows)));
-            });
-            if (matches.isEmpty())
-                return;
+            // Claims commit only once the email is sent, so a failed send lets the entry alert on its next save.
+            try (DbScope.Transaction transaction = NBRI_EHRSchema.getInstance().getSchema().getScope().ensureTransaction())
+            {
+                List<DailyHealthUrgentMatch> matches = new ArrayList<>();
+                getCompletedDailyHealthRows(logEntryIds).forEach((logEntryId, rows) -> {
+                    List<String> codes = rows.stream().map(row -> ConvertHelper.convert(row.get("code"), String.class)).toList();
+                    groups.stream()
+                            .filter(group -> containsInOrder(codes, group.codes()) && claimDailyHealthUrgentAlert(logEntryId, group.rowId()))
+                            .forEach(group -> matches.add(new DailyHealthUrgentMatch(group, rows)));
+                });
+                if (matches.isEmpty())
+                    return;
 
-            _log.debug("NBRI daily health urgent alert sending {} match(es) in container {}", matches.size(), _container.getPath());
-            TriggerScriptNotification.sendMessage(getDailyHealthUrgentSubject(matches), getDailyHealthUrgentHtml(matches), recipients, _container, _user);
+                _log.debug("NBRI daily health urgent alert sending {} match(es) in container {}", matches.size(), _container.getPath());
+                if (TriggerScriptNotification.sendMessage(getDailyHealthUrgentSubject(matches), getDailyHealthUrgentHtml(matches), recipients, _container, _user))
+                    transaction.commit();
+            }
         }
         catch (Exception e)
         {

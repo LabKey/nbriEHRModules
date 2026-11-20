@@ -3879,43 +3879,44 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         for (Map<String, Object> row : getDailyHealthRows(new Filter("logEntryId", draftId)))
             getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthUpdate(row, "QCStateLabel", EHRQCState.COMPLETED.label), getExtraContext());
 
-        log("Re-saving matched entries");
+        String subject = "Daily Health Urgent Alert: " + animalId + " - GI Urgent";
+        goToModule("Dumbster");
+        waitForUrgentAlertEmails(subject, 3);
+
+        log("Re-saving matched entries, then a new match that alerts only after their jobs have run");
         assertDailyHealthResult(saveDailyHealth(apiMatch), apiMatch, "exists", null);
         getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthUpdate(getDailyHealthRowsByOrder(partialId).get(1), "remark", "Seen again"), getExtraContext());
+        // The alert jobs share one single-threaded JobRunner, so this entry's email proves the earlier jobs finished.
+        String markerId = UUID.randomUUID().toString();
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(markerId, animalId, date, 1, "POORAPP", 2, "LIQDSTL"), getExtraContext());
+        waitForUrgentAlertEmails(subject, 4);
 
         log("Verifying each matching entry alerted once, and no other entry did");
         String apiMatchId = apiMatch.getString("logEntryId").toLowerCase();
-        Set<String> expected = Set.of(apiMatchId + "|" + urgentGroup, partialId + "|" + urgentGroup, draftId + "|" + urgentGroup);
-        Set<String> entryIds = Set.of(apiMatchId, partialId, draftId, skippedId, wrongOrder.getString("logEntryId").toLowerCase());
-        waitFor(() -> {
-            try
-            {
-                return getUrgentAlerts(entryIds).size() >= expected.size();
-            }
-            catch (IOException | CommandException e)
-            {
-                throw new RuntimeException(e);
-            }
-        }, "The urgent alerts were not recorded", WAIT_FOR_PAGE);
-        // gives a late job the chance to record an alert it should not
-        sleep(2000);
-        List<String> alerts = getUrgentAlerts(entryIds);
-        assertEquals("Wrong urgent alerts recorded", expected, new HashSet<>(alerts));
-        assertEquals("An entry alerted more than once", expected.size(), alerts.size());
+        Set<String> expected = Set.of(apiMatchId + "|" + urgentGroup, partialId + "|" + urgentGroup, draftId + "|" + urgentGroup, markerId + "|" + urgentGroup);
+        Set<String> entryIds = Set.of(apiMatchId, partialId, draftId, markerId, skippedId, wrongOrder.getString("logEntryId").toLowerCase());
+        assertEquals("Wrong urgent alerts recorded", expected, new HashSet<>(getUrgentAlerts(entryIds)));
 
-        String subject = "Daily Health Urgent Alert: " + animalId + " - GI Urgent";
-        goToModule("Dumbster");
+        EmailRecordTable notifications = new EmailRecordTable(this);
+        List<EmailRecordTable.EmailMessage> messages = notifications.getMessages(subject);
+        assertEquals("Wrong number of urgent alert emails", expected.size(), messages.size());
+        List<String> bodies = new ArrayList<>();
+        for (EmailRecordTable.EmailMessage message : messages)
+        {
+            notifications.clickMessage(message);
+            bodies.add(message.getBody());
+        }
+        List<String> expectedText = List.of("GI Urgent", CAGE_IN_R1, "POORAPP, RAB, LIQDSTL", "View entry");
+        Assert.assertTrue("No urgent alert contains all of " + expectedText + ": " + bodies,
+                bodies.stream().anyMatch(body -> expectedText.stream().allMatch(body::contains)));
+    }
+
+    private void waitForUrgentAlertEmails(String subject, int count)
+    {
         waitFor(() -> {
             refresh();
-            return new EmailRecordTable(this).getMessages(subject).size() >= expected.size();
-        }, "The urgent alert emails were not sent", WAIT_FOR_PAGE);
-        EmailRecordTable notifications = new EmailRecordTable(this);
-        assertEquals("Wrong number of urgent alert emails", expected.size(), notifications.getMessages(subject).size());
-        EmailRecordTable.EmailMessage message = notifications.getMessages(subject).getFirst();
-        notifications.clickMessage(message);
-        String body = message.getBody();
-        for (String expectedText : List.of("GI Urgent", CAGE_IN_R1, "POORAPP, RAB, LIQDSTL", "View entry"))
-            Assert.assertTrue("Urgent alert is missing \"" + expectedText + "\": " + body, body.contains(expectedText));
+            return new EmailRecordTable(this).getMessages(subject).size() >= count;
+        }, "Expected " + count + " urgent alert emails", WAIT_FOR_PAGE);
     }
 
     /** Inserts a daily health urgent group with its codes in order and returns its rowid. */
