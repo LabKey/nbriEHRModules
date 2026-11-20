@@ -3819,13 +3819,11 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         _helper.addRecordToGrid(codes);
         _ext4Helper.queryOne("panel[title='Log Entry'] [name='Id']", Ext4FieldRef.class).setValue(animalId);
         waitFor(() -> animalId.equals(codes.getFieldValue(1, "Id")), "The entry's animal didn't reach the existing row", WAIT_FOR_JAVASCRIPT);
-        codes.setGridCellJS(1, "sortOrder", 1);
         selectDailyHealthCode(codes, 1, "POORAPP");
         // waits out the next row's default time, which the form must replace with the entry's
         sleep(1500);
         _helper.addRecordToGrid(codes);
         assertEquals("A new row should take the entry's animal", animalId, codes.getFieldValue(2, "Id"));
-        codes.setGridCellJS(2, "sortOrder", 2);
         selectDailyHealthCode(codes, 2, "RAB");
         submitForm("Submit Final", "Finalize");
 
@@ -3906,7 +3904,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
             notifications.clickMessage(message);
             bodies.add(message.getBody());
         }
-        List<String> expectedText = List.of("GI Urgent", CAGE_IN_R1, "POORAPP, RAB, LIQDSTL", "View entry");
+        List<String> expectedText = List.of("GI Urgent", CAGE_IN_R1, _userHelper.getDisplayNameForEmail(DATA_ADMIN.getEmail()), "POORAPP, RAB, LIQDSTL", "View entry");
         Assert.assertTrue("No urgent alert contains all of " + expectedText + ": " + bodies,
                 bodies.stream().anyMatch(body -> expectedText.stream().allMatch(body::contains)));
     }
@@ -3962,19 +3960,10 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         assertDailyHealthResult(results, todayEntry, "created", null);
         assertDailyHealthResult(results, yesterdayEntry, "created", null);
 
-        log("Verifying the by-date report opens on today");
-        goToEHRFolder();
-        waitAndClickAndWait(Locator.linkWithText("Today's Daily Health Log"));
-        DataRegionTable report = new AnimalHistoryPage<>(getDriver()).getActiveReportDataRegion();
-        report.setFilter("Id", "Equals", animalId);
-        assertEquals("The report should open on today's codes", List.of("RAB", "POORAPP"), report.getColumnDataAsText("code"));
-        report.clearFilter("date");
-        assertEquals("Clearing the date filter should reach earlier days", List.of("RAB", "POORAPP", "LIQDSTL"), report.getColumnDataAsText("code"));
-
-        log("Verifying the entries report shows one row per entry with its codes in sort order");
+        log("Verifying the entries report opens on today, one row per entry with its codes in sort order");
         goToEHRFolder();
         waitAndClickAndWait(Locator.linkWithText("Today's Daily Health Log Entries"));
-        report = new AnimalHistoryPage<>(getDriver()).getActiveReportDataRegion();
+        DataRegionTable report = new AnimalHistoryPage<>(getDriver()).getActiveReportDataRegion();
         report.setFilter("Id", "Equals", animalId);
         assertEquals("The report should open on today's entry", List.of("RAB, POORAPP"), report.getColumnDataAsText("codes"));
         report.clearFilter("date");

@@ -2701,7 +2701,7 @@ public class NBRI_EHRTriggerHelper
             html.append(NotificationHelper.getNotificationGridCell(_container, id, null, false, true, false));
             html.append(NotificationHelper.getNotificationGridCell(_container, date == null ? "" : dateTimeFormat.format(date)));
             html.append(NotificationHelper.getNotificationGridCell(_container, location == null ? "unknown" : location));
-            html.append(NotificationHelper.getNotificationGridCell(_container, StringUtils.defaultString(ConvertHelper.convert(first.get("performedby"), String.class))));
+            html.append(NotificationHelper.getNotificationGridCell(_container, getTechnicianName(first.get("performedby"))));
             html.append(NotificationHelper.getNotificationGridCell(_container, codes));
             html.append(NotificationHelper.getNotificationGridCell(_container, remarks));
             html.append(NotificationHelper.getNotificationGridCell(_container, "<a href=\"" + PageFlowUtil.filter(entryUrl) + "\">View entry</a>", null, false, false, true));
@@ -2709,6 +2709,14 @@ public class NBRI_EHRTriggerHelper
         }
         html.append("</table>");
         return html.toString();
+    }
+
+    /** performedby holds a user id; falls back to the stored value when it names no user. */
+    private String getTechnicianName(@Nullable Object performedby)
+    {
+        String value = StringUtils.defaultString(ConvertHelper.convert(performedby, String.class));
+        User user = StringUtils.isNumeric(value) ? UserManager.getUser(Integer.parseInt(value)) : null;
+        return user == null ? value : user.getDisplayName(_user);
     }
 
     /** The animal's cage, or room when it had no cage, at the observation date. */
