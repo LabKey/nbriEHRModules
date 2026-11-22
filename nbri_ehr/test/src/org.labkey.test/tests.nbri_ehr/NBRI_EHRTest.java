@@ -989,8 +989,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
 
         Map<String, Object> current = getCurrentValues(animalId);
         assertEquals("Unexpected current group for " + animalId, List.of(currentGroupTitle), current.get("activeAnimalGroups/groups"));
-        String currentProtocol = (String) current.get("activeProtocolAssignments/protocolDisplayName");
-        Assert.assertTrue("No current protocol for " + animalId, StringUtils.isNotBlank(currentProtocol));
+        String currentProtocol = (String) current.get("activeProtocolAssignments/protocolDisplayText");
+        assertEquals("Current protocol should read like the New Protocol dropdown", protocolChoice(PROTOCOL_ID, INVES_LAST_NAME), currentProtocol);
         String currentProject = String.valueOf(current.get("activeProjectAssignments/project"));
 
         log("Verifying the group assignment form shows the current group");
@@ -1011,7 +1011,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Ext4GridRef protocols = getExpandedFormSectionGrid("Protocol Assignment");
         _helper.addRecordToGrid(protocols);
         protocols.setGridCell(1, "Id", animalId);
-        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayName", "Current Protocol", currentProtocol, "protocol", "New Protocol");
+        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayText", "Current Protocol", currentProtocol, "protocol", "New Protocol");
         protocols.setGridCell(1, "protocol", protocolChoice(DUMMY_PROTOCOL, DUMMY_INVES_LAST_NAME));
 
         Ext4GridRef projects = getExpandedFormSectionGrid("Project Assignment");
@@ -1024,7 +1024,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitForFormValidationToClear();
         clickAndWait(Locator.linkWithText("Save Draft"));
         Map<String, Object> afterDraft = getCurrentValues(animalId);
-        assertEquals("A draft protocol assignment counted as current", currentProtocol, afterDraft.get("activeProtocolAssignments/protocolDisplayName"));
+        assertEquals("A draft protocol assignment counted as current", currentProtocol, afterDraft.get("activeProtocolAssignments/protocolDisplayText"));
         assertEquals("A draft project assignment counted as current", currentProject, String.valueOf(afterDraft.get("activeProjectAssignments/project")));
 
         SelectRowsCommand draftSelect = new SelectRowsCommand("study", "assignment");
@@ -1037,7 +1037,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         waitForElement(Locator.linkWithText("Submit Final"), WAIT_FOR_PAGE);
         lockForm();
         protocols = getExpandedFormSectionGrid("Protocol Assignment");
-        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayName", "Current Protocol", currentProtocol, "protocol", "New Protocol");
+        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayText", "Current Protocol", currentProtocol, "protocol", "New Protocol");
         assertEquals("Reopened draft has the wrong number of protocol rows", 1, protocols.getRowCount());
         projects = getExpandedFormSectionGrid("Project Assignment");
         verifyCurrentValueColumn(projects, "Id/activeProjectAssignments/project", "Current Project", currentProject, "project", "New Project");
@@ -1052,7 +1052,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     private Map<String, Object> getCurrentValues(String animalId) throws Exception
     {
         SelectRowsCommand select = new SelectRowsCommand("study", "Animal");
-        select.setColumns(List.of("activeAnimalGroups/groups", "activeProtocolAssignments/protocolDisplayName", "activeProjectAssignments/project"));
+        select.setColumns(List.of("activeAnimalGroups/groups", "activeProtocolAssignments/protocolDisplayText", "activeProjectAssignments/project"));
         select.addFilter(new Filter("Id", animalId));
         List<Map<String, Object>> rows = select.execute(getApiHelper().getConnection(), getContainerPath()).getRows();
         assertEquals("Expected one study.Animal row for " + animalId, 1, rows.size());
@@ -1093,7 +1093,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
     /** The text every protocol dropdown displays for a protocol, built by ehr/activeProtocols.sql. */
     private static String protocolChoice(String protocol, String investigatorLastName)
     {
-        return protocol + " - " + investigatorLastName;
+        return protocol + " (" + investigatorLastName + ")";
     }
 
     /** A column config property, such as the rendered header or editability, which only the config carries. Null when
@@ -2949,7 +2949,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         Assert.assertFalse("Death notification did not find the final housing: " + deathBody, deathBody.contains("Not Found"));
         Assert.assertTrue("Death notification is missing the final location: " + deathBody, deathBody.contains(CAGE_IN_R3));
         Assert.assertTrue("Death notification is missing the final project: " + deathBody, deathBody.contains(PROJECT_ID));
-        Assert.assertTrue("Death notification is missing the final protocol: " + deathBody, deathBody.contains(PROTOCOL_ID + " - " + INVES_LAST_NAME));
+        Assert.assertTrue("Death notification is missing the final protocol: " + deathBody, deathBody.contains(PROTOCOL_ID + " (" + INVES_LAST_NAME + ")"));
         String requestUrl = Locator.linkWithText("Click here to request a Necropsy").findElement(notifications).getAttribute("href");
 
         log("Requesting the necropsy");
@@ -2971,7 +2971,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
         notifications.clickMessage(notifications.getMessageWithSubjectContaining("Necropsy Request: " + aliveAnimalId));
         String requestBody = notifications.getMessageWithSubjectContaining("Necropsy Request: " + aliveAnimalId).getBody();
         Assert.assertTrue("Necropsy notification is missing the final location: " + requestBody, requestBody.contains(CAGE_IN_R3));
-        Assert.assertTrue("Necropsy notification is missing the final protocol: " + requestBody, requestBody.contains(PROTOCOL_ID + " - " + INVES_LAST_NAME));
+        Assert.assertTrue("Necropsy notification is missing the final protocol: " + requestBody, requestBody.contains(PROTOCOL_ID + " (" + INVES_LAST_NAME + ")"));
         String preliminaryUrl = Locator.linkWithText("Click here to enter preliminary necropsy results").findElement(notifications).getAttribute("href");
 
         log("Entering the preliminary necropsy");
@@ -3222,6 +3222,95 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest implements PostgresOnly
                 getDatasetDay("demographics", animalId, "death"));
         assertEquals("Deleting the death should fall back to the departure, not to Alive",
                 "Shipped", getCalculatedStatus(animalId));
+    }
+
+    private static final Map<String, String> PRESENCE_CHECKED_RECORDS = Map.of(
+            "protocolAssignment", "Protocol assignment",
+            "assignment", "Project assignment",
+            "animal_group_members", "Group assignment",
+            "housing", "Housing");
+
+    @Test
+    public void testRecordsOnOrAfterDeathRejected()
+    {
+        String animalId = "DA9001";
+        LocalDateTime deathDate = LocalDateTime.now().minusDays(10).withHour(10).withMinute(0).withSecond(0).withNano(0);
+
+        log("Creating an animal and recording its death");
+        createPresenceTestAnimal(animalId, deathDate.minusYears(2));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "deaths", "lsid",
+                new String[]{"Id", "date", "QCStateLabel", "performedby"},
+                new Object[][]{{animalId, deathDate, "Completed", 1004}}
+        ), getExtraContext());
+
+        verifyRecordsRejectedFrom(animalId, deathDate, "death");
+    }
+
+    @Test
+    public void testRecordsOnOrAfterDepartureRejected() throws Exception
+    {
+        String animalId = "DP9001";
+        LocalDateTime departureDate = LocalDateTime.now().minusDays(10).withHour(10).withMinute(0).withSecond(0).withNano(0);
+
+        log("Creating an animal and recording its departure");
+        createPresenceTestAnimal(animalId, departureDate.minusYears(2));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "departure", "lsid",
+                new String[]{"Id", "date", "destination", "QCStateLabel", "performedby"},
+                new Object[][]{{animalId, departureDate, "ORPRC", "Completed", 1004}}
+        ), getExtraContext());
+
+        verifyRecordsRejectedFrom(animalId, departureDate, "departure");
+
+        log("Verify a rearrival can open records after the departure");
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), arrivalInsert(PROTOCOL_ID, EHRQCState.COMPLETED, true, null, animalId), getExtraContext());
+        assertEquals("The rearrival should open a protocol assignment", 1,
+                countRows("protocolAssignment", new Filter("Id", animalId), new Filter("enddate", null, Filter.Operator.ISBLANK)));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), presenceInsert("housing", animalId, LocalDateTime.now()), getExtraContext());
+    }
+
+    // species is required by the protocol assignment's species approval check
+    private void createPresenceTestAnimal(String animalId, LocalDateTime birth)
+    {
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "demographics", "lsid",
+                new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "QCStateLabel", "objectid", "performedby"},
+                new Object[][]{{animalId, "MMU", birth, getFemale(), birth, "Alive", "Completed", UUID.randomUUID().toString(), 1004}}
+        ), getExtraContext());
+    }
+
+    private void verifyRecordsRejectedFrom(String animalId, LocalDateTime eventDate, String eventName)
+    {
+        log("Verify housing and assignments starting at the " + eventName + " or later are rejected");
+        for (LocalDateTime date : List.of(eventDate, eventDate.plusHours(2)))
+        {
+            PRESENCE_CHECKED_RECORDS.forEach((queryName, label) -> {
+                CommandException error = getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), presenceInsert(queryName, animalId, date), getExtraContext());
+                List<String> dateErrors = getApiHelper().extractErrors(error.getProperties()).getOrDefault("date", List.of());
+                String expectedError = "ERROR: " + label + " cannot start on or after the animal's " + eventName + " date";
+                Assert.assertTrue("Expected '" + expectedError + "' for " + queryName + " dated " + date + ", got: " + dateErrors,
+                        dateErrors.stream().anyMatch(e -> e.startsWith(expectedError)));
+            });
+        }
+
+        log("Verify housing and assignments starting earlier on the " + eventName + " day are accepted");
+        PRESENCE_CHECKED_RECORDS.keySet().forEach(queryName ->
+                getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), presenceInsert(queryName, animalId, eventDate.minusHours(2)), getExtraContext()));
+    }
+
+    private SimplePostCommand presenceInsert(String queryName, String animalId, LocalDateTime date)
+    {
+        Map<String, Object> row = new LinkedHashMap<>(Map.of("Id", animalId, "date", date, "performedby", 1004));
+        switch (queryName)
+        {
+            case "protocolAssignment" -> row.put("protocol", PROTOCOL_ID);
+            case "assignment" -> row.put("project", PROTOCOL_PROJECT_ID);
+            case "animal_group_members" -> row.put("groupId", "T");
+            case "housing" -> {
+                row.put("room", getRooms()[0]);
+                row.put("cage", CAGE_IN_R1);
+            }
+            default -> throw new IllegalArgumentException(queryName);
+        }
+        return getApiHelper().prepareInsertCommand("study", queryName, "lsid", row.keySet().toArray(String[]::new), new Object[][]{row.values().toArray()});
     }
 
     @Test
