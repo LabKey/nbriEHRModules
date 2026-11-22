@@ -36,7 +36,8 @@ public class TriggerScriptNotification
 {
     private static final Logger _log = LogManager.getLogger(TriggerScriptNotification.class);
 
-    public static void sendMessage(String subject, String bodyHtml, Collection<UserPrincipal> recipients, Container container, User user)
+    /** False when the message was not sent. */
+    public static boolean sendMessage(String subject, String bodyHtml, Collection<UserPrincipal> recipients, Container container, User user)
     {
         try
         {
@@ -44,7 +45,7 @@ public class TriggerScriptNotification
             if (from == null)
             {
                 _log.warn("No return email set for EHR NotificationService.");
-                return;
+                return false;
             }
 
             MailHelper.MultipartMessage msg = MailHelper.createMultipartMessage();
@@ -68,17 +69,19 @@ public class TriggerScriptNotification
             if (emails.isEmpty())
             {
                 _log.warn("No emails, unable to send EHR trigger script email");
-                return;
+                return false;
             }
 
             msg.setRecipients(Message.RecipientType.TO, StringUtils.join(emails, ","));
             msg.setEncodedHtmlContent(bodyHtml);
 
             MailHelper.send(msg, user, container);
+            return true;
         }
         catch (Exception e)
         {
             _log.error("Unable to send email from EHR trigger script", e);
+            return false;
         }
     }
 }
