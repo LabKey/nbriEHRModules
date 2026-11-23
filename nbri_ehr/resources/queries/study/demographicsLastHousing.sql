@@ -17,9 +17,9 @@ d2.room,
 d2.cage
 ,
 
-h.enddate as enddate
+d2.enddate
 
 FROM study.housing d2
-JOIN (SELECT id, max(date) as maxDate, max(enddate) as enddate FROM study.housing h WHERE h.qcstate.publicdata = true GROUP BY id) h
-ON (h.id = d2.id and d2.date = h.maxdate)
 WHERE d2.qcstate.publicdata = true
+-- Don't self-join on max(date): Postgres badly underestimates that join and picks an unindexed nested loop.
+AND NOT EXISTS (SELECT 1 FROM study.housing h WHERE h.id = d2.id AND h.date > d2.date AND h.qcstate.publicdata = true)

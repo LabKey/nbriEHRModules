@@ -8,6 +8,12 @@
 SELECT
   d.id,
   cast(group_concat(DISTINCT a.protocol.displayName, ', ') as varchar) as protocolDisplayName,
+  -- same text as ehr/activeProtocols.sql, so the current protocol reads like the protocol dropdowns
+  cast(group_concat(DISTINCT
+       CASE
+           WHEN a.protocol.investigatorId.lastName IS NULL THEN a.protocol.displayName
+           ELSE a.protocol.displayName || ' (' || a.protocol.investigatorId.lastName || ')'
+       END, ', ') as varchar) as protocolDisplayText,
   cast(group_concat(DISTINCT (initcap(a.protocol.investigatorId.firstName) ||' '|| initcap(a.protocol.investigatorId.lastName)), ', ') as varchar) as investigator,
   cast(group_concat(DISTINCT a.protocol.title, ', ') as varchar) as protocolTitle,
   cast(group_concat(DISTINCT

@@ -37,6 +37,8 @@ import org.labkey.api.ehr.security.EHRBehaviorEntryPermission;
 import org.labkey.api.ehr.security.EHRClinicalEntryPermission;
 import org.labkey.api.ehr.security.EHRDataEntryPermission;
 import org.labkey.api.ehr.security.EHRPathologyEntryPermission;
+import org.labkey.api.ehr.table.AssignmentAtTimeColumns;
+import org.labkey.api.ehr.table.AssignmentAtTimeColumns.AtTimeColumn;
 import org.labkey.api.ehr.table.FixedWidthDisplayColumn;
 import org.labkey.api.ehr.table.TreatmentLinkConfig;
 import org.labkey.api.ehr.table.TreatmentLinkDisplayColumnFactory;
@@ -93,6 +95,13 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         return getUserSchema(ds, name, ehrContainer);
     }
 
+    // Falls back to the local study when no EHR study container is configured.
+    private UserSchema getEHRStudyUserSchema(AbstractTableInfo ds)
+    {
+        Container ehrContainer = EHRService.get().getEHRStudyContainer(ds.getUserSchema().getContainer());
+        return ehrContainer == null ? getUserSchema(ds, "study") : getUserSchema(ds, "study", ehrContainer);
+    }
+
     @Override
     public void customize(TableInfo table)
     {
@@ -103,6 +112,9 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             if (ti instanceof DatasetTable)
             {
                 ti.addTriggerFactory(new NBRI_EHRTriggerScriptFactory());
+                UserSchema ehrStudy = getEHRStudyUserSchema(ti);
+                if (ehrStudy != null)
+                    AssignmentAtTimeColumns.addAtTimeCols(ti, ehrStudy, AtTimeColumn.PROJECT, AtTimeColumn.PROTOCOL);
             }
 
             if (matches(ti, "ehr", "tasks") || matches(table, "ehr", "my_tasks"))
@@ -160,7 +172,43 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             {
                 customizePairing(ti);
             }
+
+            if (matches(ti, "study", "dailyHealthLog"))
+            {
+                addDailyHealthEntryList(ti, "entryCodes", "Codes", "code", ", ");
+                // remarks can hold commas
+                addDailyHealthEntryList(ti, "entryRemarks", "Remarks", "remark", "; ");
+            }
         }
+    }
+
+    /** One column's non-blank values across the row's log entry in sort order; LabKey SQL's GROUP_CONCAT always sorts its values alphabetically. */
+    private void addDailyHealthEntryList(AbstractTableInfo ti, String name, String label, String valueColumn, String separator)
+    {
+        TableInfo realTable = getRealTable(ti);
+        if (ti.getColumn(name) != null || realTable == null)
+            return;
+
+        // a folder import customizes the dataset before its columns are defined
+        ColumnInfo logEntryId = ti.getColumn("logEntryId");
+        ColumnInfo realValue = realTable.getColumn(valueColumn);
+        ColumnInfo realSortOrder = realTable.getColumn("sortOrder");
+        ColumnInfo realLogEntryId = realTable.getColumn("logEntryId");
+        if (logEntryId == null || realValue == null || realSortOrder == null || realLogEntryId == null)
+            return;
+
+        SQLFragment sql = new SQLFragment("(SELECT string_agg(NULLIF(TRIM(c.")
+                .appendIdentifier(realValue.getSelectIdentifier())
+                .append("), ''), ").appendValue(separator).append(" ORDER BY c.")
+                .appendIdentifier(realSortOrder.getSelectIdentifier())
+                .append(") FROM ").append(realTable.getFromSQL("c"))
+                .append(" WHERE c.").appendIdentifier(realLogEntryId.getSelectIdentifier())
+                .append(" = ").append(logEntryId.getValueSql(ExprColumn.STR_TABLE_ALIAS)).append(")");
+
+        ExprColumn col = new ExprColumn(ti, name, sql, JdbcType.VARCHAR, logEntryId);
+        col.setLabel(label);
+        col.setUserEditable(false);
+        ti.addColumn(col);
     }
 
     private void customizePairing(AbstractTableInfo ti)
