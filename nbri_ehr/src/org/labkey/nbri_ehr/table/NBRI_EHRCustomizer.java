@@ -37,6 +37,8 @@ import org.labkey.api.ehr.security.EHRBehaviorEntryPermission;
 import org.labkey.api.ehr.security.EHRClinicalEntryPermission;
 import org.labkey.api.ehr.security.EHRDataEntryPermission;
 import org.labkey.api.ehr.security.EHRPathologyEntryPermission;
+import org.labkey.api.ehr.table.AssignmentAtTimeColumns;
+import org.labkey.api.ehr.table.AssignmentAtTimeColumns.AtTimeColumn;
 import org.labkey.api.ehr.table.FixedWidthDisplayColumn;
 import org.labkey.api.ehr.table.TreatmentLinkConfig;
 import org.labkey.api.ehr.table.TreatmentLinkDisplayColumnFactory;
@@ -93,6 +95,13 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
         return getUserSchema(ds, name, ehrContainer);
     }
 
+    // Falls back to the local study when no EHR study container is configured.
+    private UserSchema getEHRStudyUserSchema(AbstractTableInfo ds)
+    {
+        Container ehrContainer = EHRService.get().getEHRStudyContainer(ds.getUserSchema().getContainer());
+        return ehrContainer == null ? getUserSchema(ds, "study") : getUserSchema(ds, "study", ehrContainer);
+    }
+
     @Override
     public void customize(TableInfo table)
     {
@@ -103,6 +112,9 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
             if (ti instanceof DatasetTable)
             {
                 ti.addTriggerFactory(new NBRI_EHRTriggerScriptFactory());
+                UserSchema ehrStudy = getEHRStudyUserSchema(ti);
+                if (ehrStudy != null)
+                    AssignmentAtTimeColumns.addAtTimeCols(ti, ehrStudy, AtTimeColumn.PROJECT, AtTimeColumn.PROTOCOL);
             }
 
             if (matches(ti, "ehr", "tasks") || matches(table, "ehr", "my_tasks"))
