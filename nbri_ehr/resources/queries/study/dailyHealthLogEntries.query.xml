@@ -18,6 +18,9 @@
                     <column columnName="codes">
                         <columnTitle>Codes</columnTitle>
                     </column>
+                    <column columnName="remarks">
+                        <columnTitle>Remarks</columnTitle>
+                    </column>
                     <column columnName="taskid">
                         <isHidden>true</isHidden>
                     </column>

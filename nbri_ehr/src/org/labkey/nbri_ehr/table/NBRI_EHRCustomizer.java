@@ -175,37 +175,38 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
 
             if (matches(ti, "study", "dailyHealthLog"))
             {
-                addDailyHealthEntryCodes(ti);
+                addDailyHealthEntryList(ti, "entryCodes", "Codes", "code", ", ");
+                // remarks can hold commas
+                addDailyHealthEntryList(ti, "entryRemarks", "Remarks", "remark", "; ");
             }
         }
     }
 
-    /** All codes of the row's log entry in sort order; LabKey SQL's GROUP_CONCAT always sorts its values alphabetically. */
-    private void addDailyHealthEntryCodes(AbstractTableInfo ti)
+    /** One column's non-blank values across the row's log entry in sort order; LabKey SQL's GROUP_CONCAT always sorts its values alphabetically. */
+    private void addDailyHealthEntryList(AbstractTableInfo ti, String name, String label, String valueColumn, String separator)
     {
-        String name = "entryCodes";
         TableInfo realTable = getRealTable(ti);
         if (ti.getColumn(name) != null || realTable == null)
             return;
 
         // a folder import customizes the dataset before its columns are defined
         ColumnInfo logEntryId = ti.getColumn("logEntryId");
-        ColumnInfo realCode = realTable.getColumn("code");
+        ColumnInfo realValue = realTable.getColumn(valueColumn);
         ColumnInfo realSortOrder = realTable.getColumn("sortOrder");
         ColumnInfo realLogEntryId = realTable.getColumn("logEntryId");
-        if (logEntryId == null || realCode == null || realSortOrder == null || realLogEntryId == null)
+        if (logEntryId == null || realValue == null || realSortOrder == null || realLogEntryId == null)
             return;
 
-        SQLFragment sql = new SQLFragment("(SELECT string_agg(c.")
-                .appendIdentifier(realCode.getSelectIdentifier())
-                .append(", ', ' ORDER BY c.")
+        SQLFragment sql = new SQLFragment("(SELECT string_agg(NULLIF(TRIM(c.")
+                .appendIdentifier(realValue.getSelectIdentifier())
+                .append("), ''), ").appendValue(separator).append(" ORDER BY c.")
                 .appendIdentifier(realSortOrder.getSelectIdentifier())
                 .append(") FROM ").append(realTable.getFromSQL("c"))
                 .append(" WHERE c.").appendIdentifier(realLogEntryId.getSelectIdentifier())
                 .append(" = ").append(logEntryId.getValueSql(ExprColumn.STR_TABLE_ALIAS)).append(")");
 
         ExprColumn col = new ExprColumn(ti, name, sql, JdbcType.VARCHAR, logEntryId);
-        col.setLabel("Codes");
+        col.setLabel(label);
         col.setUserEditable(false);
         ti.addColumn(col);
     }
