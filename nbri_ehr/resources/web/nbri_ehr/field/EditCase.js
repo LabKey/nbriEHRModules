@@ -24,7 +24,7 @@ Ext4.define('NBRI_EHR.form.EditCases', {
         this.editBtn = Ext4.create('Ext.button.Button', {
             text: 'Edit',
             margin: '20 10 0 0',
-            hidden: !caseid && !taskid,
+            hidden: this.readonly || (!caseid && !taskid),
             scope: this,
             handler: this.onEditButtonClick
         });
@@ -38,16 +38,32 @@ Ext4.define('NBRI_EHR.form.EditCases', {
         this.callParent();
     },
 
+    // A date-time field's own date and time inputs ignore their container's disabled state
+    getInnerDateTimeFields: function(item){
+        return item.dateField && item.timeField ? [item.dateField, item.timeField] : [];
+    },
+
     disableItem(item, disable) {
-        if (disable) {
-            item.disable();
-        }
-        else {
-            item.enable();
-        }
+        [item].concat(this.getInnerDateTimeFields(item)).forEach(function(field){
+            if (disable) {
+                field.disable();
+            }
+            else {
+                field.enable();
+            }
+        });
     },
 
     disabledDisplay: function(item, disable){
+        this.getInnerDateTimeFields(item).forEach(function(field){
+            if (field.inputEl) {
+                if (disable)
+                    field.inputEl.addCls('form-panel-input-disabled');
+                else
+                    field.inputEl.removeCls('form-panel-input-disabled');
+            }
+        });
+
         if (item.labelEl && item.inputEl) {
             if (disable) {
                 item.labelEl.addCls('form-panel-input-disabled');
