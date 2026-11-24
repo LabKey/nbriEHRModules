@@ -34,7 +34,9 @@ import org.labkey.api.data.ConvertHelper;
 import org.labkey.api.data.DbScope;
 import org.labkey.api.data.Results;
 import org.labkey.api.data.ResultsImpl;
+import org.labkey.api.data.SQLFragment;
 import org.labkey.api.data.SimpleFilter;
+import org.labkey.api.data.SqlExecutor;
 import org.labkey.api.data.Sort;
 import org.labkey.api.data.TableInfo;
 import org.labkey.api.data.TableSelector;
@@ -51,24 +53,31 @@ import org.labkey.api.query.InvalidKeyException;
 import org.labkey.api.query.QueryService;
 import org.labkey.api.query.QueryUpdateService;
 import org.labkey.api.query.QueryUpdateServiceException;
+import org.labkey.api.query.RuntimeValidationException;
 import org.labkey.api.query.UserSchema;
 import org.labkey.api.security.User;
 import org.labkey.api.security.UserManager;
 import org.labkey.api.security.UserPrincipal;
 import org.labkey.api.settings.AppProps;
 import org.labkey.api.settings.LookAndFeelProperties;
+import org.labkey.api.exp.api.StorageProvisioner;
+import org.labkey.api.study.Dataset;
+import org.labkey.api.study.Study;
 import org.labkey.api.study.StudyService;
 import org.labkey.api.util.GUID;
 import org.labkey.api.util.JobRunner;
 import org.labkey.api.util.PageFlowUtil;
 import org.labkey.api.view.ActionURL;
 import org.labkey.nbri_ehr.NBRI_EHRManager;
+import org.labkey.nbri_ehr.NBRI_EHRSchema;
 import org.labkey.nbri_ehr.dataentry.form.NBRIClinicalObservationsFormType;
 import org.labkey.nbri_ehr.dataentry.form.NBRINecropsyBaseFormType;
 import org.labkey.nbri_ehr.notification.NBRIClinicalMoveNotification;
+import org.labkey.nbri_ehr.notification.NBRIDailyHealthUrgentNotification;
 import org.labkey.nbri_ehr.notification.NBRIDeathNotification;
 import org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification;
 import org.labkey.nbri_ehr.notification.NBRIPregnancyOutcomeNotification;
+import org.labkey.nbri_ehr.notification.NotificationHelper;
 import org.labkey.nbri_ehr.notification.TriggerScriptNotification;
 
 import java.sql.SQLException;
@@ -83,6 +92,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -927,7 +937,7 @@ public class NBRI_EHRTriggerHelper
         SimpleFilter filter = getRecordFilter(id, finalRecords);
 
         Set<FieldKey> keys = new HashSet<>();
-        keys.add(FieldKey.fromString("protocol/title"));
+        keys.add(FieldKey.fromString("protocol/displayName"));
         keys.add(FieldKey.fromString("protocol/InvestigatorId/LastName"));
         final Map<FieldKey, ColumnInfo> cols = QueryService.get().getColumns(ti, keys);
         TableSelector ts = new TableSelector(ti, cols.values(), filter, null);
@@ -936,15 +946,15 @@ public class NBRI_EHRTriggerHelper
 
         ts.forEach(object -> {
             Results rs = new ResultsImpl(object, cols);
-            String title = rs.getString(FieldKey.fromString("protocol/title"));
+            String displayName = rs.getString(FieldKey.fromString("protocol/displayName"));
             String inves = rs.getString(FieldKey.fromString("protocol/InvestigatorId/LastName"));
-            if (title == null)
+            if (displayName == null)
             {
                 protocol.setValue("None");
             }
             else
             {
-                protocol.setValue(title + (inves == null ? "" : " - " + inves));
+                protocol.setValue(displayName + (inves == null ? "" : " (" + inves + ")"));
             }
         });
         return protocol.get();
@@ -2221,5 +2231,508 @@ public class NBRI_EHRTriggerHelper
             }
         }
         return title;
+    }
+
+    public @Nullable String validateDailyHealthCode(String code)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("code"), code);
+        Boolean enabled = new TableSelector(getTableInfo("nbri_ehr", "dailyHealthCode"), Collections.singleton("enabled"), filter, null).getObject(Boolean.class);
+        if (enabled == null)
+            return "Unknown daily health code: " + code;
+        if (!enabled)
+            return "Daily health code " + code + " is retired";
+        return null;
+    }
+
+    public boolean isAnimalAlive(String id)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
+        filter.addCondition(FieldKey.fromString("calculated_status"), "Alive");
+        return new TableSelector(getTableInfo("study", "demographics"), Collections.singleton("Id"), filter, null).exists();
+    }
+
+    public boolean isDailyHealthEntrySaved(String logEntryId)
+    {
+        return new TableSelector(getTableInfo("study", "dailyHealthLog"), Collections.singleton("logEntryId"),
+                new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryId), null).exists();
+    }
+
+    // Scanners send building, room name and an optional cage; NBRI keys a room as building-name and a cage as room-cage.
+    public @Nullable String validateDailyHealthLocation(String id, Object dateValue, @Nullable Object area, @Nullable Object enclosure, @Nullable Object cage)
+    {
+        Date date = ConvertHelper.convert(dateValue, Date.class);
+        String building = StringUtils.trimToNull(ConvertHelper.convert(area, String.class));
+        String roomName = StringUtils.trimToNull(ConvertHelper.convert(enclosure, String.class));
+        String cageName = StringUtils.trimToNull(ConvertHelper.convert(cage, String.class));
+        if (id == null || date == null)
+            return null;
+        if (building == null || roomName == null)
+            return "A location needs both an area and an enclosure";
+
+        String room = building + "-" + roomName;
+        String location = cageName == null ? room : room + "-" + cageName;
+
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
+        filter.addCondition(FieldKey.fromString(cageName == null ? "room" : "cage"), location);
+        filter.addCondition(FieldKey.fromString("date"), date, CompareType.LTE);
+        filter.addClause(new SimpleFilter.OrClause(new CompareType.EqualsCompareClause(FieldKey.fromString("enddate"), CompareType.GT, date), new CompareType.CompareClause(FieldKey.fromString("enddate"), CompareType.ISBLANK, null)));
+        filter.addCondition(FieldKey.fromString("qcstate/publicdata"), true);
+        if (new TableSelector(getTableInfo("study", "housing"), Collections.singleton("Id"), filter, null).exists())
+            return null;
+
+        return id + " was not housed in " + location + " on " + _dateFormat.format(date);
+    }
+
+    /**
+     * Defers the entry checks to just before the transaction commits. A form save sends its updates and deletes as
+     * separate commands, so only then are rows edited together (e.g. one removed, another renumbered) final.
+     * The task must not open a transaction while the outer commit is in progress: no writes, and no query over the
+     * dataset (that lazily reloads its storage table in a transaction), so it reads the storage table resolved here.
+     */
+    public void queueDailyHealthEntryChecks(List<String> logEntryIds)
+    {
+        Study study = StudyService.get().getStudy(_container);
+        Dataset dataset = study == null ? null : study.getDatasetByName("dailyHealthLog");
+        if (dataset == null)
+            return;
+
+        TableInfo table = StorageProvisioner.createTableInfo(dataset.getDomain());
+        DailyHealthCommitTask task = new DailyHealthCommitTask(_container.getId(), table);
+        task.add(logEntryIds);
+        DailyHealthCommitTask queued = table.getSchema().getScope().addCommitTask(task, DbScope.CommitTaskOption.PRECOMMIT);
+        if (queued != task)
+            queued.add(logEntryIds);
+    }
+
+    /** One per container per transaction; equality on the container lets later saves in the transaction join the queued task. */
+    private static class DailyHealthCommitTask implements Runnable
+    {
+        private final String _containerId;
+        private final TableInfo _table;
+        private final Set<String> _logEntryIds = new LinkedHashSet<>();
+
+        DailyHealthCommitTask(String containerId, TableInfo table)
+        {
+            _containerId = containerId;
+            _table = table;
+        }
+
+        void add(List<String> logEntryIds)
+        {
+            _logEntryIds.addAll(logEntryIds);
+        }
+
+        @Override
+        public void run()
+        {
+            List<String> errors = validateDailyHealthEntries(_table, new ArrayList<>(_logEntryIds));
+            if (!errors.isEmpty())
+                throw new RuntimeValidationException(String.join("; ", errors));
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            return o instanceof DailyHealthCommitTask other && _containerId.equals(other._containerId);
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(DailyHealthCommitTask.class, _containerId);
+        }
+    }
+
+    /** Runs after the whole save has landed, so rows edited together (e.g. swapped sort orders) are judged on their final values. */
+    private static List<String> validateDailyHealthEntries(TableInfo storageTable, List<String> logEntryIds)
+    {
+        List<String> errors = new ArrayList<>();
+        Map<String, List<Map<String, Object>>> entries = new TableSelector(storageTable,
+                PageFlowUtil.set("logEntryId", "participantid", "date", "performedby", "taskid", "sortOrder"),
+                new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryIds, CompareType.IN), null)
+                .getMapCollection().stream()
+                .map(row -> (Map<String, Object>) new CaseInsensitiveHashMap<>(row))
+                .collect(Collectors.groupingBy(row -> ConvertHelper.convert(row.get("logEntryId"), String.class), LinkedHashMap::new, Collectors.toList()));
+
+        entries.forEach((logEntryId, rows) -> {
+            Set<Integer> sortOrders = new HashSet<>();
+            rows.stream()
+                    .map(row -> ConvertHelper.convert(row.get("sortOrder"), Integer.class))
+                    .filter(sortOrder -> !sortOrders.add(sortOrder))
+                    .distinct()
+                    .forEach(sortOrder -> errors.add("Log entry " + logEntryId + " has more than one row with sort order " + sortOrder));
+
+            boolean consistent = rows.stream().map(row -> row.get("participantid")).distinct().count() == 1
+                    && rows.stream().map(row -> ConvertHelper.convert(row.get("date"), Date.class)).distinct().count() == 1
+                    && rows.stream().map(row -> row.get("performedby")).distinct().count() == 1
+                    && rows.stream().map(row -> StringUtils.lowerCase(ConvertHelper.convert(row.get("taskid"), String.class))).distinct().count() == 1;
+            if (!consistent)
+                errors.add("Every row of log entry " + logEntryId + " must have the same animal, observation date, technician and task");
+        });
+        return errors;
+    }
+
+    // When several codes in one entry map to the same category, a code with this score wins over the others.
+    private static final Map<String, String> DAILY_HEALTH_PREFERRED_SCORES = Map.of("Menses", "Heavy mense");
+
+    /**
+     * Makes each entry's clinical observations match its codes: one per mapped category, linked by parentid to the row
+     * that produced it. Observations whose row was deleted are removed and re-created from a surviving row if still called for.
+     * Runs after every command of a save; the last command to touch an entry sees its final rows.
+     */
+    public void syncDailyHealthObservations(List<String> logEntryIds, List<String> deletedObjectIds) throws SQLException, BatchValidationException, QueryUpdateServiceException, DuplicateKeyException, InvalidKeyException
+    {
+        Map<String, List<Map<String, Object>>> entries = getDailyHealthRows(logEntryIds);
+        Set<String> parentIds = new HashSet<>(deletedObjectIds);
+        entries.values().forEach(rows -> rows.forEach(row -> parentIds.add(ConvertHelper.convert(row.get("objectid"), String.class))));
+        if (parentIds.isEmpty())
+            return;
+
+        Map<String, String[]> mappings = new HashMap<>();
+        SimpleFilter mappedFilter = new SimpleFilter(FieldKey.fromString("observationCategory"), null, CompareType.NONBLANK);
+        new TableSelector(getTableInfo("nbri_ehr", "dailyHealthCode"), PageFlowUtil.set("code", "observationCategory", "observationScore"), mappedFilter, null).forEachMap(code ->
+                mappings.put((String) code.get("code"), new String[]{(String) code.get("observationCategory"), (String) code.get("observationScore")}));
+
+        TableInfo obsTi = getTableInfo("study", "clinical_observations");
+        Map<String, List<Map<String, Object>>> obsByParent = new TableSelector(obsTi,
+                PageFlowUtil.set("objectid", "parentid", "Id", "date", "category", "observation", "performedby", "QCState", "taskid"),
+                new SimpleFilter(FieldKey.fromString("parentid"), parentIds, CompareType.IN), null)
+                .getMapCollection().stream()
+                .collect(Collectors.groupingBy(obs -> ConvertHelper.convert(obs.get("parentid"), String.class)));
+
+        List<Map<String, Object>> toDelete = new ArrayList<>();
+        List<Map<String, Object>> toUpdate = new ArrayList<>();
+        List<Map<String, Object>> toInsert = new ArrayList<>();
+
+        deletedObjectIds.forEach(objectId -> obsByParent.getOrDefault(objectId, List.of()).forEach(obs -> toDelete.add(obsKey(obs))));
+
+        for (List<Map<String, Object>> rows : entries.values())
+        {
+            // category -> the row whose code supplies it
+            Map<String, Map<String, Object>> wanted = new LinkedHashMap<>();
+            for (Map<String, Object> row : rows)
+            {
+                String[] mapping = mappings.get(ConvertHelper.convert(row.get("code"), String.class));
+                if (mapping == null)
+                    continue;
+                Map<String, Object> current = wanted.get(mapping[0]);
+                String preferred = DAILY_HEALTH_PREFERRED_SCORES.get(mapping[0]);
+                if (current == null || (preferred != null && preferred.equals(mapping[1]) && !preferred.equals(mappings.get((String) current.get("code"))[1])))
+                    wanted.put(mapping[0], row);
+            }
+
+            Map<String, Map<String, Object>> existingByCategory = new HashMap<>();
+            for (Map<String, Object> row : rows)
+            {
+                for (Map<String, Object> obs : obsByParent.getOrDefault(ConvertHelper.convert(row.get("objectid"), String.class), List.of()))
+                {
+                    String category = ConvertHelper.convert(obs.get("category"), String.class);
+                    if (wanted.containsKey(category) && !existingByCategory.containsKey(category))
+                        existingByCategory.put(category, obs);
+                    else
+                        toDelete.add(obsKey(obs));
+                }
+            }
+
+            wanted.forEach((category, row) -> {
+                String score = mappings.get((String) row.get("code"))[1];
+                Map<String, Object> obsRow = new CaseInsensitiveHashMap<>();
+                obsRow.put("Id", row.get("Id"));
+                obsRow.put("date", row.get("date"));
+                obsRow.put("category", category);
+                obsRow.put("observation", score);
+                obsRow.put("performedby", row.get("performedby"));
+                obsRow.put("QCState", row.get("QCState"));
+                obsRow.put("taskid", row.get("taskid"));
+                obsRow.put("parentid", row.get("objectid"));
+
+                Map<String, Object> existing = existingByCategory.get(category);
+                if (existing == null)
+                {
+                    obsRow.put("type", "Behavior".equals(getObservationTypeCategory(category)) ? "Behavior" : "Clinical");
+                    toInsert.add(obsRow);
+                }
+                else if (!obsMatches(existing, obsRow))
+                {
+                    obsRow.put("objectid", existing.get("objectid"));
+                    toUpdate.add(obsRow);
+                }
+            });
+        }
+
+        QueryUpdateService qus = Objects.requireNonNull(obsTi.getUpdateService());
+        BatchValidationException errors = new BatchValidationException();
+        if (!toDelete.isEmpty())
+            qus.deleteRows(_user, _container, toDelete, null, getExtraContext());
+        if (!toUpdate.isEmpty())
+            qus.updateRows(_user, _container, toUpdate, null, errors, null, getExtraContext());
+        if (!errors.hasErrors() && !toInsert.isEmpty())
+            qus.insertRows(_user, _container, toInsert, errors, null, getExtraContext());
+        if (errors.hasErrors())
+            throw errors;
+    }
+
+    private static Map<String, Object> obsKey(Map<String, Object> obs)
+    {
+        Map<String, Object> key = new CaseInsensitiveHashMap<>();
+        key.put("objectid", obs.get("objectid"));
+        return key;
+    }
+
+    private static boolean obsMatches(Map<String, Object> existing, Map<String, Object> wanted)
+    {
+        return List.of("Id", "category", "observation", "performedby", "QCState", "taskid", "parentid").stream()
+                .allMatch(col -> Objects.equals(ConvertHelper.convert(existing.get(col), String.class), ConvertHelper.convert(wanted.get(col), String.class)))
+                && Objects.equals(ConvertHelper.convert(existing.get("date"), Date.class), ConvertHelper.convert(wanted.get("date"), Date.class));
+    }
+
+    /** The saved rows of each log entry, in sort order. */
+    private Map<String, List<Map<String, Object>>> getDailyHealthRows(List<String> logEntryIds)
+    {
+        if (logEntryIds.isEmpty())
+            return Map.of();
+
+        return new TableSelector(getTableInfo("study", "dailyHealthLog"),
+                PageFlowUtil.set("objectid", "logEntryId", "Id", "date", "performedby", "sortOrder", "code", "QCState", "taskid"),
+                new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryIds, CompareType.IN), new Sort("sortOrder"))
+                .getMapCollection().stream()
+                .collect(Collectors.groupingBy(row -> ConvertHelper.convert(row.get("logEntryId"), String.class), LinkedHashMap::new, Collectors.toList()));
+    }
+    /** Alerts for the entries this save touched, from a background job once the whole save has committed. */
+    public void queueDailyHealthUrgentNotifications(List<String> logEntryIds)
+    {
+        if (!NotificationService.get().isServiceEnabled() || !NotificationService.get().isActive(new NBRIDailyHealthUrgentNotification(), _container))
+            return;
+
+        DailyHealthUrgentTask task = new DailyHealthUrgentTask();
+        task.add(logEntryIds);
+        DailyHealthUrgentTask queued = Objects.requireNonNull(StudyService.get()).getDatasetSchema().getScope().addCommitTask(task, DbScope.CommitTaskOption.POSTCOMMIT);
+        if (queued != task)
+            queued.add(logEntryIds);
+    }
+
+    /** One per container and user per transaction; that equality lets later saves in the transaction join the queued task. */
+    private class DailyHealthUrgentTask implements Runnable
+    {
+        private final Set<String> _logEntryIds = new LinkedHashSet<>();
+
+        void add(List<String> logEntryIds)
+        {
+            _logEntryIds.addAll(logEntryIds);
+        }
+
+        @Override
+        public void run()
+        {
+            List<String> logEntryIds = new ArrayList<>(_logEntryIds);
+            JobRunner.getDefault().execute(() -> sendDailyHealthUrgentNotification(logEntryIds));
+        }
+
+        private String containerId()
+        {
+            return _container.getId();
+        }
+
+        private int userId()
+        {
+            return _user.getUserId();
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            return o instanceof DailyHealthUrgentTask other && containerId().equals(other.containerId()) && userId() == other.userId();
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(DailyHealthUrgentTask.class, containerId(), userId());
+        }
+    }
+
+    private record DailyHealthUrgentGroup(int rowId, String name, String description, List<String> codes) {}
+
+    private record DailyHealthUrgentMatch(DailyHealthUrgentGroup group, List<Map<String, Object>> rows) {}
+
+    private void sendDailyHealthUrgentNotification(List<String> logEntryIds)
+    {
+        try
+        {
+            Set<UserPrincipal> recipients = NotificationService.get().getRecipients(new NBRIDailyHealthUrgentNotification(), _container);
+            if (recipients.isEmpty())
+            {
+                _log.warn("No NBRI recipients set for the daily health urgent alert, skipping notification");
+                return;
+            }
+
+            List<DailyHealthUrgentGroup> groups = getDailyHealthUrgentGroups();
+            if (groups.isEmpty())
+                return;
+
+            // Claims commit only once the email is sent, so a failed send lets the entry alert on its next save.
+            try (DbScope.Transaction transaction = NBRI_EHRSchema.getInstance().getSchema().getScope().ensureTransaction())
+            {
+                List<DailyHealthUrgentMatch> matches = new ArrayList<>();
+                getCompletedDailyHealthRows(logEntryIds).forEach((logEntryId, rows) -> {
+                    List<String> codes = rows.stream().map(row -> ConvertHelper.convert(row.get("code"), String.class)).toList();
+                    groups.stream()
+                            .filter(group -> containsInOrder(codes, group.codes()) && claimDailyHealthUrgentAlert(logEntryId, group.rowId()))
+                            .forEach(group -> matches.add(new DailyHealthUrgentMatch(group, rows)));
+                });
+                if (matches.isEmpty())
+                    return;
+
+                _log.debug("NBRI daily health urgent alert sending {} match(es) in container {}", matches.size(), _container.getPath());
+                if (TriggerScriptNotification.sendMessage(getDailyHealthUrgentSubject(matches), getDailyHealthUrgentHtml(matches), recipients, _container, _user))
+                    transaction.commit();
+            }
+        }
+        catch (Exception e)
+        {
+            _log.error("Unable to send the daily health urgent alert in " + _container.getPath(), e);
+        }
+    }
+
+    /** Enabled groups that have codes, each with its codes in sort order. */
+    private List<DailyHealthUrgentGroup> getDailyHealthUrgentGroups()
+    {
+        Map<Integer, List<String>> codesByGroup = new HashMap<>();
+        new TableSelector(getTableInfo(NBRI_EHRSchema.NAME, "dailyHealthUrgentGroupCode"), PageFlowUtil.set("groupId", "code"), null, new Sort("groupId,sortOrder"))
+                .forEachMap(row -> codesByGroup.computeIfAbsent(ConvertHelper.convert(row.get("groupId"), Integer.class), _ -> new ArrayList<>())
+                        .add(ConvertHelper.convert(row.get("code"), String.class)));
+
+        List<DailyHealthUrgentGroup> groups = new ArrayList<>();
+        new TableSelector(getTableInfo(NBRI_EHRSchema.NAME, "dailyHealthUrgentGroup"), PageFlowUtil.set("rowid", "name", "description"),
+                new SimpleFilter(FieldKey.fromString("enabled"), true), new Sort("name"))
+                .forEachMap(row -> {
+                    Integer rowId = ConvertHelper.convert(row.get("rowid"), Integer.class);
+                    List<String> codes = codesByGroup.get(rowId);
+                    if (rowId != null && codes != null)
+                        groups.add(new DailyHealthUrgentGroup(rowId, (String) row.get("name"), (String) row.get("description"), codes));
+                });
+        return groups;
+    }
+
+    /** The Completed rows of each log entry, in sort order. */
+    private Map<String, List<Map<String, Object>>> getCompletedDailyHealthRows(List<String> logEntryIds)
+    {
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("logEntryId"), logEntryIds, CompareType.IN);
+        filter.addCondition(FieldKey.fromString("QCState/PublicData"), true);
+        return new TableSelector(getTableInfo("study", "dailyHealthLog"),
+                PageFlowUtil.set("logEntryId", "Id", "date", "performedby", "sortOrder", "code", "remark"), filter, new Sort("sortOrder"))
+                .getMapCollection().stream()
+                .collect(Collectors.groupingBy(row -> String.valueOf(row.get("logEntryId")), LinkedHashMap::new, Collectors.toList()));
+    }
+
+    /** Whether the wanted codes appear in this order, other codes allowed between them. */
+    private static boolean containsInOrder(List<String> codes, List<String> wanted)
+    {
+        int next = 0;
+        for (String code : codes)
+        {
+            if (next < wanted.size() && wanted.get(next).equalsIgnoreCase(code))
+                next++;
+        }
+        return next == wanted.size();
+    }
+
+    /** False when this entry already alerted for the group; the unique key makes concurrent saves claim it only once. */
+    private boolean claimDailyHealthUrgentAlert(String logEntryId, int groupId)
+    {
+        TableInfo table = NBRI_EHRSchema.getInstance().getSchema().getTable("dailyHealthUrgentNotification");
+        SQLFragment sql = new SQLFragment("INSERT INTO ").append(table.getSelectName())
+                .append(" (logEntryId, groupId, Container, Created, CreatedBy) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING")
+                .addAll(StringUtils.lowerCase(logEntryId), groupId, _container.getId(), new Date(), _user.getUserId());
+        return new SqlExecutor(table.getSchema()).execute(sql) > 0;
+    }
+
+    private String getDailyHealthUrgentSubject(List<DailyHealthUrgentMatch> matches)
+    {
+        String subject = NBRIDailyHealthUrgentNotification.NAME + ": ";
+        if (matches.size() == 1)
+            return subject + matches.getFirst().rows().getFirst().get("Id") + " - " + matches.getFirst().group().name();
+
+        long entries = matches.stream().map(match -> match.rows().getFirst().get("logEntryId")).distinct().count();
+        if (entries == 1)
+            return subject + matches.getFirst().rows().getFirst().get("Id") + " - " + matches.size() + " urgent groups";
+        return subject + entries + " entries";
+    }
+
+    private String getDailyHealthUrgentHtml(List<DailyHealthUrgentMatch> matches)
+    {
+        Map<String, String> codeNames = new HashMap<>();
+        new TableSelector(getTableInfo(NBRI_EHRSchema.NAME, "dailyHealthCode"), PageFlowUtil.set("code", "name"), null, null)
+                .forEachMap(row -> codeNames.put(StringUtils.upperCase((String) row.get("code")), (String) row.get("name")));
+        SimpleDateFormat dateTimeFormat = new SimpleDateFormat(LookAndFeelProperties.getInstance(_container).getDefaultDateTimeFormat());
+
+        StringBuilder html = new StringBuilder();
+        html.append("Daily health log entries matched an urgent group:<br><br>");
+        html.append("<table style=\"border-collapse: collapse;\"><tr>");
+        List.of("Urgent Group", "Id", "Observation Date", "Location", "Technician", "Codes", "Remarks", "Entry")
+                .forEach(header -> html.append(NotificationHelper.getNotificationGridCellHeader(_container, header)));
+        html.append("</tr>");
+
+        for (DailyHealthUrgentMatch match : matches)
+        {
+            Map<String, Object> first = match.rows().getFirst();
+            String id = (String) first.get("Id");
+            Date date = ConvertHelper.convert(first.get("date"), Date.class);
+            String codes = match.rows().stream()
+                    .map(row -> {
+                        String code = ConvertHelper.convert(row.get("code"), String.class);
+                        String name = codeNames.get(StringUtils.upperCase(code));
+                        return name == null ? code : code + " (" + name + ")";
+                    })
+                    .collect(Collectors.joining(", "));
+            String remarks = match.rows().stream()
+                    .map(row -> StringUtils.trimToNull(ConvertHelper.convert(row.get("remark"), String.class)))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.joining("; "));
+            String location = getDailyHealthLocation(id, date);
+            String entryUrl = new ActionURL("query", "executeQuery", _container)
+                    .addParameter("schemaName", "study")
+                    .addParameter("query.queryName", "dailyHealthLog")
+                    .addParameter("query.logEntryId~eq", (String) first.get("logEntryId"))
+                    .getURIString();
+
+            html.append("<tr>");
+            html.append(NotificationHelper.getNotificationGridCell(_container, PageFlowUtil.filter(match.group().name()) + "<br>" + PageFlowUtil.filter(match.group().description()), null, false, false, true));
+            html.append(NotificationHelper.getNotificationGridCell(_container, id, null, false, true, false));
+            html.append(NotificationHelper.getNotificationGridCell(_container, date == null ? "" : dateTimeFormat.format(date)));
+            html.append(NotificationHelper.getNotificationGridCell(_container, location == null ? "unknown" : location));
+            html.append(NotificationHelper.getNotificationGridCell(_container, getTechnicianName(first.get("performedby"))));
+            html.append(NotificationHelper.getNotificationGridCell(_container, codes));
+            html.append(NotificationHelper.getNotificationGridCell(_container, remarks));
+            html.append(NotificationHelper.getNotificationGridCell(_container, "<a href=\"" + PageFlowUtil.filter(entryUrl) + "\">View entry</a>", null, false, false, true));
+            html.append("</tr>");
+        }
+        html.append("</table>");
+        return html.toString();
+    }
+
+    /** performedby holds a user id; falls back to the stored value when it names no user. */
+    private String getTechnicianName(@Nullable Object performedby)
+    {
+        String value = StringUtils.defaultString(ConvertHelper.convert(performedby, String.class));
+        User user = StringUtils.isNumeric(value) ? UserManager.getUser(Integer.parseInt(value)) : null;
+        return user == null ? value : user.getDisplayName(_user);
+    }
+
+    /** The animal's cage, or room when it had no cage, at the observation date. */
+    private @Nullable String getDailyHealthLocation(@Nullable String id, @Nullable Date date)
+    {
+        if (id == null || date == null)
+            return null;
+
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("Id"), id);
+        filter.addCondition(FieldKey.fromString("date"), date, CompareType.LTE);
+        filter.addClause(new SimpleFilter.OrClause(new CompareType.EqualsCompareClause(FieldKey.fromString("enddate"), CompareType.GT, date), new CompareType.CompareClause(FieldKey.fromString("enddate"), CompareType.ISBLANK, null)));
+        filter.addCondition(FieldKey.fromString("qcstate/publicdata"), true);
+        Map<String, Object> housing = new TableSelector(getTableInfo("study", "housing"), PageFlowUtil.set("room", "cage"), filter, new Sort("-date"))
+                .setMaxRows(1).getMap();
+        if (housing == null)
+            return null;
+        return StringUtils.defaultIfBlank((String) housing.get("cage"), (String) housing.get("room"));
     }
 }

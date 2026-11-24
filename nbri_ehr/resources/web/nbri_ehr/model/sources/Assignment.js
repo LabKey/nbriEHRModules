@@ -55,7 +55,7 @@ EHR.model.DataModelManager.registerMetadata('Assignment', {
               hidden: true
             },
             // display-only; NBRI_EHR.data.CurrentValueClientStore fills it
-            'Id/activeProtocolAssignments/protocolDisplayName': {
+            'Id/activeProtocolAssignments/protocolDisplayText': {
                 header: 'Current Protocol',
                 label: 'Current Protocol',
                 editable: false,

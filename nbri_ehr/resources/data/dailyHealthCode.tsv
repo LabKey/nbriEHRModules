@@ -1,0 +1,200 @@
+code	name	description	observationCategory	observationScore
+10COOKE	10 Cookies	10 Cookies remaining in cage		
+1COOKIE	1 Cookies	1 Cookies remaining in cage		
+2COOKIE	2 Cookies	2 Cookies remaining in cage		
+3COOKIE	3 Cookies	3 Cookies remaining in cage		
+4COOKIE	4 Cookies	4 Cookies remaining in cage		
+5COOKIE	5 Cookies	5 Cookies remaining in cage		
+6COOKIE	6 Cookies	6 Cookies remaining in cage		
+7COOKIE	7 Cookies	7 Cookies remaining in cage		
+8COOKIE	8 Cookies	8 Cookies remaining in cage		
+9COOKIE	9 Cookies	9 Cookies remaining in cage		
+ABDOMEN	Abdomen	Body Region Adbomen		
+ABNBHVR	Abnormal Behavior	Behavior is Abnormal		
+ABNBRTH	Abnormal Birth	Animal gave birth with abnormal observations		
+ABNORM	Abnormal	Abnormal modifier		
+ABOVE10				
+ABOVE9				
+ABRTION	Birth - Miscarridge			
+ALOPEC				
+ALOPECA				
+ANEMIA	Appearance - Anemic			
+ANORXIA	Appearance - Anorexic			
+ARM	Body Region - Arm			
+ARTHANK				
+ARTHITS				
+ARTHKNE				
+ASPIRNS				
+ASPIRTN				
+AXILLRY				
+BACK	Body Region - Back			
+BANDAGE				
+BANDOFF				
+BANDRTY				
+BIRTH	Birth - Normal / Observed			
+BLDUND				
+BLDYNOS				
+BLDYSTL				
+BLDYURN				
+BLOAT				
+BLOODY				
+BLOURNE				
+BODY				
+BOWL				
+BREAST				
+BREATHG				
+BROKCAG				
+BRTHDIS				
+CANINE				
+CHEST				
+COLORED				
+COUGHNG				
+CRUSTED				
+CRUSTY				
+CYANOTC				
+CYANOTI				
+DEATH				
+DEHYDRT				
+DPRSION				
+DRUGURN				
+DYSENTY				
+EAR				
+EARHEMA				
+ELBOW				
+EMPTYRM				
+ENGORGD				
+EYCRSTY				
+EYE				
+EYEPOKE				
+EYESRED				
+FACE				
+FINGER				
+FLANK				
+FLIPING				
+FLTLIMB				
+FLUCTWT				
+FOOT				
+FRACTUR				
+GENBODY				
+GENITAL				
+HAND				
+HEAD				
+HEADTLT				
+HEVYMEN			Menses	Heavy mense
+HRPLUCK				
+HRSHBRT				
+HUNCHED				
+HYPOTHM				
+HYPOTHR				
+HYPRTHM				
+INCISN				
+INFLQST				
+INFLUMB				
+INFWEAK				
+INGUINL				
+LAME				
+LATEPRG				
+LEFTSDE				
+LEG				
+LIMBCAG				
+LIP				
+LIPSORE				
+LIQDSTL			Stool	Liquid
+LOOSEST				
+LPMPSWL				
+MASS				
+MJRWND				
+MNRWND				
+MRASH				
+MSSARM				
+MSSBODY				
+MSSFOOT				
+MSSHAND				
+MSSHEAD				
+MSSLEG				
+MUCSSTL				
+NASLDIS				
+NECK				
+NEWFORM				
+NOPLCTA				
+NOSE				
+NOSIGNS				
+NOSTOOL				
+NOTNCAG				
+NRMLMEN			Menses	Present
+ORALESN				
+OTHER				
+PACING				
+PAIRED				
+PENSRED				
+PLACENT				
+PLACNTA				
+PNEUMIA				
+POORAPP			Appetite	Low
+PREGNT				
+PROLAPS				
+QUIET				
+RAB				
+RASH				
+RASHFAC				
+RASHIGL				
+RASHMT				
+RASHMTH				
+RED				
+REDLIPS				
+REGURG				
+REPBHVR				
+RETPLCT				
+RIHTSDE				
+RPMPSWL				
+RUMP				
+SHIGELA				
+SHIVER				
+SHOULDR				
+SLFBITE				
+SNEEZNG				
+SOCCHNG				
+STLBRTH				
+SUSSIB				
+SWLNBST				
+SWLNEYE				
+SWLNFAC				
+SWLSCRT				
+SWOLLEN				
+TAIL				
+TBREACT				
+TEETH				
+THIN				
+THORAX				
+THUMB				
+TOE				
+TOOTHAB				
+TOWEL				
+TRAUMA	Trauma			
+TRMAEAR	Trauma Ear			
+TRMARM	Trauma Arm			
+TRMBODY	Trauma Body			
+TRMEYE	Trauma Eye			
+TRMFACE	Trauma Face			
+TRMFING	Trauma Finger			
+TRMFOOT	Trauma Foot			
+TRMHAND	Trauma Hand			
+TRMHEAD	Trauma Head			
+TRMLEG	Trauma Leg			
+TRMLIP	Trauma Lip			
+TRMNECK	Trauma Neck			
+TRMTAIL	Trauma Tail			
+TRMTHUM				
+TRMTOE	Trauma Toe			
+UNCHNGD	Unchanged			
+VETRNUR				
+VOMIT				
+WEAK				
+WEAKSUC				
+WRIST				
+WTGSAIN				
+WTLOSLG				
+WTLOSS				
+WTLSDYS				
+WTPLATU				
+XPMTLMV				

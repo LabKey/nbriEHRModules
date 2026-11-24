@@ -21,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.experimental.categories.Category;
 import org.labkey.api.reader.Readers;
@@ -73,9 +74,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -107,6 +111,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     private static final String DEATH_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRIDeathNotification";
     private static final String NECROPSY_REQUEST_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRINecropsyRequestNotification";
     private static final String PROTOCOL_EXPIRATION_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRIProtocolExpirationNotification";
+    private static final String DAILY_HEALTH_URGENT_NOTIFICATION = "org.labkey.nbri_ehr.notification.NBRIDailyHealthUrgentNotification";
     private static final String PROTOCOL_EXPIRATION_SUBJECT = "Protocols expiring in the next 30 days";
     private static final String ACCESSION_NUMBER = "N26-001";
     // Assign the vet-tech role by its class-based name rather than its "EHR Veterinarian Technician" display
@@ -127,6 +132,18 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     // Dedicated animal for testObservationTypeDerivedFromCategory; provisioned the same way so the Observations
     // form can be submitted final in one step.
     private static final String obsTypeAnimalId = "TESTOBSTYPE9191";
+
+    // One animal per daily health test, so a sibling housing or assigning a shared animal cannot change what the
+    // location check or the by-assignment report sees.
+    private static final String DAILY_HEALTH_API_ANIMAL = "DHA0001";
+    private static final String DAILY_HEALTH_TRIGGER_ANIMAL = "DHT0001";
+    private static final String DAILY_HEALTH_DEAD_ANIMAL = "DHD0001";
+    private static final String DAILY_HEALTH_FORM_ANIMAL = "DHF0001";
+    private static final String DAILY_HEALTH_REPORT_ANIMAL = "DHR0001";
+    private static final String DAILY_HEALTH_AT_TIME_ANIMAL = "DHP0001";
+    private static final String DAILY_HEALTH_URGENT_ANIMAL = "DHU0001";
+    // Retired by testDailyHealthTriggerRules, so no other test may use it.
+    private static final String RETIRING_DAILY_HEALTH_CODE = "OLDCODE";
 
     // Rooms are keyed by building and name, so every room fixture needs a building to hang off of.
     // 'buildings' derives its key from the description, and 'SPF' is one of the areas seeded with the ehr_lookups schema.
@@ -444,6 +461,26 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         populateLocations();
         addUsersAndPermissions();//create users and assign roles, created for the death and necropsy forms, but users can be repurposed for other forms.
         populateEHRTables();
+        populateDailyHealthCodes();
+    }
+
+    @LogMethod
+    private void populateDailyHealthCodes() throws IOException, CommandException
+    {
+        runPopulateDailyHealthCodes();
+        // a code the trigger test can retire without touching the standard list
+        InsertRowsCommand insert = new InsertRowsCommand("nbri_ehr", "dailyHealthCode");
+        insert.addRow(Map.of("code", RETIRING_DAILY_HEALTH_CODE, "enabled", true));
+        insert.execute(createDefaultConnection(), getContainerPath());
+    }
+
+    private void runPopulateDailyHealthCodes()
+    {
+        beginAt(WebTestHelper.buildURL("ehr", getContainerPath(), "ehrAdmin"));
+        clickAndWait(Locator.linkWithText("Populate Daily Health Codes"));
+        clickButton("OK");
+        // success lands on the code grid; a server error renders a page clickButton doesn't notice
+        new DataRegionTable("query", this);
     }
 
     @LogMethod
@@ -951,8 +988,8 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
 
         Map<String, Object> current = getCurrentValues(animalId);
         assertEquals("Unexpected current group for " + animalId, List.of(currentGroupTitle), current.get("activeAnimalGroups/groups"));
-        String currentProtocol = (String) current.get("activeProtocolAssignments/protocolDisplayName");
-        Assert.assertTrue("No current protocol for " + animalId, StringUtils.isNotBlank(currentProtocol));
+        String currentProtocol = (String) current.get("activeProtocolAssignments/protocolDisplayText");
+        assertEquals("Current protocol should read like the New Protocol dropdown", protocolChoice(PROTOCOL_ID, INVES_LAST_NAME), currentProtocol);
         String currentProject = String.valueOf(current.get("activeProjectAssignments/project"));
 
         log("Verifying the group assignment form shows the current group");
@@ -973,7 +1010,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         Ext4GridRef protocols = getExpandedFormSectionGrid("Protocol Assignment");
         _helper.addRecordToGrid(protocols);
         protocols.setGridCell(1, "Id", animalId);
-        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayName", "Current Protocol", currentProtocol, "protocol", "New Protocol");
+        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayText", "Current Protocol", currentProtocol, "protocol", "New Protocol");
         protocols.setGridCell(1, "protocol", protocolChoice(DUMMY_PROTOCOL, DUMMY_INVES_LAST_NAME));
 
         Ext4GridRef projects = getExpandedFormSectionGrid("Project Assignment");
@@ -986,7 +1023,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         waitForFormValidationToClear();
         clickAndWait(Locator.linkWithText("Save Draft"));
         Map<String, Object> afterDraft = getCurrentValues(animalId);
-        assertEquals("A draft protocol assignment counted as current", currentProtocol, afterDraft.get("activeProtocolAssignments/protocolDisplayName"));
+        assertEquals("A draft protocol assignment counted as current", currentProtocol, afterDraft.get("activeProtocolAssignments/protocolDisplayText"));
         assertEquals("A draft project assignment counted as current", currentProject, String.valueOf(afterDraft.get("activeProjectAssignments/project")));
 
         SelectRowsCommand draftSelect = new SelectRowsCommand("study", "assignment");
@@ -999,7 +1036,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         waitForElement(Locator.linkWithText("Submit Final"), WAIT_FOR_PAGE);
         lockForm();
         protocols = getExpandedFormSectionGrid("Protocol Assignment");
-        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayName", "Current Protocol", currentProtocol, "protocol", "New Protocol");
+        verifyCurrentValueColumn(protocols, "Id/activeProtocolAssignments/protocolDisplayText", "Current Protocol", currentProtocol, "protocol", "New Protocol");
         assertEquals("Reopened draft has the wrong number of protocol rows", 1, protocols.getRowCount());
         projects = getExpandedFormSectionGrid("Project Assignment");
         verifyCurrentValueColumn(projects, "Id/activeProjectAssignments/project", "Current Project", currentProject, "project", "New Project");
@@ -1014,7 +1051,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     private Map<String, Object> getCurrentValues(String animalId) throws Exception
     {
         SelectRowsCommand select = new SelectRowsCommand("study", "Animal");
-        select.setColumns(List.of("activeAnimalGroups/groups", "activeProtocolAssignments/protocolDisplayName", "activeProjectAssignments/project"));
+        select.setColumns(List.of("activeAnimalGroups/groups", "activeProtocolAssignments/protocolDisplayText", "activeProjectAssignments/project"));
         select.addFilter(new Filter("Id", animalId));
         List<Map<String, Object>> rows = select.execute(getApiHelper().getConnection(), getContainerPath()).getRows();
         assertEquals("Expected one study.Animal row for " + animalId, 1, rows.size());
@@ -1055,7 +1092,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     /** The text every protocol dropdown displays for a protocol, built by ehr/activeProtocols.sql. */
     private static String protocolChoice(String protocol, String investigatorLastName)
     {
-        return protocol + " - " + investigatorLastName;
+        return protocol + " (" + investigatorLastName + ")";
     }
 
     /** A column config property, such as the rendered header or editability, which only the config carries. Null when
@@ -2911,7 +2948,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         Assert.assertFalse("Death notification did not find the final housing: " + deathBody, deathBody.contains("Not Found"));
         Assert.assertTrue("Death notification is missing the final location: " + deathBody, deathBody.contains(CAGE_IN_R3));
         Assert.assertTrue("Death notification is missing the final project: " + deathBody, deathBody.contains(PROJECT_ID));
-        Assert.assertTrue("Death notification is missing the final protocol: " + deathBody, deathBody.contains(PROTOCOL_ID + " - " + INVES_LAST_NAME));
+        Assert.assertTrue("Death notification is missing the final protocol: " + deathBody, deathBody.contains(PROTOCOL_ID + " (" + INVES_LAST_NAME + ")"));
         String requestUrl = Locator.linkWithText("Click here to request a Necropsy").findElement(notifications).getAttribute("href");
 
         log("Requesting the necropsy");
@@ -2933,7 +2970,7 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
         notifications.clickMessage(notifications.getMessageWithSubjectContaining("Necropsy Request: " + aliveAnimalId));
         String requestBody = notifications.getMessageWithSubjectContaining("Necropsy Request: " + aliveAnimalId).getBody();
         Assert.assertTrue("Necropsy notification is missing the final location: " + requestBody, requestBody.contains(CAGE_IN_R3));
-        Assert.assertTrue("Necropsy notification is missing the final protocol: " + requestBody, requestBody.contains(PROTOCOL_ID + " - " + INVES_LAST_NAME));
+        Assert.assertTrue("Necropsy notification is missing the final protocol: " + requestBody, requestBody.contains(PROTOCOL_ID + " (" + INVES_LAST_NAME + ")"));
         String preliminaryUrl = Locator.linkWithText("Click here to enter preliminary necropsy results").findElement(notifications).getAttribute("href");
 
         log("Entering the preliminary necropsy");
@@ -3184,6 +3221,95 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
                 getDatasetDay("demographics", animalId, "death"));
         assertEquals("Deleting the death should fall back to the departure, not to Alive",
                 "Shipped", getCalculatedStatus(animalId));
+    }
+
+    private static final Map<String, String> PRESENCE_CHECKED_RECORDS = Map.of(
+            "protocolAssignment", "Protocol assignment",
+            "assignment", "Project assignment",
+            "animal_group_members", "Group assignment",
+            "housing", "Housing");
+
+    @Test
+    public void testRecordsOnOrAfterDeathRejected()
+    {
+        String animalId = "DA9001";
+        LocalDateTime deathDate = LocalDateTime.now().minusDays(10).withHour(10).withMinute(0).withSecond(0).withNano(0);
+
+        log("Creating an animal and recording its death");
+        createPresenceTestAnimal(animalId, deathDate.minusYears(2));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "deaths", "lsid",
+                new String[]{"Id", "date", "QCStateLabel", "performedby"},
+                new Object[][]{{animalId, deathDate, "Completed", 1004}}
+        ), getExtraContext());
+
+        verifyRecordsRejectedFrom(animalId, deathDate, "death");
+    }
+
+    @Test
+    public void testRecordsOnOrAfterDepartureRejected() throws Exception
+    {
+        String animalId = "DP9001";
+        LocalDateTime departureDate = LocalDateTime.now().minusDays(10).withHour(10).withMinute(0).withSecond(0).withNano(0);
+
+        log("Creating an animal and recording its departure");
+        createPresenceTestAnimal(animalId, departureDate.minusYears(2));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "departure", "lsid",
+                new String[]{"Id", "date", "destination", "QCStateLabel", "performedby"},
+                new Object[][]{{animalId, departureDate, "ORPRC", "Completed", 1004}}
+        ), getExtraContext());
+
+        verifyRecordsRejectedFrom(animalId, departureDate, "departure");
+
+        log("Verify a rearrival can open records after the departure");
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), arrivalInsert(PROTOCOL_ID, EHRQCState.COMPLETED, true, null, animalId), getExtraContext());
+        assertEquals("The rearrival should open a protocol assignment", 1,
+                countRows("protocolAssignment", new Filter("Id", animalId), new Filter("enddate", null, Filter.Operator.ISBLANK)));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), presenceInsert("housing", animalId, LocalDateTime.now()), getExtraContext());
+    }
+
+    // species is required by the protocol assignment's species approval check
+    private void createPresenceTestAnimal(String animalId, LocalDateTime birth)
+    {
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "demographics", "lsid",
+                new String[]{"Id", "Species", "Birth", "Gender", "date", "calculated_status", "QCStateLabel", "objectid", "performedby"},
+                new Object[][]{{animalId, "MMU", birth, getFemale(), birth, "Alive", "Completed", UUID.randomUUID().toString(), 1004}}
+        ), getExtraContext());
+    }
+
+    private void verifyRecordsRejectedFrom(String animalId, LocalDateTime eventDate, String eventName)
+    {
+        log("Verify housing and assignments starting at the " + eventName + " or later are rejected");
+        for (LocalDateTime date : List.of(eventDate, eventDate.plusHours(2)))
+        {
+            PRESENCE_CHECKED_RECORDS.forEach((queryName, label) -> {
+                CommandException error = getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), presenceInsert(queryName, animalId, date), getExtraContext());
+                List<String> dateErrors = getApiHelper().extractErrors(error.getProperties()).getOrDefault("date", List.of());
+                String expectedError = "ERROR: " + label + " cannot start on or after the animal's " + eventName + " date";
+                Assert.assertTrue("Expected '" + expectedError + "' for " + queryName + " dated " + date + ", got: " + dateErrors,
+                        dateErrors.stream().anyMatch(e -> e.startsWith(expectedError)));
+            });
+        }
+
+        log("Verify housing and assignments starting earlier on the " + eventName + " day are accepted");
+        PRESENCE_CHECKED_RECORDS.keySet().forEach(queryName ->
+                getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), presenceInsert(queryName, animalId, eventDate.minusHours(2)), getExtraContext()));
+    }
+
+    private SimplePostCommand presenceInsert(String queryName, String animalId, LocalDateTime date)
+    {
+        Map<String, Object> row = new LinkedHashMap<>(Map.of("Id", animalId, "date", date, "performedby", 1004));
+        switch (queryName)
+        {
+            case "protocolAssignment" -> row.put("protocol", PROTOCOL_ID);
+            case "assignment" -> row.put("project", PROTOCOL_PROJECT_ID);
+            case "animal_group_members" -> row.put("groupId", "T");
+            case "housing" -> {
+                row.put("room", getRooms()[0]);
+                row.put("cage", CAGE_IN_R1);
+            }
+            default -> throw new IllegalArgumentException(queryName);
+        }
+        return getApiHelper().prepareInsertCommand("study", queryName, "lsid", row.keySet().toArray(String[]::new), new Object[][]{row.values().toArray()});
     }
 
     @Test
@@ -3591,6 +3717,544 @@ public class NBRI_EHRTest extends AbstractGenericEHRTest
     /**
      * Creates living demographics records for the given animals, replacing any left behind by an earlier run.
      */
+    @Test
+    public void testPopulateDailyHealthCodes() throws Exception
+    {
+        File codeFile = FileUtil.appendPath(TestFileUtils.getLabKeyRoot(), org.labkey.api.util.Path.parse(getModulePath() + "/resources/data/dailyHealthCode.tsv"));
+        int standardCodes = TestFileUtils.getFileContents(codeFile).strip().split("\n").length - 1;
+        assertEquals("Setup should load every standard code plus the test's own", standardCodes + 1, getDailyHealthCodes().size());
+
+        log("Editing one standard code and deleting another, then populating again");
+        Map<String, Object> edited = getDailyHealthCodes().get("TOWEL");
+        UpdateRowsCommand update = new UpdateRowsCommand("nbri_ehr", "dailyHealthCode");
+        update.addRow(Map.of("rowid", edited.get("rowid"), "name", "Edited towel", "enabled", false));
+        update.execute(createDefaultConnection(), getContainerPath());
+        DeleteRowsCommand delete = new DeleteRowsCommand("nbri_ehr", "dailyHealthCode");
+        delete.addRow(Map.of("rowid", getDailyHealthCodes().get("WEAK").get("rowid")));
+        delete.execute(createDefaultConnection(), getContainerPath());
+
+        runPopulateDailyHealthCodes();
+
+        Map<String, Map<String, Object>> codes = getDailyHealthCodes();
+        assertEquals("Populating should restore only the deleted code", standardCodes + 1, codes.size());
+        assertNotNull("The deleted code should be restored", codes.get("WEAK"));
+        assertEquals("An edited code should keep its name", "Edited towel", codes.get("TOWEL").get("name"));
+        assertEquals("A retired code should stay retired", false, codes.get("TOWEL").get("enabled"));
+        assertEquals("Seeded observation mapping is missing", "Appetite", codes.get("POORAPP").get("observationCategory"));
+    }
+
+    private Map<String, Map<String, Object>> getDailyHealthCodes() throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("nbri_ehr", "dailyHealthCode");
+        select.setColumns(List.of("rowid", "code", "name", "enabled", "observationCategory"));
+        select.setMaxRows(-1);
+        Map<String, Map<String, Object>> codes = new HashMap<>();
+        for (Map<String, Object> row : select.execute(createDefaultConnection(), getContainerPath()).getRows())
+            codes.put((String) row.get("code"), row);
+        return codes;
+    }
+
+    @Test
+    public void testDailyHealthApi() throws Exception
+    {
+        String animalId = DAILY_HEALTH_API_ANIMAL;
+        createAliveAnimals(new String[]{animalId});
+        insertHousingAndAssignments(animalId, LocalDateTime.now().minusDays(10), CAGE_IN_R1, PROJECT_ID, PROTOCOL_ID, EHRQCState.COMPLETED);
+        LocalDateTime observed = LocalDateTime.now().minusMinutes(5).truncatedTo(ChronoUnit.MINUTES);
+
+        log("Rejecting batches that hold a bad daily health entry");
+        JSONObject menses = dailyHealthEntry(animalId, observed, "C1", "HEVYMEN", "NRMLMEN", "POORAPP");
+        JSONObject roomOnly = dailyHealthEntry(animalId, observed, null, "LIQDSTL");
+        JSONObject wrongCage = dailyHealthEntry(animalId, observed, "C2", "RAB");
+        JSONObject unknownCode = dailyHealthEntry(animalId, observed, "C1", "NOPE123");
+        JSONObject duplicateOrder = dailyHealthEntry(animalId, observed, "C1", "RAB", "POORAPP");
+        duplicateOrder.getJSONArray("codes").getJSONObject(1).put("sortOrder", 1);
+        JSONObject unknownTechnician = dailyHealthEntry(animalId, observed, "C1", "RAB").put("technician", "nobody@nbritest.com");
+
+        Map<String, JSONObject> results = saveDailyHealth(menses, unknownTechnician);
+        assertDailyHealthResult(results, menses, "notSaved", null);
+        assertDailyHealthResult(results, unknownTechnician, "error", "nobody@nbritest.com is not an active LabKey user");
+        // the good entry is inserted before the bad one fails, so this checks the rollback
+        results = saveDailyHealth(menses, roomOnly, wrongCage);
+        assertDailyHealthResult(results, menses, "notSaved", null);
+        assertDailyHealthResult(results, roomOnly, "notSaved", null);
+        assertDailyHealthResult(results, wrongCage, "error", animalId + " was not housed in " + cageLocation("R1", "C2"));
+        assertDailyHealthResult(saveDailyHealth(menses, unknownCode), unknownCode, "error", "Unknown daily health code: NOPE123");
+        assertDailyHealthResult(saveDailyHealth(menses, duplicateOrder), duplicateOrder, "error", "Another row of this log entry has sort order 1");
+        assertDailyHealthResult(saveDailyHealth(menses, menses), menses, "error", "appears more than once in the batch");
+        for (JSONObject rejected : List.of(menses, roomOnly, wrongCage, unknownCode, duplicateOrder, unknownTechnician))
+        {
+            String rejectedId = rejected.getString("logEntryId");
+            assertEquals("Rejected batch left rows behind for " + rejectedId, 0, getDailyHealthRows(new Filter("logEntryId", rejectedId)).size());
+            Assert.assertNull("Rejected batch left a task behind for " + rejectedId, getTask(rejectedId));
+        }
+
+        log("Saving a batch of good daily health entries");
+        results = saveDailyHealth(menses, roomOnly);
+        assertDailyHealthResult(results, menses, "created", null);
+        assertDailyHealthResult(results, roomOnly, "created", null);
+
+        log("Verifying the saved entry and its task");
+        String entryId = menses.getString("logEntryId");
+        List<Map<String, Object>> rows = getDailyHealthRows(new Filter("logEntryId", entryId));
+        assertEquals("Wrong codes saved", List.of("HEVYMEN", "NRMLMEN", "POORAPP"), rows.stream().map(row -> row.get("code")).toList());
+        for (Map<String, Object> row : rows)
+        {
+            assertEquals("Each row should save under its entry's task", entryId, row.get("taskid"));
+            assertEquals("Scanner rows should be completed", EHRQCState.COMPLETED.label, row.get("QCState/Label"));
+        }
+        Map<String, Object> task = getTask(entryId);
+        assertNotNull("No task was created for the entry", task);
+        assertEquals("Wrong task form type", "Daily Health", task.get("formtype"));
+        assertEquals("Wrong task status", EHRQCState.COMPLETED.label, task.get("qcstate/Label"));
+
+        log("Verifying the generated clinical observations");
+        Map<String, Map<String, Object>> observations = getDailyHealthObservations(animalId);
+        assertEquals("Wrong observation categories", Set.of("Menses", "Appetite", "Stool"), observations.keySet());
+        assertEquals("Heavy menses should win over normal menses", "Heavy mense", observations.get("Menses").get("observation"));
+        assertEquals("Wrong appetite observation", "Low", observations.get("Appetite").get("observation"));
+        assertEquals("Wrong stool observation", "Liquid", observations.get("Stool").get("observation"));
+        Assert.assertTrue("The menses observation should point at the HEVYMEN row",
+                String.valueOf(rows.getFirst().get("objectid")).equalsIgnoreCase(String.valueOf(observations.get("Menses").get("parentid"))));
+
+        log("Resending an entry already on file, with its id in upper case");
+        JSONObject resend = new JSONObject(menses.toString()).put("logEntryId", entryId.toUpperCase());
+        assertDailyHealthResult(saveDailyHealth(resend), resend, "exists", null);
+        assertEquals("Resending an entry should not add rows", 3, getDailyHealthRows(new Filter("logEntryId", entryId)).size());
+    }
+
+    @Test
+    public void testDailyHealthTriggerRules() throws Exception
+    {
+        String animalId = DAILY_HEALTH_TRIGGER_ANIMAL;
+        createAliveAnimals(new String[]{animalId});
+        String entryId = UUID.randomUUID().toString();
+        String date = LocalDate.now().minusDays(1).atTime(8, 0).format(DAILY_HEALTH_DATE_FORMAT);
+
+        log("Saving an entry directly, without the API's location");
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(entryId, animalId, date, 1, "NRMLMEN", 2, "RAB", 3, RETIRING_DAILY_HEALTH_CODE), getExtraContext());
+        Map<Integer, Map<String, Object>> rows = getDailyHealthRowsByOrder(entryId);
+        assertEquals("Wrong menses observation", "Present", getDailyHealthObservations(animalId).get("Menses").get("observation"));
+
+        log("Changing a code updates its observation");
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthUpdate(rows.get(1), "code", "HEVYMEN"), getExtraContext());
+        assertEquals("The menses observation should follow the new code", "Heavy mense", getDailyHealthObservations(animalId).get("Menses").get("observation"));
+
+        log("Rejecting saves that would break the entry");
+        assertDailyHealthSaveRejected(dailyHealthUpdate(rows.get(1), "Id", DAILY_HEALTH_API_ANIMAL), "The animal cannot be changed on a saved log entry");
+        assertDailyHealthSaveRejected(dailyHealthUpdate(rows.get(1), "logEntryId", UUID.randomUUID().toString()), "The log entry Id cannot be changed");
+        assertDailyHealthSaveRejected(dailyHealthInsert(entryId, animalId, date, 2, "POORAPP"), "Log entry " + entryId + " has more than one row with sort order 2");
+        assertDailyHealthSaveRejected(dailyHealthInsert(entryId, animalId, LocalDate.now().minusDays(2).atTime(8, 0).format(DAILY_HEALTH_DATE_FORMAT), 4, "POORAPP"),
+                "Every row of log entry " + entryId + " must have the same animal, observation date, technician and task");
+        assertDailyHealthSaveRejected(dailyHealthUpdate(rows.get(2), "taskid", UUID.randomUUID().toString()),
+                "Every row of log entry " + entryId + " must have the same animal, observation date, technician and task");
+        assertDailyHealthSaveRejected(dailyHealthInsert(UUID.randomUUID().toString(), animalId, date, 1, "NOPE123"), "Unknown daily health code: NOPE123");
+
+        log("Rejecting a new entry for an animal that is not alive");
+        // isAnimalAlive reads calculated_status, so a demographics row marked Dead stands in for a death record
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), getApiHelper().prepareInsertCommand("study", "demographics", "lsid",
+                new String[]{"Id", "Species", "Gender", "date", "calculated_status", "objectid", "performedby"},
+                new Object[][]{{DAILY_HEALTH_DEAD_ANIMAL, "MMU", getMale(), new Date(), "Alive", UUID.randomUUID().toString(), 1004}}), getExtraContext());
+        String earlierEntryId = UUID.randomUUID().toString();
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(earlierEntryId, DAILY_HEALTH_DEAD_ANIMAL, date, 1, "RAB"), getExtraContext());
+        Map<String, Object> deadAnimal = getSingleRowForAnimal("demographics", DAILY_HEALTH_DEAD_ANIMAL, List.of("lsid", "Id", "calculated_status"));
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), prepareUpdate("demographics", Map.of("lsid", deadAnimal.get("lsid"), "calculated_status", "Dead")), getExtraContext());
+        assertEquals("The dead animal fixture is not marked Dead", "Dead",
+                getSingleRowForAnimal("demographics", DAILY_HEALTH_DEAD_ANIMAL, List.of("Id", "calculated_status")).get("calculated_status"));
+        assertDailyHealthSaveRejected(dailyHealthInsert(UUID.randomUUID().toString(), DAILY_HEALTH_DEAD_ANIMAL, date, 1, "RAB"), DAILY_HEALTH_DEAD_ANIMAL + " is not a living animal");
+
+        log("Adding a code to an entry saved before the animal died");
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(earlierEntryId, DAILY_HEALTH_DEAD_ANIMAL, date, 2, "POORAPP"), getExtraContext());
+        assertEquals("The missed code should join the earlier entry", 2, getDailyHealthRows(new Filter("logEntryId", earlierEntryId)).size());
+
+        log("Retiring a code keeps the rows that already carry it valid");
+        SelectRowsCommand codeSelect = new SelectRowsCommand("nbri_ehr", "dailyHealthCode");
+        codeSelect.setColumns(List.of("rowid"));
+        codeSelect.addFilter(new Filter("code", RETIRING_DAILY_HEALTH_CODE));
+        Object codeRowId = codeSelect.execute(getApiHelper().getConnection(), getContainerPath()).getRows().getFirst().get("rowid");
+        UpdateRowsCommand retire = new UpdateRowsCommand("nbri_ehr", "dailyHealthCode");
+        retire.addRow(Map.of("rowid", codeRowId, "enabled", false));
+        retire.execute(getApiHelper().getConnection(), getContainerPath());
+        assertDailyHealthSaveRejected(dailyHealthInsert(UUID.randomUUID().toString(), animalId, date, 1, RETIRING_DAILY_HEALTH_CODE),
+                "Daily health code " + RETIRING_DAILY_HEALTH_CODE + " is retired");
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthUpdate(rows.get(3), "remark", "Coded before the code was retired"), getExtraContext());
+
+        log("Observations follow their row's QC state");
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthUpdate(rows.get(1), "QCStateLabel", EHRQCState.IN_PROGRESS.label), getExtraContext());
+        assertEquals("The menses observation should follow its row's QC state", EHRQCState.IN_PROGRESS.label,
+                getDailyHealthObservations(animalId).get("Menses").get("QCState/Label"));
+
+        log("Deleting a row deletes its observation");
+        DeleteRowsCommand delete = new DeleteRowsCommand("study", "dailyHealthLog");
+        delete.addRow(Map.of("lsid", rows.get(1).get("lsid")));
+        delete.execute(getApiHelper().getConnection(), getContainerPath());
+        Assert.assertFalse("The menses observation should be deleted with its row", getDailyHealthObservations(animalId).containsKey("Menses"));
+    }
+
+    @Test
+    public void testDailyHealthForm() throws Exception
+    {
+        String animalId = DAILY_HEALTH_FORM_ANIMAL;
+        createAliveAnimals(new String[]{animalId});
+        insertHousingAndAssignments(animalId, LocalDateTime.now().minusDays(10), CAGE_IN_R1, PROJECT_ID, PROTOCOL_ID, EHRQCState.COMPLETED);
+
+        log("Entering two codes on the Daily Health form");
+        gotoEnterData();
+        waitAndClickAndWait(Locator.linkWithText("Daily Health"));
+        Ext4GridRef codes = _helper.getExt4GridForFormSection("Daily Health");
+        _helper.addRecordToGrid(codes);
+        _ext4Helper.queryOne("panel[title='Log Entry'] [name='Id']", Ext4FieldRef.class).setValue(animalId);
+        waitFor(() -> animalId.equals(codes.getFieldValue(1, "Id")), "The entry's animal didn't reach the existing row", WAIT_FOR_JAVASCRIPT);
+        selectDailyHealthCode(codes, 1, "POORAPP");
+        // waits out the next row's default time, which the form must replace with the entry's
+        sleep(1500);
+        _helper.addRecordToGrid(codes);
+        assertEquals("A new row should take the entry's animal", animalId, codes.getFieldValue(2, "Id"));
+        selectDailyHealthCode(codes, 2, "RAB");
+        submitForm("Submit Final", "Finalize");
+
+        log("Verifying the rows saved as one entry under the form's task");
+        List<Map<String, Object>> rows = getDailyHealthRows(new Filter("Id", animalId));
+        assertEquals("Wrong codes saved", List.of("POORAPP", "RAB"), rows.stream().map(row -> row.get("code")).toList());
+        Object entryId = rows.getFirst().get("logEntryId");
+        for (Map<String, Object> row : rows)
+        {
+            assertEquals("Every row should share the entry id", entryId, row.get("logEntryId"));
+            assertEquals("The task id should be the entry id", entryId, row.get("taskid"));
+            assertEquals("Every row should share the observation date", rows.getFirst().get("date"), row.get("date"));
+            assertEquals("Wrong row status", EHRQCState.COMPLETED.label, row.get("QCState/Label"));
+        }
+        Map<String, Object> task = getTask(String.valueOf(entryId));
+        assertNotNull("No task was saved for the entry", task);
+        assertEquals("Wrong task form type", "Daily Health", task.get("formtype"));
+        assertEquals("Wrong appetite observation", "Low", getDailyHealthObservations(animalId).get("Appetite").get("observation"));
+    }
+
+    @Test
+    public void testDailyHealthUrgentNotification() throws Exception
+    {
+        String animalId = DAILY_HEALTH_URGENT_ANIMAL;
+        createAliveAnimals(new String[]{animalId});
+        insertHousingAndAssignments(animalId, LocalDateTime.now().minusDays(10), CAGE_IN_R1, PROJECT_ID, PROTOCOL_ID, EHRQCState.COMPLETED);
+        enableNotification(DAILY_HEALTH_URGENT_NOTIFICATION);
+        enableEmailRecorder();
+
+        log("Defining an urgent group and a disabled one");
+        int urgentGroup = insertUrgentGroup("GI Urgent", true, "POORAPP", "LIQDSTL");
+        insertUrgentGroup("Disabled Urgent", false, "RAB");
+        LocalDateTime observed = LocalDateTime.now().minusMinutes(5).truncatedTo(ChronoUnit.MINUTES);
+        String date = observed.format(DAILY_HEALTH_DATE_FORMAT);
+
+        log("Saving entries that must not alert");
+        JSONObject wrongOrder = dailyHealthEntry(animalId, observed, "C1", "LIQDSTL", "RAB", "POORAPP");
+        assertDailyHealthResult(saveDailyHealth(wrongOrder), wrongOrder, "created", null);
+        String skippedId = UUID.randomUUID().toString();
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(skippedId, animalId, date, 1, "POORAPP", 2, "LIQDSTL"),
+                getExtraContext().put("skipDailyHealthUrgentNotification", true));
+        String partialId = UUID.randomUUID().toString();
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(partialId, animalId, date, 1, "POORAPP"), getExtraContext());
+        String draftId = UUID.randomUUID().toString();
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(draftId, animalId, date, EHRQCState.IN_PROGRESS, 1, "POORAPP", 2, "RAB", 3, "LIQDSTL"), getExtraContext());
+
+        log("Saving entries that alert: from the API, by a later code, and by submitting the draft");
+        JSONObject apiMatch = dailyHealthEntry(animalId, observed, "C1", "POORAPP", "RAB", "LIQDSTL");
+        assertDailyHealthResult(saveDailyHealth(apiMatch), apiMatch, "created", null);
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(partialId, animalId, date, 2, "LIQDSTL"), getExtraContext());
+        for (Map<String, Object> row : getDailyHealthRows(new Filter("logEntryId", draftId)))
+            getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthUpdate(row, "QCStateLabel", EHRQCState.COMPLETED.label), getExtraContext());
+
+        String subject = "Daily Health Urgent Alert: " + animalId + " - GI Urgent";
+        goToModule("Dumbster");
+        waitForUrgentAlertEmails(subject, 3);
+
+        log("Re-saving matched entries, then a new match that alerts only after their jobs have run");
+        assertDailyHealthResult(saveDailyHealth(apiMatch), apiMatch, "exists", null);
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthUpdate(getDailyHealthRowsByOrder(partialId).get(1), "remark", "Seen again"), getExtraContext());
+        // The alert jobs share one single-threaded JobRunner, so this entry's email proves the earlier jobs finished.
+        String markerId = UUID.randomUUID().toString();
+        getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(markerId, animalId, date, 1, "POORAPP", 2, "LIQDSTL"), getExtraContext());
+        waitForUrgentAlertEmails(subject, 4);
+
+        log("Verifying each matching entry alerted once, and no other entry did");
+        String apiMatchId = apiMatch.getString("logEntryId").toLowerCase();
+        Set<String> expected = Set.of(apiMatchId + "|" + urgentGroup, partialId + "|" + urgentGroup, draftId + "|" + urgentGroup, markerId + "|" + urgentGroup);
+        Set<String> entryIds = Set.of(apiMatchId, partialId, draftId, markerId, skippedId, wrongOrder.getString("logEntryId").toLowerCase());
+        assertEquals("Wrong urgent alerts recorded", expected, new HashSet<>(getUrgentAlerts(entryIds)));
+
+        EmailRecordTable notifications = new EmailRecordTable(this);
+        List<EmailRecordTable.EmailMessage> messages = notifications.getMessages(subject);
+        assertEquals("Wrong number of urgent alert emails", expected.size(), messages.size());
+        List<String> bodies = new ArrayList<>();
+        for (EmailRecordTable.EmailMessage message : messages)
+        {
+            notifications.clickMessage(message);
+            bodies.add(message.getBody());
+        }
+        List<String> expectedText = List.of("GI Urgent", CAGE_IN_R1, _userHelper.getDisplayNameForEmail(DATA_ADMIN.getEmail()), "POORAPP, RAB, LIQDSTL", "View entry");
+        Assert.assertTrue("No urgent alert contains all of " + expectedText + ": " + bodies,
+                bodies.stream().anyMatch(body -> expectedText.stream().allMatch(body::contains)));
+    }
+
+    private void waitForUrgentAlertEmails(String subject, int count)
+    {
+        waitFor(() -> {
+            refresh();
+            return new EmailRecordTable(this).getMessages(subject).size() >= count;
+        }, "Expected " + count + " urgent alert emails", WAIT_FOR_PAGE);
+    }
+
+    /** Inserts a daily health urgent group with its codes in order and returns its rowid. */
+    private int insertUrgentGroup(String name, boolean enabled, String... codes) throws IOException, CommandException
+    {
+        InsertRowsCommand group = new InsertRowsCommand("nbri_ehr", "dailyHealthUrgentGroup");
+        group.addRow(Map.of("name", name, "description", name + " codes", "enabled", enabled));
+        int rowId = ((Number) group.execute(createDefaultConnection(), getContainerPath()).getRows().getFirst().get("rowid")).intValue();
+
+        InsertRowsCommand groupCodes = new InsertRowsCommand("nbri_ehr", "dailyHealthUrgentGroupCode");
+        for (int i = 0; i < codes.length; i++)
+            groupCodes.addRow(Map.of("groupId", rowId, "sortOrder", i + 1, "code", codes[i]));
+        groupCodes.execute(createDefaultConnection(), getContainerPath());
+        return rowId;
+    }
+
+    /** The recorded urgent alerts of these entries, as logEntryId|groupId. */
+    private List<String> getUrgentAlerts(Collection<String> logEntryIds) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("nbri_ehr", "dailyHealthUrgentNotification");
+        select.setColumns(List.of("logEntryId", "groupId"));
+        select.addFilter(new Filter("logEntryId", String.join(";", logEntryIds), Filter.Operator.IN));
+        return select.execute(createDefaultConnection(), getContainerPath()).getRows().stream()
+                .map(row -> row.get("logEntryId") + "|" + ((Number) row.get("groupId")).intValue())
+                .toList();
+    }
+
+    @Test
+    public void testDailyHealthReports() throws Exception
+    {
+        String animalId = DAILY_HEALTH_REPORT_ANIMAL;
+        createAliveAnimals(new String[]{animalId});
+        insertHousingAndAssignments(animalId, LocalDateTime.now().minusDays(10), CAGE_IN_R1, PROJECT_ID, PROTOCOL_ID, EHRQCState.COMPLETED);
+        LocalDateTime today = LocalDateTime.now().minusMinutes(5).truncatedTo(ChronoUnit.MINUTES);
+        // just after midnight, five minutes back is yesterday
+        if (!today.toLocalDate().equals(LocalDate.now()))
+            today = LocalDate.now().atStartOfDay();
+
+        // out of alphabetical order, so the entries report must follow sort order to pass
+        JSONObject todayEntry = dailyHealthEntry(animalId, today, "C1", "RAB", "POORAPP");
+        JSONObject yesterdayEntry = dailyHealthEntry(animalId, today.minusDays(1), "C1", "LIQDSTL");
+        Map<String, JSONObject> results = saveDailyHealth(todayEntry, yesterdayEntry);
+        assertDailyHealthResult(results, todayEntry, "created", null);
+        assertDailyHealthResult(results, yesterdayEntry, "created", null);
+
+        log("Verifying the entries report opens on today, one row per entry with its codes in sort order");
+        goToEHRFolder();
+        waitAndClickAndWait(Locator.linkWithText("Today's Daily Health Log Entries"));
+        DataRegionTable report = new AnimalHistoryPage<>(getDriver()).getActiveReportDataRegion();
+        report.setFilter("Id", "Equals", animalId);
+        assertEquals("The report should open on today's entry", List.of("RAB, POORAPP"), report.getColumnDataAsText("codes"));
+        report.clearFilter("date");
+        assertEquals("Clearing the date filter should reach earlier entries", List.of("RAB, POORAPP", "LIQDSTL"), report.getColumnDataAsText("codes"));
+    }
+
+    @Test
+    public void testAssignmentAtTimeColumns() throws Exception
+    {
+        String animalId = DAILY_HEALTH_AT_TIME_ANIMAL;
+        createAliveAnimals(new String[]{animalId});
+        LocalDate transfer = LocalDate.now().minusDays(10);
+
+        log("Moving the animal to a new project and protocol on " + transfer);
+        insertAssignments(animalId, transfer.minusDays(10).atTime(9, 0), transfer.atTime(9, 0), PROJECT_ID, PROTOCOL_ID);
+        insertAssignments(animalId, transfer.atTime(9, 0), null, PROTOCOL_PROJECT_ID, DUMMY_PROTOCOL);
+
+        Map<String, LocalDateTime> entryDates = Map.of(
+                "before", transfer.minusDays(20).atTime(8, 0),
+                "first", transfer.minusDays(5).atTime(8, 0),
+                "transferMorning", transfer.atTime(8, 0),
+                "transferAfternoon", transfer.atTime(14, 0),
+                "second", transfer.plusDays(5).atTime(8, 0));
+        Map<String, String> entryIds = new HashMap<>();
+        for (Map.Entry<String, LocalDateTime> entry : entryDates.entrySet())
+        {
+            String entryId = UUID.randomUUID().toString();
+            entryIds.put(entryId, entry.getKey());
+            getApiHelper().doSaveRows(DATA_ADMIN.getEmail(), dailyHealthInsert(entryId, animalId, entry.getValue().format(DAILY_HEALTH_DATE_FORMAT), 1, "RAB"), getExtraContext());
+        }
+
+        SelectRowsCommand select = new SelectRowsCommand("study", "dailyHealthLog");
+        select.setColumns(List.of("logEntryId", "projectAtTime", "protocolAtTime", "protocolAtTime/title"));
+        select.addFilter(new Filter("Id", animalId));
+        Map<String, Map<String, Object>> rows = new HashMap<>();
+        for (Map<String, Object> row : select.execute(getApiHelper().getConnection(), getContainerPath()).getRows())
+            rows.put(entryIds.get((String) row.get("logEntryId")), row);
+
+        assertAtTime(rows.get("before"), List.of(), List.of());
+        assertAtTime(rows.get("first"), List.of(PROJECT_ID), List.of(PROTOCOL_ID));
+        assertAtTime(rows.get("transferMorning"), List.of(PROJECT_ID), List.of(PROTOCOL_ID));
+        assertAtTime(rows.get("transferAfternoon"), List.of(PROTOCOL_PROJECT_ID), List.of(DUMMY_PROTOCOL));
+        assertAtTime(rows.get("second"), List.of(PROTOCOL_PROJECT_ID), List.of(DUMMY_PROTOCOL));
+        assertEquals("Protocol lookup should resolve through to the protocol's title", List.of(PROTOCOL_ID), atTimeValues(rows.get("first"), "protocolAtTime/title"));
+    }
+
+    private void insertAssignments(String animalId, LocalDateTime date, @Nullable LocalDateTime enddate, String project, String protocol) throws IOException, CommandException
+    {
+        Map<String, Object> base = new HashMap<>(Map.of("Id", animalId, "date", date, "QCStateLabel", EHRQCState.COMPLETED.label, "performedby", 1004));
+        if (enddate != null)
+            base.put("enddate", enddate);
+
+        InsertRowsCommand assignment = new InsertRowsCommand("study", "assignment");
+        Map<String, Object> assignmentRow = new HashMap<>(base);
+        assignmentRow.put("project", project);
+        assignment.addRow(assignmentRow);
+        assignment.execute(getApiHelper().getConnection(), getContainerPath());
+
+        InsertRowsCommand protocolAssignment = new InsertRowsCommand("study", "protocolAssignment");
+        Map<String, Object> protocolRow = new HashMap<>(base);
+        protocolRow.put("protocol", protocol);
+        protocolAssignment.addRow(protocolRow);
+        protocolAssignment.execute(getApiHelper().getConnection(), getContainerPath());
+    }
+
+    private void assertAtTime(Map<String, Object> row, List<String> projects, List<String> protocols)
+    {
+        Assert.assertNotNull("Daily health entry was not returned", row);
+        assertEquals("Wrong projects at time", projects, atTimeValues(row, "projectAtTime"));
+        assertEquals("Wrong protocols at time", protocols, atTimeValues(row, "protocolAtTime"));
+    }
+
+    // Multi-valued lookups come back as JSON arrays.
+    private List<String> atTimeValues(Map<String, Object> row, String column)
+    {
+        Object value = row.get(column);
+        Iterable<?> values = value instanceof JSONArray array ? array : value instanceof Iterable<?> list ? list : value == null ? List.of() : List.of(value);
+        List<String> result = new ArrayList<>();
+        values.forEach(v -> result.add(String.valueOf(v)));
+        Collections.sort(result);
+        return result;
+    }
+
+    private static final DateTimeFormatter DAILY_HEALTH_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    /** A scanner entry housed in room R1, with each code's sort order following its position. */
+    // setGridCell would save typed text even when the dropdown has no codes to offer
+    private void selectDailyHealthCode(Ext4GridRef grid, int rowIdx, String code)
+    {
+        grid.clickArrowOnGrid(rowIdx, "code");
+        waitAndClick(Ext4Helper.Locators.comboListItem().containing(code));
+        grid.completeEdit();
+    }
+
+    private JSONObject dailyHealthEntry(String animalId, LocalDateTime observed, @Nullable String cage, String... codes)
+    {
+        JSONArray codeArray = new JSONArray();
+        for (int i = 0; i < codes.length; i++)
+            codeArray.put(new JSONObject().put("code", codes[i]).put("sortOrder", i + 1));
+
+        JSONObject entry = new JSONObject()
+                .put("logEntryId", UUID.randomUUID().toString())
+                .put("animalId", animalId)
+                .put("observationDateTime", observed.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+                .put("technician", DATA_ADMIN.getEmail())
+                .put("locationArea", BUILDING_ID)
+                .put("locationEnclosure", "R1")
+                .put("codes", codeArray);
+        if (cage != null)
+            entry.put("locationCage", cage);
+        return entry;
+    }
+
+    /** The API's per-entry results, keyed by log entry id. */
+    private Map<String, JSONObject> saveDailyHealth(JSONObject... entries) throws IOException, CommandException
+    {
+        SimplePostCommand command = new SimplePostCommand("nbri_ehr", "saveDailyHealth");
+        command.setJsonObject(new JSONObject().put("entries", new JSONArray(List.of(entries))));
+        JSONArray results = new JSONObject(command.execute(createDefaultConnection(), getContainerPath()).getText()).getJSONArray("results");
+
+        Map<String, JSONObject> byEntry = new HashMap<>();
+        for (int i = 0; i < results.length(); i++)
+            byEntry.put(results.getJSONObject(i).getString("logEntryId"), results.getJSONObject(i));
+        return byEntry;
+    }
+
+    private void assertDailyHealthResult(Map<String, JSONObject> results, JSONObject entry, String status, @Nullable String errorText)
+    {
+        // the API reports ids in lower case
+        JSONObject result = results.get(entry.getString("logEntryId").toLowerCase());
+        assertNotNull("No result for entry " + entry, result);
+        assertEquals("Wrong status for entry " + entry + ": " + result, status, result.getString("status"));
+        if (errorText != null)
+            Assert.assertTrue("Expected an error containing \"" + errorText + "\": " + result,
+                    result.getJSONArray("errors").toList().stream().anyMatch(error -> String.valueOf(error).contains(errorText)));
+    }
+
+    /** Inserts rows of one entry, given as alternating sort orders and codes. */
+    private SimplePostCommand dailyHealthInsert(String entryId, String animalId, String date, Object... ordersAndCodes)
+    {
+        return dailyHealthInsert(entryId, animalId, date, EHRQCState.COMPLETED, ordersAndCodes);
+    }
+
+    private SimplePostCommand dailyHealthInsert(String entryId, String animalId, String date, EHRQCState qcState, Object... ordersAndCodes)
+    {
+        Object[][] data = new Object[ordersAndCodes.length / 2][];
+        for (int i = 0; i < data.length; i++)
+            data[i] = new Object[]{animalId, date, entryId, ordersAndCodes[2 * i], ordersAndCodes[2 * i + 1], 1004, qcState.label};
+        return getApiHelper().prepareInsertCommand("study", "dailyHealthLog", "lsid",
+                new String[]{"Id", "date", "logEntryId", "sortOrder", "code", "performedby", "QCStateLabel"}, data);
+    }
+
+    private SimplePostCommand dailyHealthUpdate(Map<String, Object> row, String field, Object value)
+    {
+        return prepareUpdate("dailyHealthLog", Map.of("lsid", row.get("lsid"), field, value));
+    }
+
+    private void assertDailyHealthSaveRejected(SimplePostCommand command, String expectedText)
+    {
+        CommandException error = getApiHelper().doSaveRowsExpectingError(DATA_ADMIN.getEmail(), command, getExtraContext());
+        String reported = error.getMessage() + " " + error.getProperties();
+        Assert.assertTrue("Expected the save to be rejected with \"" + expectedText + "\", got: " + reported, reported.contains(expectedText));
+    }
+
+    private List<Map<String, Object>> getDailyHealthRows(Filter filter) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("study", "dailyHealthLog");
+        select.setColumns(List.of("lsid", "objectid", "Id", "date", "logEntryId", "sortOrder", "code", "performedby", "taskid", "QCState/Label"));
+        select.addFilter(filter);
+        List<Map<String, Object>> rows = new ArrayList<>(select.execute(getApiHelper().getConnection(), getContainerPath()).getRows());
+        rows.sort(Comparator.comparingInt(row -> ((Number) row.get("sortOrder")).intValue()));
+        return rows;
+    }
+
+    private Map<Integer, Map<String, Object>> getDailyHealthRowsByOrder(String entryId) throws IOException, CommandException
+    {
+        Map<Integer, Map<String, Object>> byOrder = new HashMap<>();
+        for (Map<String, Object> row : getDailyHealthRows(new Filter("logEntryId", entryId)))
+            byOrder.put(((Number) row.get("sortOrder")).intValue(), row);
+        return byOrder;
+    }
+
+    /** The animal's observations generated from daily health rows, keyed by category, at most one each. */
+    private Map<String, Map<String, Object>> getDailyHealthObservations(String animalId) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("study", "clinical_observations");
+        select.setColumns(List.of("category", "observation", "parentid", "QCState/Label"));
+        select.addFilter(new Filter("Id", animalId));
+        select.addFilter(new Filter("parentid", null, Filter.Operator.NONBLANK));
+
+        Map<String, Map<String, Object>> byCategory = new HashMap<>();
+        for (Map<String, Object> row : select.execute(getApiHelper().getConnection(), getContainerPath()).getRows())
+            Assert.assertNull("More than one " + row.get("category") + " observation for " + animalId, byCategory.put((String) row.get("category"), row));
+        return byCategory;
+    }
+
+    private @Nullable Map<String, Object> getTask(String taskId) throws IOException, CommandException
+    {
+        SelectRowsCommand select = new SelectRowsCommand("ehr", "tasks");
+        select.setColumns(List.of("taskid", "formtype", "qcstate/Label"));
+        select.addFilter(new Filter("taskid", taskId));
+        List<Map<String, Object>> rows = select.execute(getApiHelper().getConnection(), getContainerPath()).getRows();
+        return rows.isEmpty() ? null : rows.getFirst();
+    }
+
     private void createAliveAnimals(String[] animalIds) throws Exception
     {
         log("Creating animals " + StringUtils.join(animalIds, ", "));
