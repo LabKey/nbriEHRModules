@@ -85,7 +85,7 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
     // The EHR script trigger rewrites vetreview and vetreviewdate on every save
     private static final Set<String> CASE_BOOKKEEPING_FIELDS = new CaseInsensitiveHashSet("QCState", "QCStateLabel", "taskid", "description", "modified", "modifiedby", "created", "createdby", "lsid", "objectid", "container", "vetreview", "vetreviewdate");
 
-    private static final Set<String> CASE_FORM_TYPES = new CaseInsensitiveHashSet(NBRICasesFormType.NAME, NBRIBehavioralCasesFormType.NAME);
+    static final Set<String> CASE_FORM_TYPES = new CaseInsensitiveHashSet(NBRICasesFormType.NAME, NBRIBehavioralCasesFormType.NAME);
 
     // A case stays on its own task unless a case form saves it while Completed, and another task may change its status only when it leaves the case's fields alone.
     // Runs after the script triggers, which fill fields the update omitted from oldRow and put the form's target status on newRow.
@@ -95,17 +95,22 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
             return;
 
         Object caseTaskId = oldRow.get("taskid");
-        if (caseTaskId == null)
-            return;
-
         Object rowTaskId = newRow.get("taskid");
+        DataState oldState = getState(c, oldRow);
+        if (caseTaskId == null)
+        {
+            // Forms stamp their own task on every case they load, which would claim a case that has none
+            if (isFormSave(extraContext) && (oldState == null || !takesOverCompletedCase(c, user, rowTaskId, oldState.getLabel())))
+                newRow.put("taskid", null);
+            return;
+        }
+
         if ((rowTaskId != null && caseTaskId.toString().equalsIgnoreCase(rowTaskId.toString())) || isValidateOnly(extraContext))
         {
             newRow.put("taskid", caseTaskId);
             return;
         }
 
-        DataState oldState = getState(c, oldRow);
         if (oldState != null && takesOverCompletedCase(c, user, rowTaskId, oldState.getLabel()))
             return;
 
@@ -116,7 +121,7 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
 
         if (caseFieldsChanged(newRow, oldRow))
         {
-            errors.addGlobalError("This case belongs to another task with " + oldState.getLabel() + " status. Save case changes with the same status, or from the case's own task.");
+            errors.addGlobalError("The case for " + newRow.get("Id") + " belongs to another task with " + oldState.getLabel() + " status. Submit with " + oldState.getLabel() + " to save its changes, or edit it from its own task.");
         }
         else
         {
@@ -138,6 +143,11 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
 
         String formType = new TableSelector(tasks, Collections.singleton("formtype"), new SimpleFilter(FieldKey.fromString("taskid"), rowTaskId), null).getObject(String.class);
         return formType != null && CASE_FORM_TYPES.contains(formType);
+    }
+
+    private static boolean isFormSave(@Nullable Map<String, Object> extraContext)
+    {
+        return extraContext != null && "ehr-ext4DataEntry".equals(extraContext.get("importPathway"));
     }
 
     private static boolean isValidateOnly(@Nullable Map<String, Object> extraContext)

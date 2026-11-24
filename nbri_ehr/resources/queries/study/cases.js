@@ -13,6 +13,13 @@ function onInit(event, helper) {
     helper.decodeExtraContextProperty('ordersInTransaction');
 }
 
+// != compares Date objects by reference, so a closed case would rerun its close on every save
+function sameTime(a, b) {
+    var aDate = EHR.Server.Utils.normalizeDate(a, true);
+    var bDate = EHR.Server.Utils.normalizeDate(b, true);
+    return aDate && bDate ? aDate.getTime() === bDate.getTime() : !aDate && !bDate;
+}
+
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'study', 'cases', function(helper, errors, row, oldRow){
     if (!helper.isETL()) {
         var error = false;
@@ -33,7 +40,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
             error = true;
         }
 
-        if (!helper.isValidateOnly() && row.caseid && row.enddate && oldRow && (row.enddate != oldRow.enddate)) {
+        if (!helper.isValidateOnly() && row.caseid && row.enddate && oldRow && !sameTime(row.enddate, oldRow.enddate)) {
             triggerHelper.closeDailyClinicalObs(row.caseid, row.enddate);
         }
 

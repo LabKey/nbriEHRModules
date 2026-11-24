@@ -46,7 +46,10 @@ EHR.model.DataModelManager.registerMetadata('ClinicalRounds', {
                     editable: false,
                     disabled: true,
                     fieldCls: 'form-panel-input-disabled',
-                    labelClsExtra: 'form-panel-input-disabled'
+                    labelClsExtra: 'form-panel-input-disabled',
+                    // Disabling the date-time field leaves its own date and time inputs editable
+                    dateConfig: {disabled: true, fieldCls: 'form-panel-input-disabled'},
+                    timeConfig: {disabled: true, fieldCls: 'form-panel-input-disabled'}
                 },
                 getInitialValue: function(v, rec){
                     return null;
@@ -58,7 +61,10 @@ EHR.model.DataModelManager.registerMetadata('ClinicalRounds', {
                     editable: false,
                     disabled: true,
                     fieldCls: 'form-panel-input-disabled',
-                    labelClsExtra: 'form-panel-input-disabled'
+                    labelClsExtra: 'form-panel-input-disabled',
+                    // Disabling the date-time field leaves its own date and time inputs editable
+                    dateConfig: {disabled: true, fieldCls: 'form-panel-input-disabled'},
+                    timeConfig: {disabled: true, fieldCls: 'form-panel-input-disabled'}
                 }
             },
             category: {
