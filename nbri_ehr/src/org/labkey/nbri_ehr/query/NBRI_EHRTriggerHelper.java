@@ -1242,9 +1242,9 @@ public class NBRI_EHRTriggerHelper
         return _container.hasPermission(_user, EHRVeterinarianPermission.class);
     }
 
-    public boolean takesOverCompletedCase(String rowTaskId, String caseQcLabel)
+    public boolean claimsCase(String rowTaskId, @Nullable String caseTaskId, String caseQcLabel)
     {
-        return NBRI_EHRSharedDatasetTrigger.takesOverCompletedCase(_container, _user, rowTaskId, caseQcLabel);
+        return NBRI_EHRSharedDatasetTrigger.claimsCase(_container, _user, rowTaskId, caseTaskId, caseQcLabel);
     }
 
     /** Returns an error when the protocol does not exist or has expired by the assignment date, or null when it is usable. */
@@ -1623,6 +1623,9 @@ public class NBRI_EHRTriggerHelper
         SimpleFilter filter = new SimpleFilter(FieldKey.fromString("caseid"), caseid);
         Collection<Map<String, Object>> orders = new TableSelector(ti, PageFlowUtil.set("objectid", "date", "enddate"), filter, null).getMapCollection();
 
+        // A close entered without a time ends the whole day, so an order starting that day has already started
+        Date dayStart = DateUtils.truncate(enddate, Calendar.DATE);
+        Date startedBy = enddate.equals(dayStart) ? DateUtils.addMilliseconds(DateUtils.addDays(dayStart, 1), -1) : enddate;
         Set<String> notStarted = new CaseInsensitiveHashSet();
         List<Map<String, Object>> toEnd = new ArrayList<>();
         for (Map<String, Object> order : orders)
@@ -1635,7 +1638,8 @@ public class NBRI_EHRTriggerHelper
             Date newEnd = enddate;
             if (start != null && start.after(enddate))
             {
-                notStarted.add(objectId);
+                if (start.after(startedBy))
+                    notStarted.add(objectId);
                 newEnd = start;
             }
             if (end == null || end.after(newEnd))

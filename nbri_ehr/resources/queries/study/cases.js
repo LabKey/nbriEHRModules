@@ -20,6 +20,12 @@ function sameTime(a, b) {
     return aDate && bDate ? aDate.getTime() === bDate.getTime() : !aDate && !bDate;
 }
 
+function isLater(a, b) {
+    var aDate = EHR.Server.Utils.normalizeDate(a, true);
+    var bDate = EHR.Server.Utils.normalizeDate(b, true);
+    return !!(aDate && bDate && aDate.getTime() > bDate.getTime());
+}
+
 EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Events.BEFORE_UPSERT, 'study', 'cases', function(helper, errors, row, oldRow){
     if (!helper.isETL()) {
         var error = false;
@@ -40,10 +46,6 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
             error = true;
         }
 
-        if (!helper.isValidateOnly() && row.caseid && row.enddate && oldRow && !sameTime(row.enddate, oldRow.enddate)) {
-            triggerHelper.closeDailyClinicalObs(row.caseid, row.enddate);
-        }
-
         if (!helper.isValidateOnly() && !error) {
             var qc;
             if (row.QCStateLabel) {
@@ -53,13 +55,18 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 qc = EHR.Server.Security.getQCStateByRowId(row.QCState);
             }
 
-            // A save from another task keeps the case's own status and task unless a case form takes over a Completed case; the shared dataset trigger enforces it after this script
-            var fromOtherTask = oldRow && oldRow.taskid && (!row.taskid || String(row.taskid).toLowerCase() !== String(oldRow.taskid).toLowerCase());
-            var takesOver = fromOtherTask && row.taskid && triggerHelper.takesOverCompletedCase(String(row.taskid), oldRow.QCStateLabel);
-            if (fromOtherTask && !takesOver) {
+            // A save from another task keeps the case's own status and task unless a case form claims the case; the shared dataset trigger enforces it after this script
+            var ownTask = oldRow && oldRow.taskid;
+            var fromOtherTask = oldRow && (ownTask
+                    ? !row.taskid || String(row.taskid).toLowerCase() !== String(ownTask).toLowerCase()
+                    : !!row.taskid && helper.getImportPathway() === 'ehr-ext4DataEntry');
+            var claims = fromOtherTask && row.taskid && triggerHelper.claimsCase(String(row.taskid), ownTask ? String(ownTask) : null, oldRow.QCStateLabel);
+            if (fromOtherTask && !claims) {
                 qc = EHR.Server.Security.getQCStateByLabel(oldRow.QCStateLabel);
             }
-            var caseTaskId = oldRow && oldRow.taskid && !takesOver ? oldRow.taskid : row.taskid;
+            var caseTaskId = fromOtherTask && !claims ? ownTask : row.taskid;
+            // An open case keeps its daily orders, and moving a close later brings back the orders an earlier close deleted
+            var ordersRun = !row.enddate || (oldRow && isLater(row.enddate, oldRow.enddate));
 
             if (!qc) {
                 console.error('Unable to find QCState: ' + row.QCState + '/' + row.QCStateLabel);
@@ -72,7 +79,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                     if (oldQc.Label != 'In Progress') {
                         EHR.Server.Utils.addError(errors, null, 'Cannot save a draft copy of a case already opened or in review.', 'ERROR');
                     }
-                } else if (row.category === 'Clinical' && (qc.Label === 'Completed' || qc.Label === 'Review Required') && row.caseid && row.Id && row.performedby && caseTaskId && !row.enddate) {
+                } else if (row.category === 'Clinical' && (qc.Label === 'Completed' || qc.Label === 'Review Required') && row.caseid && row.Id && row.performedby && caseTaskId && ordersRun) {
                     var ordersInTransaction = helper.getProperty('ordersInTransaction');
                     var oit = [];
                     if (ordersInTransaction && ordersInTransaction.length) {
@@ -80,6 +87,10 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                     }
                     triggerHelper.ensureDailyClinicalObservationOrders(row.Id, row.caseid, row.date, row.performedby, qc.RowId, caseTaskId, oit);
                 }
+            }
+
+            if (row.caseid && row.enddate && oldRow && !sameTime(row.enddate, oldRow.enddate)) {
+                triggerHelper.closeDailyClinicalObs(row.caseid, row.enddate);
             }
         }
     }

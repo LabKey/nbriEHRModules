@@ -12,6 +12,7 @@ Ext4.define('NBRI_EHR.form.EditCases', {
     editing: false,
     disabled: false,
     readonly: false,
+    enteringNewCase: false,
 
     initComponent: function(){
         this.on('resize', function () {
@@ -118,9 +119,15 @@ Ext4.define('NBRI_EHR.form.EditCases', {
             this.mon(formPanel, 'afterrender', this.lockSavedCase, this, {single: true});
     },
 
+    // A case created on this page stops being a phantom when Save Draft saves it, and must stay open for entry
     lockSavedCase: function(formPanel){
         var record = formPanel.getBoundRecord();
-        if (formPanel.rendered && record && !record.phantom && !this.editing)
+        if (!formPanel.rendered || !record || this.editing || this.enteringNewCase)
+            return;
+
+        if (record.phantom)
+            this.enteringNewCase = true;
+        else
             this.onCaseSelect();
     },
 

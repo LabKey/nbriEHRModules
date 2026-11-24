@@ -87,7 +87,7 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
 
     static final Set<String> CASE_FORM_TYPES = new CaseInsensitiveHashSet(NBRICasesFormType.NAME, NBRIBehavioralCasesFormType.NAME);
 
-    // A case stays on its own task unless a case form saves it while Completed, and another task may change its status only when it leaves the case's fields alone.
+    // A case stays on its own task unless a case form claims it, and another task may change its status only when it leaves the case's fields alone.
     // Runs after the script triggers, which fill fields the update omitted from oldRow and put the form's target status on newRow.
     private void guardCaseTask(TableInfo table, Container c, User user, @Nullable Map<String, Object> newRow, @Nullable Map<String, Object> oldRow, ValidationException errors, @Nullable Map<String, Object> extraContext)
     {
@@ -96,22 +96,18 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
 
         Object caseTaskId = oldRow.get("taskid");
         Object rowTaskId = newRow.get("taskid");
-        DataState oldState = getState(c, oldRow);
-        if (caseTaskId == null)
-        {
-            // Forms stamp their own task on every case they load, which would claim a case that has none
-            if (isFormSave(extraContext) && (oldState == null || !takesOverCompletedCase(c, user, rowTaskId, oldState.getLabel())))
-                newRow.put("taskid", null);
+        // Forms stamp their own task on every case they load, so only a form save can carry a task to a case that has none
+        if (caseTaskId == null && (rowTaskId == null || !isFormSave(extraContext)))
             return;
-        }
 
-        if ((rowTaskId != null && caseTaskId.toString().equalsIgnoreCase(rowTaskId.toString())) || isValidateOnly(extraContext))
+        if ((caseTaskId != null && rowTaskId != null && caseTaskId.toString().equalsIgnoreCase(rowTaskId.toString())) || isValidateOnly(extraContext))
         {
             newRow.put("taskid", caseTaskId);
             return;
         }
 
-        if (oldState != null && takesOverCompletedCase(c, user, rowTaskId, oldState.getLabel()))
+        DataState oldState = getState(c, oldRow);
+        if (claimsCase(c, user, rowTaskId, caseTaskId, oldState == null ? null : oldState.getLabel()))
             return;
 
         newRow.put("taskid", caseTaskId);
@@ -121,7 +117,9 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
 
         if (caseFieldsChanged(newRow, oldRow))
         {
-            errors.addGlobalError("The case for " + newRow.get("Id") + " belongs to another task with " + oldState.getLabel() + " status. Submit with " + oldState.getLabel() + " to save its changes, or edit it from its own task.");
+            String owner = caseTaskId == null ? " is on no task and has " : " belongs to another task with ";
+            String editFrom = caseTaskId == null ? "a case form." : "its own task.";
+            errors.addGlobalError("The case for " + newRow.get("Id") + owner + oldState.getLabel() + " status. Submit with " + oldState.getLabel() + " to save its changes, or edit it from " + editFrom);
         }
         else
         {
@@ -130,10 +128,10 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
         }
     }
 
-    // Case Update starts a new case form task for a Completed case, and that task then owns the case
-    public static boolean takesOverCompletedCase(Container c, User user, @Nullable Object rowTaskId, @Nullable String caseQcLabel)
+    // A case form takes over a case that is Completed or on no task, and that task then owns the case
+    public static boolean claimsCase(Container c, User user, @Nullable Object rowTaskId, @Nullable Object caseTaskId, @Nullable String caseQcLabel)
     {
-        if (rowTaskId == null || !"Completed".equals(caseQcLabel))
+        if (rowTaskId == null || (caseTaskId != null && !"Completed".equals(caseQcLabel)))
             return false;
 
         UserSchema ehr = QueryService.get().getUserSchema(user, c, "ehr");
@@ -180,11 +178,15 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
             newValue = null;
         if (oldValue instanceof String s && s.isBlank())
             oldValue = null;
-        if (newValue == null || oldValue == null)
-            return newValue == oldValue;
 
         try
         {
+            // A blank checkbox reads as false
+            if (newValue instanceof Boolean || oldValue instanceof Boolean)
+                return Boolean.TRUE.equals(ConvertHelper.convert(newValue, Boolean.class)) == Boolean.TRUE.equals(ConvertHelper.convert(oldValue, Boolean.class));
+            if (newValue == null || oldValue == null)
+                return newValue == oldValue;
+
             // The form sends dates without milliseconds
             if (newValue instanceof Date || oldValue instanceof Date)
             {

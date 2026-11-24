@@ -432,7 +432,7 @@ public class NBRI_EHRCustomizer extends AbstractTableCustomizer
                         // Only a Completed case may start a new task; until then, edits from another task can't change its status
                         String taskId = ctx.get(TASK_ID, String.class);
                         String taskFormType = ctx.get(TASK_FORM_TYPE, String.class);
-                        if (taskId != null && taskFormType != null && NBRI_EHRSharedDatasetTrigger.CASE_FORM_TYPES.contains(taskFormType) && !"Completed".equals(ctx.get(CASE_QC_LABEL, String.class)))
+                        if (taskId != null && taskFormType != null && !"Completed".equals(ctx.get(CASE_QC_LABEL, String.class)))
                         {
                             url.replaceParameter("formType", taskFormType);
                             url.addParameter("taskId", taskId);
