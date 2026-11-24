@@ -34,6 +34,7 @@ Ext4.define('NBRI_EHR.form.EditCases', {
         ]
 
         this.mon(EHR.DemographicsCache, 'caseselected', this.onCaseSelect, this);
+        this.on('afterrender', this.bindFormPanel, this, {single: true});
 
         this.callParent();
     },
@@ -89,16 +90,38 @@ Ext4.define('NBRI_EHR.form.EditCases', {
 
     fieldEnableChange: function(disable){
         var panel = this.up('panel');
+        // A case opened from its own task never fires caseselected, so the saved record also counts
+        var record = EHR.DataEntryUtils.getBoundRecord(this);
+        var savedCase = this.editing || (record && !record.phantom);
         panel.items.each(function(item){
             if (item.name === 'objectid')
                 return;
 
             // A saved case stays bound to its animal, so Edit must never reopen the Id.
-            var itemDisable = disable || (this.editing && item.name === 'Id');
+            var itemDisable = disable || (savedCase && item.name === 'Id');
 
             this.disableItem(item, itemDisable);
             this.disabledDisplay(item, itemDisable);
         }, this);
+    },
+
+    // A saved case arrives by record binding, and caseselected only fires on some load paths
+    bindFormPanel: function(){
+        var formPanel = this.up('form');
+        if (!formPanel || this.readonly)
+            return;
+
+        this.mon(formPanel, 'bindrecord', this.lockSavedCase, this);
+        if (formPanel.rendered)
+            this.lockSavedCase(formPanel);
+        else
+            this.mon(formPanel, 'afterrender', this.lockSavedCase, this, {single: true});
+    },
+
+    lockSavedCase: function(formPanel){
+        var record = formPanel.getBoundRecord();
+        if (formPanel.rendered && record && !record.phantom && !this.editing)
+            this.onCaseSelect();
     },
 
     onEditButtonClick: function(){
