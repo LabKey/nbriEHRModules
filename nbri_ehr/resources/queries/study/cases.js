@@ -89,6 +89,11 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 }
             }
 
+            // Moving a close later or clearing it reopens what that close ended, and the new close then ends them again
+            if (row.caseid && oldRow && oldRow.enddate && (!row.enddate || isLater(row.enddate, oldRow.enddate))) {
+                triggerHelper.reopenDailyClinicalObs(row.caseid, EHR.Server.Utils.normalizeDate(oldRow.enddate, true));
+            }
+
             if (row.caseid && row.enddate && oldRow && !sameTime(row.enddate, oldRow.enddate)) {
                 triggerHelper.closeDailyClinicalObs(row.caseid, row.enddate);
             }

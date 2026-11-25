@@ -1621,7 +1621,7 @@ public class NBRI_EHRTriggerHelper
     {
         TableInfo ti = getTableInfo("study", "observation_order");
         SimpleFilter filter = new SimpleFilter(FieldKey.fromString("caseid"), caseid);
-        Collection<Map<String, Object>> orders = new TableSelector(ti, PageFlowUtil.set("objectid", "date", "enddate"), filter, null).getMapCollection();
+        Collection<Map<String, Object>> orders = new TableSelector(ti, PageFlowUtil.set("objectid", "date", "enddate", "category", "frequency"), filter, null).getMapCollection();
 
         // A close entered without a time ends the whole day, so an order starting that day has already started
         Date dayStart = DateUtils.truncate(enddate, Calendar.DATE);
@@ -1638,7 +1638,7 @@ public class NBRI_EHRTriggerHelper
             Date newEnd = enddate;
             if (start != null && start.after(enddate))
             {
-                if (start.after(startedBy))
+                if (start.after(startedBy) && isDailyClinicalObs(order))
                     notStarted.add(objectId);
                 newEnd = start;
             }
@@ -1673,7 +1673,49 @@ public class NBRI_EHRTriggerHelper
         }
     }
 
-    // The closing vet may lack update and delete permission on Completed and Review Required orders
+    // Only the orders ensureDailyClinicalObservationOrders creates may be deleted; any other order ends on its start date
+    private static boolean isDailyClinicalObs(Map<String, Object> order)
+    {
+        return "SID".equals(order.get("frequency")) && order.get("category") instanceof String category && NBRI_EHRManager.DAILY_CLINICAL_OBS.contains(category);
+    }
+
+    // Undoes a close at oldClose, which ended each order at oldClose or, for one starting after it, at its own start
+    public void reopenDailyClinicalObs(String caseid, Date oldClose)
+    {
+        TableInfo ti = getTableInfo("study", "observation_order");
+        SimpleFilter filter = new SimpleFilter(FieldKey.fromString("caseid"), caseid);
+        filter.addCondition(FieldKey.fromString("enddate"), null, CompareType.NONBLANK);
+        List<String> orderIds = new TableSelector(ti, PageFlowUtil.set("objectid", "date", "enddate"), filter, null).getMapCollection().stream()
+                .filter(order -> {
+                    Date start = ConvertHelper.convert(order.get("date"), Date.class);
+                    Date end = ConvertHelper.convert(order.get("enddate"), Date.class);
+                    return end != null && (end.getTime() == oldClose.getTime() || (start != null && start.after(oldClose) && end.getTime() == start.getTime()));
+                })
+                .map(order -> (String) order.get("objectid"))
+                .toList();
+        if (orderIds.isEmpty())
+            return;
+
+        try
+        {
+            List<Map<String, Object>> rows = orderIds.stream().map(id -> {
+                Map<String, Object> row = orderRow(id, null);
+                row.put("enddate", null);
+                return row;
+            }).toList();
+            List<Map<String, Object>> keys = orderIds.stream().map(id -> orderRow(id, null)).toList();
+            BatchValidationException errors = new BatchValidationException();
+            Objects.requireNonNull(ti.getUpdateService()).updateRows(getOrderUser(), _container, rows, keys, errors, null, getExtraContext());
+            if (errors.hasErrors())
+                throw errors;
+        }
+        catch (Exception e)
+        {
+            _log.error("Error reopening observation orders when their case's close moved later", e);
+        }
+    }
+
+    // The saving user may lack insert, update and delete permission on Completed and Review Required orders
     private User getOrderUser()
     {
         return Objects.requireNonNullElse(EHRService.get().getEHRUser(_container, false), _user);
@@ -1759,7 +1801,7 @@ public class NBRI_EHRTriggerHelper
                 }
 
                 BatchValidationException errors = new BatchValidationException();
-                ti.getUpdateService().insertRows(_user, _container, rows, errors, null, getExtraContext());
+                Objects.requireNonNull(ti.getUpdateService()).insertRows(getOrderUser(), _container, rows, errors, null, getExtraContext());
                 if (errors.hasErrors())
                     throw errors;
             }
