@@ -200,15 +200,26 @@ Ext4.define('NBRI_EHR.data.CaseStoreCollection', {
         return this.callParent([model]);
     },
 
-    commitChanges: function(){
+    // Forms that can take over an existing case; the shared dataset trigger keeps the same list
+    caseFormTypes: ['Clinical Cases', 'Behavioral Cases'],
+
+    commitChanges: function(commitAll, extraContext, retainErrors){
+        if (this.needsCaseStatusChoice(extraContext)){
+            this.chooseCaseStatus(commitAll, extraContext, retainErrors);
+            return;
+        }
+
         // ensure all records are using this taskId and alert if not
         var taskid = this.getTaskId();
         if (taskid){
+            // A case loaded from another task carries this one so the server can tell; the server keeps the case on its own task
             this.clientStores.each(function(cs){
-                if (cs.getFields().get('taskid') != null && cs.storeId !== this.collectionId + '-cases'){
+                if (cs.getFields().get('taskid') != null){
+                    var isCases = cs.storeId === this.collectionId + '-cases';
                     cs.each(function(r){
                         if (taskid != r.get('taskid')){
-                            LDK.Assert.assertEquality('Incorrect taskid for client store:' + cs.storeId, taskid, r.get('taskid'));
+                            if (!isCases)
+                                LDK.Assert.assertEquality('Incorrect taskid for client store:' + cs.storeId, taskid, r.get('taskid'));
                             r.beginEdit();
                             r.set('taskid', this.getTaskId());
                             r.endEdit(true);
@@ -218,14 +229,16 @@ Ext4.define('NBRI_EHR.data.CaseStoreCollection', {
             }, this);
 
             this.serverStores.each(function(cs){
-                if (cs.getFields().get('taskid') != null && cs.storeId.indexOf('|cases|') === -1){
+                if (cs.getFields().get('taskid') != null){
+                    var isCases = cs.storeId.indexOf('|cases|') !== -1;
                     cs.each(function(r){
                         if (r.isRemovedRequest){
                             return;  //do not check these records.  they have deliberately been separated.
                         }
 
                         if (taskid != r.get('taskid')){
-                            LDK.Assert.assertEquality('Incorrect taskid for server store:' + cs.storeId, taskid, r.get('taskid'));
+                            if (!isCases)
+                                LDK.Assert.assertEquality('Incorrect taskid for server store:' + cs.storeId, taskid, r.get('taskid'));
                             r.beginEdit();
                             r.set('taskid', this.getTaskId());
                             r.endEdit(true);
@@ -236,5 +249,59 @@ Ext4.define('NBRI_EHR.data.CaseStoreCollection', {
         }
 
         return this.callParent(arguments);
+    },
+
+    needsCaseStatusChoice: function(extraContext){
+        var caseRec = this.getClientCaseRec();
+        return !!extraContext && extraContext.moveCase === undefined && !!extraContext.targetQC && extraContext.targetQC !== 'In Progress'
+                && !!caseRec && !caseRec.phantom && !!this.formConfig && this.caseFormTypes.indexOf(this.formConfig.name) !== -1;
+    },
+
+    // Asks whether a submit moves an existing case to the new status; only a Completed case or one on no task can move to this task
+    chooseCaseStatus: function(commitAll, extraContext, retainErrors){
+        var caseRec = this.getClientCaseRec();
+        var target = extraContext.targetQC;
+        var commit = function(moveCase){
+            this.commitChanges(commitAll, Ext4.apply({moveCase: moveCase}, extraContext), retainErrors);
+        };
+
+        LABKEY.Query.selectRows({
+            schemaName: 'study',
+            queryName: 'cases',
+            columns: 'taskid,QCState/Label',
+            filterArray: [LABKEY.Filter.create('objectid', caseRec.get('objectid'))],
+            scope: this,
+            success: function(results){
+                var stored = results.rows[0];
+                var status = stored ? stored['QCState/Label'] : null;
+                var caseTaskId = stored ? stored.taskid : null;
+                var thisTaskId = this.getTaskId();
+                var otherTask = !caseTaskId || !thisTaskId || String(caseTaskId).toLowerCase() !== String(thisTaskId).toLowerCase();
+                if (!status || status === target || !otherTask || (caseTaskId && status !== 'Completed')){
+                    commit.call(this, false);
+                    return;
+                }
+
+                var encode = Ext4.String.htmlEncode;
+                Ext4.Msg.show({
+                    title: 'Case Status',
+                    msg: 'The case for ' + encode(caseRec.get('Id')) + ' is in ' + encode(status) + ' status. Would you like to move the whole case to ' + encode(target) + ', or only the other records in this form?',
+                    buttons: Ext4.Msg.YESNOCANCEL,
+                    buttonText: {yes: 'Move Whole Case', no: 'Only Other Records', cancel: 'Cancel'},
+                    icon: Ext4.Msg.QUESTION,
+                    scope: this,
+                    fn: function(choice){
+                        if (choice !== 'yes' && choice !== 'no')
+                            return;
+
+                        Ext4.Msg.wait('Saving Changes...');
+                        commit.call(this, choice === 'yes');
+                    }
+                });
+            },
+            failure: function(error){
+                Ext4.Msg.alert('Error', 'Unable to check the case status: ' + Ext4.String.htmlEncode(error && error.exception || 'unknown error'));
+            }
+        });
     }
 });
