@@ -55,12 +55,13 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 qc = EHR.Server.Security.getQCStateByRowId(row.QCState);
             }
 
-            // A save from another task keeps the case's own status and task unless a case form claims the case; the shared dataset trigger enforces it after this script
+            // A save from another task keeps the case's own status and task unless the user chose to move the case to a case form; the shared dataset trigger enforces it after this script
             var ownTask = oldRow && oldRow.taskid;
             var fromOtherTask = oldRow && (ownTask
                     ? !row.taskid || String(row.taskid).toLowerCase() !== String(ownTask).toLowerCase()
                     : !!row.taskid && helper.getImportPathway() === 'ehr-ext4DataEntry');
-            var claims = fromOtherTask && row.taskid && triggerHelper.claimsCase(String(row.taskid), ownTask ? String(ownTask) : null, oldRow.QCStateLabel);
+            var moveRequested = String(helper.getExtraContext().moveCase) === 'true' && qc && qc.Label !== 'In Progress';
+            var claims = fromOtherTask && row.taskid && triggerHelper.claimsCase(String(row.taskid), ownTask ? String(ownTask) : null, oldRow.QCStateLabel, moveRequested);
             if (fromOtherTask && !claims) {
                 qc = EHR.Server.Security.getQCStateByLabel(oldRow.QCStateLabel);
             }
@@ -72,14 +73,7 @@ EHR.Server.TriggerManager.registerHandlerForQuery(EHR.Server.TriggerManager.Even
                 console.error('Unable to find QCState: ' + row.QCState + '/' + row.QCStateLabel);
             }
             else {
-
-                // Don't allow taking an existing non-draft case back to draft
-                if (oldRow && qc.Label == 'In Progress') {
-                    var oldQc = EHR.Server.Security.getQCStateByLabel(oldRow.QCStateLabel);
-                    if (oldQc.Label != 'In Progress') {
-                        EHR.Server.Utils.addError(errors, null, 'Cannot save a draft copy of a case already opened or in review.', 'ERROR');
-                    }
-                } else if (row.category === 'Clinical' && (qc.Label === 'Completed' || qc.Label === 'Review Required') && row.caseid && row.Id && row.performedby && caseTaskId && ordersRun) {
+                if (row.category === 'Clinical' && (qc.Label === 'Completed' || qc.Label === 'Review Required') && row.caseid && row.Id && row.performedby && caseTaskId && ordersRun) {
                     var ordersInTransaction = helper.getProperty('ordersInTransaction');
                     var oit = [];
                     if (ordersInTransaction && ordersInTransaction.length) {

@@ -87,51 +87,53 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
 
     static final Set<String> CASE_FORM_TYPES = new CaseInsensitiveHashSet(NBRICasesFormType.NAME, NBRIBehavioralCasesFormType.NAME);
 
-    // A case stays on its own task unless a case form claims it, and another task may change its status only when it leaves the case's fields alone.
+    // A case keeps its status and task unless the user chose to move it, and a draft never takes a submitted case back to In Progress.
     // Runs after the script triggers, which fill fields the update omitted from oldRow and put the form's target status on newRow.
     private void guardCaseTask(TableInfo table, Container c, User user, @Nullable Map<String, Object> newRow, @Nullable Map<String, Object> oldRow, ValidationException errors, @Nullable Map<String, Object> extraContext)
     {
-        if (newRow == null || oldRow == null || !"cases".equalsIgnoreCase(table.getName()))
+        if (newRow == null || oldRow == null || !"cases".equalsIgnoreCase(table.getName()) || isValidateOnly(extraContext))
             return;
 
         Object caseTaskId = oldRow.get("taskid");
         Object rowTaskId = newRow.get("taskid");
+        DataState oldState = getState(c, oldRow);
+        DataState newState = getState(c, newRow);
+        if (isDraft(newState) && oldState != null && !isDraft(oldState))
+        {
+            newRow.put("taskid", caseTaskId);
+            if (caseFieldsChanged(newRow, oldRow))
+                errors.addGlobalError("A draft can't change the case for " + newRow.get("Id") + " because it is " + oldState.getLabel() + ". Submit the form to save the case's changes.");
+            else
+                keepState(newRow, oldState);
+            return;
+        }
+
         // Forms stamp their own task on every case they load, so only a form save can carry a task to a case that has none
         if (caseTaskId == null && (rowTaskId == null || !isFormSave(extraContext)))
             return;
 
-        if ((caseTaskId != null && rowTaskId != null && caseTaskId.toString().equalsIgnoreCase(rowTaskId.toString())) || isValidateOnly(extraContext))
-        {
-            newRow.put("taskid", caseTaskId);
+        boolean fromOwnTask = caseTaskId != null && rowTaskId != null && caseTaskId.toString().equalsIgnoreCase(rowTaskId.toString());
+        if (fromOwnTask)
             return;
-        }
 
-        DataState oldState = getState(c, oldRow);
-        if (claimsCase(c, user, rowTaskId, caseTaskId, oldState == null ? null : oldState.getLabel()))
+        if (!isDraft(newState) && claimsCase(c, user, rowTaskId, caseTaskId, oldState == null ? null : oldState.getLabel(), isMoveRequested(extraContext)))
             return;
 
         newRow.put("taskid", caseTaskId);
-        DataState newState = getState(c, newRow);
         if (oldState == null || newState == null || oldState.getRowId() == newState.getRowId())
             return;
 
-        if (caseFieldsChanged(newRow, oldRow))
-        {
-            String owner = caseTaskId == null ? " is on no task and has " : " belongs to another task with ";
-            String editFrom = caseTaskId == null ? "a case form." : "its own task.";
-            errors.addGlobalError("The case for " + newRow.get("Id") + owner + oldState.getLabel() + " status. Submit with " + oldState.getLabel() + " to save its changes, or edit it from " + editFrom);
-        }
+        // Another task's unfinished work on the case would overwrite these edits
+        if (caseTaskId != null && !"Completed".equals(oldState.getLabel()) && caseFieldsChanged(newRow, oldRow))
+            errors.addGlobalError("The case for " + newRow.get("Id") + " belongs to another task with " + oldState.getLabel() + " status. Submit with " + oldState.getLabel() + " to save its changes, or edit it from its own task.");
         else
-        {
-            newRow.put("QCState", oldState.getRowId());
-            newRow.put("QCStateLabel", oldState.getLabel());
-        }
+            keepState(newRow, oldState);
     }
 
-    // A case form takes over a case that is Completed or on no task, and that task then owns the case
-    public static boolean claimsCase(Container c, User user, @Nullable Object rowTaskId, @Nullable Object caseTaskId, @Nullable String caseQcLabel)
+    // A case form takes over a case that is Completed or on no task only when the user chose to move it there
+    public static boolean claimsCase(Container c, User user, @Nullable Object rowTaskId, @Nullable Object caseTaskId, @Nullable String caseQcLabel, boolean moveRequested)
     {
-        if (rowTaskId == null || (caseTaskId != null && !"Completed".equals(caseQcLabel)))
+        if (!moveRequested || rowTaskId == null || (caseTaskId != null && !"Completed".equals(caseQcLabel)))
             return false;
 
         UserSchema ehr = QueryService.get().getUserSchema(user, c, "ehr");
@@ -151,6 +153,23 @@ public class NBRI_EHRSharedDatasetTrigger implements Trigger
     private static boolean isValidateOnly(@Nullable Map<String, Object> extraContext)
     {
         return extraContext != null && Stream.of("isValidateOnly", "validateOnly").anyMatch(key -> Boolean.TRUE.equals(ConvertHelper.convert(extraContext.get(key), Boolean.class)));
+    }
+
+    // Set by the case form's status dialog
+    static boolean isMoveRequested(@Nullable Map<String, Object> extraContext)
+    {
+        return extraContext != null && Boolean.TRUE.equals(ConvertHelper.convert(extraContext.get("moveCase"), Boolean.class));
+    }
+
+    private static boolean isDraft(@Nullable DataState state)
+    {
+        return state != null && "In Progress".equals(state.getLabel());
+    }
+
+    private static void keepState(Map<String, Object> newRow, DataState state)
+    {
+        newRow.put("QCState", state.getRowId());
+        newRow.put("QCStateLabel", state.getLabel());
     }
 
     // The EHR scripts null out oldRow's QCState and leave only its label

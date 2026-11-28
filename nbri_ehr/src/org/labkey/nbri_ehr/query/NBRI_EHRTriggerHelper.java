@@ -90,6 +90,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.WeakHashMap;
 import java.util.stream.Collectors;
 
 public class NBRI_EHRTriggerHelper
@@ -97,6 +98,9 @@ public class NBRI_EHRTriggerHelper
     private Container _container;
     private User _user;
     private static final Logger _log = LogManager.getLogger(NBRI_EHRTriggerHelper.class);
+
+    // Orders whose end date a case close or reopen set in the keyed transaction; the case's form saves its stale copy of each one later in that transaction
+    private static final Map<DbScope.Transaction, Set<String>> CASE_SET_ORDER_ENDS = Collections.synchronizedMap(new WeakHashMap<>());
     private final Map<String,Object> _cachedDrugFormulary = new HashMap<>();
     private final Map<String,String> _cachedObservationTypeCategories = new HashMap<>();
 
@@ -1242,9 +1246,9 @@ public class NBRI_EHRTriggerHelper
         return _container.hasPermission(_user, EHRVeterinarianPermission.class);
     }
 
-    public boolean claimsCase(String rowTaskId, @Nullable String caseTaskId, String caseQcLabel)
+    public boolean claimsCase(String rowTaskId, @Nullable String caseTaskId, String caseQcLabel, boolean moveRequested)
     {
-        return NBRI_EHRSharedDatasetTrigger.claimsCase(_container, _user, rowTaskId, caseTaskId, caseQcLabel);
+        return NBRI_EHRSharedDatasetTrigger.claimsCase(_container, _user, rowTaskId, caseTaskId, caseQcLabel, moveRequested);
     }
 
     /** Returns an error when the protocol does not exist or has expired by the assignment date, or null when it is usable. */
@@ -1652,9 +1656,11 @@ public class NBRI_EHRTriggerHelper
             {
                 BatchValidationException errors = new BatchValidationException();
                 List<Map<String, Object>> keys = toEnd.stream().map(row -> orderRow((String) row.get("objectid"), null)).collect(Collectors.toList());
+                List<String> orderIds = keys.stream().map(key -> (String) key.get("objectid")).toList();
                 Objects.requireNonNull(ti.getUpdateService()).updateRows(getOrderUser(), _container, toEnd, keys, errors, null, getExtraContext());
                 if (errors.hasErrors())
                     throw errors;
+                trackCaseSetOrderEnds(ti, orderIds);
             }
             catch (Exception e)
             {
@@ -1708,11 +1714,26 @@ public class NBRI_EHRTriggerHelper
             Objects.requireNonNull(ti.getUpdateService()).updateRows(getOrderUser(), _container, rows, keys, errors, null, getExtraContext());
             if (errors.hasErrors())
                 throw errors;
+            trackCaseSetOrderEnds(ti, orderIds);
         }
         catch (Exception e)
         {
             _log.error("Error reopening observation orders when their case's close moved later", e);
         }
+    }
+
+    private void trackCaseSetOrderEnds(TableInfo ti, Collection<String> orderIds)
+    {
+        DbScope.Transaction transaction = ti.getSchema().getScope().getCurrentTransaction();
+        if (transaction != null)
+            CASE_SET_ORDER_ENDS.computeIfAbsent(transaction, _ -> new CaseInsensitiveHashSet()).addAll(orderIds);
+    }
+
+    public boolean isOrderEndSetByCase(String orderId)
+    {
+        DbScope.Transaction transaction = getTableInfo("study", "observation_order").getSchema().getScope().getCurrentTransaction();
+        Set<String> orderIds = transaction == null ? null : CASE_SET_ORDER_ENDS.get(transaction);
+        return orderIds != null && orderIds.contains(orderId);
     }
 
     // The saving user may lack insert, update and delete permission on Completed and Review Required orders
